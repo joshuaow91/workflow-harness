@@ -12,6 +12,15 @@ export interface AppSettings {
   defaultBrowserUrl: string
   /** User-renamed session titles, keyed by sessionId. */
   sessionTitles: Record<string, string>
+  /** Built-in authenticator (TOTP) accounts. Secrets stored locally in plaintext. */
+  totpAccounts: TotpAccount[]
+}
+
+export interface TotpAccount {
+  id: string
+  label: string
+  /** Base32-encoded shared secret. */
+  secret: string
 }
 
 // ---- Claude sidebar ----

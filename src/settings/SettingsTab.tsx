@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { normalizeInput } from '../lib/url'
+import { TotpSection } from './TotpSection'
 
 export function SettingsTab() {
   const settings = useSettings()
@@ -61,6 +62,8 @@ export function SettingsTab() {
           New tabs in the Browser workspace (and new side browsers) open here.
         </p>
       </section>
+
+      <TotpSection />
 
       <section className="settings-section">
         <div className="settings-label">GitHub sign-in</div>
