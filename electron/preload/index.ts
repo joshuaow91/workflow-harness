@@ -62,6 +62,9 @@ const api = {
     projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
       ipcRenderer.invoke(IPC.github.projectItems, owner, number)
   },
+  browser: {
+    onOpenTab: (cb: (url: string) => void) => on<string>(IPC.browser.openTab, cb)
+  },
   devtools: {
     attach: (targetId: number, devtoolsId: number): Promise<void> =>
       ipcRenderer.invoke(IPC.devtools.attach, targetId, devtoolsId),

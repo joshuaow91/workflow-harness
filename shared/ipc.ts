@@ -29,6 +29,9 @@ export const IPC = {
     listProjects: 'github:listProjects',
     projectItems: 'github:projectItems'
   },
+  browser: {
+    openTab: 'browser:openTab' // main -> renderer push (open url in web workspace)
+  },
   devtools: {
     attach: 'devtools:attach',
     detach: 'devtools:detach'

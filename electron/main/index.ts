@@ -1,6 +1,6 @@
 import { execFile } from 'child_process'
 import { join } from 'path'
-import { app, BrowserWindow, shell, ipcMain, session } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, session, Menu, clipboard } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerSettingsIpc } from './settings/registerSettingsIpc'
@@ -10,6 +10,48 @@ import { registerWorktreeIpc } from './git/registerWorktreeIpc'
 import { registerGithubIpc } from './github/registerGithubIpc'
 
 let mainWindow: BrowserWindow | null = null
+
+// Give embedded <webview>s a browser-like context menu + new-tab behavior.
+function wireGuestWebview(contents: Electron.WebContents): void {
+  const openTab = (url: string): void => {
+    if (url && url !== 'about:blank' && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC.browser.openTab, url)
+    }
+  }
+  const openInBrave = (url: string): void => {
+    execFile('open', ['-a', 'Brave Browser', url], (err) => {
+      if (err) void shell.openExternal(url)
+    })
+  }
+
+  // target=_blank / window.open / cmd-click → open as a new tab in the workspace.
+  contents.setWindowOpenHandler(({ url }) => {
+    openTab(url)
+    return { action: 'deny' }
+  })
+
+  contents.on('context-menu', (_e, params) => {
+    const nav = contents.navigationHistory
+    const t: Electron.MenuItemConstructorOptions[] = []
+    if (params.linkURL) {
+      t.push({ label: 'Open Link in New Tab', click: () => openTab(params.linkURL) })
+      t.push({ label: 'Open Link in Brave', click: () => openInBrave(params.linkURL) })
+      t.push({ label: 'Copy Link', click: () => clipboard.writeText(params.linkURL) })
+      t.push({ type: 'separator' })
+    }
+    if (params.isEditable) {
+      t.push({ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { type: 'separator' })
+    } else if (params.selectionText) {
+      t.push({ role: 'copy' }, { type: 'separator' })
+    }
+    t.push({ label: 'Back', enabled: nav.canGoBack(), click: () => nav.goBack() })
+    t.push({ label: 'Forward', enabled: nav.canGoForward(), click: () => nav.goForward() })
+    t.push({ label: 'Reload', click: () => contents.reload() })
+    t.push({ type: 'separator' })
+    t.push({ label: 'Inspect Element', click: () => contents.inspectElement(params.x, params.y) })
+    Menu.buildFromTemplate(t).popup()
+  })
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -29,6 +71,8 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
+
+  mainWindow.webContents.on('did-attach-webview', (_e, contents) => wireGuestWebview(contents))
 
   // Open target=_blank / window.open links in the system browser, not new Electron windows.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

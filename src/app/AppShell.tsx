@@ -11,6 +11,7 @@ import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
 import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
+import { browserBus } from '../lib/browserBus'
 
 type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review' | 'settings'
 
@@ -50,6 +51,11 @@ export function AppShell() {
 
   // Jump to the Terminals tab whenever something requests a new terminal.
   useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
+
+  // Embedded webviews asking to open a link in a new tab -> route to the Browser
+  // workspace and switch to it.
+  useEffect(() => window.api.browser.onOpenTab((url) => browserBus.open(url)), [])
+  useEffect(() => browserBus.subscribe(() => setActiveTab('browser')), [])
 
   // Apply the saved theme once settings load (and whenever it changes).
   useEffect(() => {

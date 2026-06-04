@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
+import { browserBus } from '../lib/browserBus'
 import { useDefaultSessionDir, useSettings } from '../lib/settingsStore'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
 import { DevToolsPane } from './DevToolsPane'
@@ -144,6 +145,15 @@ export function WebWorkspace() {
     setTabs((t) => [...t, { id, url: defaultUrl, title: 'New Tab' }])
     setActiveTab(id)
   }
+
+  // "Open link in new tab" from any embedded webview lands here.
+  useEffect(() => {
+    return browserBus.subscribe((url) => {
+      const id = tabCounter.current++
+      setTabs((t) => [...t, { id, url, title: 'New Tab' }])
+      setActiveTab(id)
+    })
+  }, [])
   const closeTab = (id: number): void => {
     delete tabWc.current[id]
     setTabs((t) => {
