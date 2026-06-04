@@ -97,6 +97,9 @@ const api = {
     saveNote: (path: string, content: string): Promise<void> =>
       ipcRenderer.invoke(IPC.obsidian.saveNote, path, content)
   },
+  mermaid: {
+    onRender: (cb: (code: string) => void) => on<string>(IPC.mermaid.render, cb)
+  },
   system: {
     homeDir: homedir(),
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url),

@@ -1336,6 +1336,70 @@ button {
   background: var(--bg-elevated);
 }
 
+/* ---- Mermaid ---- */
+
+.mmd-tab {
+  height: 100%;
+}
+
+.mmd-editor-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-alt);
+  border-right: 1px solid var(--border);
+}
+
+.mmd-bar {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border);
+}
+
+.mmd-editor {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border: none;
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 14px 16px;
+  font-family: SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.mmd-editor:focus {
+  outline: none;
+}
+
+.mmd-preview {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--bg-elevated);
+}
+
+.mmd-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mmd-err {
+  color: var(--red);
+  font-family: SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  align-self: flex-start;
+}
+
 /* ---- Obsidian notes ---- */
 
 .obs-tab {
@@ -1428,6 +1492,11 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.obs-saved {
+  font-size: 10.5px;
+  color: var(--text-faint);
 }
 
 .obs-md {

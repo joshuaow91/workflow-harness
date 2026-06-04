@@ -3,7 +3,7 @@ import { join } from 'path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { setAgentTarget } from './BrowserController'
-import { CONTROL_PORT, setActivitySink, startControlServer } from './controlServer'
+import { CONTROL_PORT, setActivitySink, setMermaidSink, startControlServer } from './controlServer'
 
 // Absolute path to the standalone MCP server script (resolves from the project
 // root in dev; bundled under resources when packaged).
@@ -17,6 +17,11 @@ export function registerAgentIpc(getWindow: () => BrowserWindow | null): void {
   setActivitySink((activity) => {
     const win = getWindow()
     if (win && !win.isDestroyed()) win.webContents.send(IPC.agent.activity, activity)
+  })
+
+  setMermaidSink((code) => {
+    const win = getWindow()
+    if (win && !win.isDestroyed()) win.webContents.send(IPC.mermaid.render, code)
   })
 
   ipcMain.handle(IPC.agent.setTarget, (_e, webContentsId: number | null) => {

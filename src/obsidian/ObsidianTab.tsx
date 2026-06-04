@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { marked } from 'marked'
 import { useAsync } from '../lib/useAsync'
@@ -6,9 +6,7 @@ import { settingsStore, useSettings } from '../lib/settingsStore'
 
 function renderMarkdown(md: string): string {
   const pre = md
-    // image/file embeds -> placeholder for v1
     .replace(/!\[\[([^\]]+)\]\]/g, '<em>[[$1]]</em>')
-    // [[note]] and [[note|alias]] wikilinks
     .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_m, name: string, alias?: string) => {
       const label = (alias ?? name).trim()
       return `<a href="#" data-wikilink="${encodeURIComponent(name.trim())}">${label}</a>`
@@ -27,30 +25,43 @@ export function ObsidianTab() {
 
   const [sel, setSel] = useState<string | null>(null)
   const [content, setContent] = useState('')
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
   const [q, setQ] = useState('')
+  const [saved, setSaved] = useState(true)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!sel && list.length) setSel(list[0].path)
   }, [list, sel])
 
+  // Load the selected note. Flush any pending save for the previous note first.
   useEffect(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
     if (sel)
       void window.api.obsidian.readNote(sel).then((c) => {
         setContent(c)
-        setDraft(c)
-        setEditing(false)
+        setSaved(true)
       })
   }, [sel])
+
+  // Auto-save (debounced) on every edit — no Save button.
+  const onEdit = (v: string): void => {
+    setContent(v)
+    setSaved(false)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    const path = sel
+    saveTimer.current = setTimeout(() => {
+      if (path)
+        void window.api.obsidian.saveNote(path, v).then(() => {
+          setSaved(true)
+          notes.reload()
+        })
+    }, 600)
+  }
 
   const openByTitle = (title: string): void => {
     const n = list.find((x) => x.title.toLowerCase() === title.toLowerCase())
     if (n) setSel(n.path)
   }
-
-  const html = useMemo(() => renderMarkdown(content), [content])
-
   const onClickContent = (e: React.MouseEvent): void => {
     const a = (e.target as HTMLElement).closest('[data-wikilink]')
     if (a) {
@@ -59,17 +70,11 @@ export function ObsidianTab() {
     }
   }
 
+  const html = useMemo(() => renderMarkdown(content), [content])
+
   const chooseVault = async (): Promise<void> => {
     const p = await window.api.system.pickDirectory()
     if (p) await settingsStore.update({ obsidianVault: p })
-  }
-
-  const save = async (): Promise<void> => {
-    if (!sel) return
-    await window.api.obsidian.saveNote(sel, draft)
-    setContent(draft)
-    setEditing(false)
-    notes.reload()
   }
 
   if (!vault) {
@@ -90,7 +95,7 @@ export function ObsidianTab() {
   return (
     <div className="obs-tab">
       <PanelGroup direction="horizontal" autoSaveId="obs-h">
-        <Panel defaultSize={24} minSize={15}>
+        <Panel defaultSize={20} minSize={12}>
           <div className="obs-listcol">
             <div className="obs-listbar">
               <input
@@ -120,44 +125,28 @@ export function ObsidianTab() {
           </div>
         </Panel>
         <PanelResizeHandle className="resize-handle" />
-        <Panel defaultSize={76} minSize={30}>
+        <Panel defaultSize={40} minSize={20}>
           <div className="obs-view">
             <div className="obs-viewbar">
               <span className="obs-viewtitle">{sel ?? 'No note selected'}</span>
-              {editing ? (
-                <>
-                  <button className="tbtn" onClick={save}>
-                    Save
-                  </button>
-                  <button
-                    className="term-act"
-                    title="Discard"
-                    onClick={() => {
-                      setEditing(false)
-                      setDraft(content)
-                    }}
-                  >
-                    ✕
-                  </button>
-                </>
-              ) : (
-                sel && (
-                  <button className="tbtn" onClick={() => setEditing(true)}>
-                    Edit
-                  </button>
-                )
-              )}
+              <span className="obs-saved">{saved ? 'saved' : 'saving…'}</span>
             </div>
-            {editing ? (
-              <textarea
-                className="obs-edit"
-                value={draft}
-                spellCheck={false}
-                onChange={(e) => setDraft(e.target.value)}
-              />
-            ) : (
-              <div className="obs-md" onClick={onClickContent} dangerouslySetInnerHTML={{ __html: html }} />
-            )}
+            <textarea
+              className="obs-edit"
+              value={content}
+              spellCheck={false}
+              onChange={(e) => onEdit(e.target.value)}
+              disabled={!sel}
+            />
+          </div>
+        </Panel>
+        <PanelResizeHandle className="resize-handle" />
+        <Panel defaultSize={40} minSize={20}>
+          <div className="obs-view">
+            <div className="obs-viewbar">
+              <span className="obs-viewtitle">Preview</span>
+            </div>
+            <div className="obs-md" onClick={onClickContent} dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         </Panel>
       </PanelGroup>

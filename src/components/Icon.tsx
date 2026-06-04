@@ -15,7 +15,11 @@ const PATHS: Record<string, string> = {
     '<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="6"/><rect x="11" y="8" width="3" height="10"/><rect x="16" y="4" width="3" height="14"/>',
   notebook: '<path d="M6 4h11a1 1 0 0 1 1 1v15H7a1 1 0 0 1-1-1z"/><path d="M10 4v16"/>',
   settings:
-    '<line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2"/><circle cx="15" cy="16" r="2"/>'
+    '<line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2"/><circle cx="15" cy="16" r="2"/>',
+  diagram:
+    '<rect x="4" y="4" width="7" height="4" rx="1"/><rect x="13" y="16" width="7" height="4" rx="1"/><path d="M7.5 8v5a2 2 0 0 0 2 2h7"/>',
+  database:
+    '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>'
 }
 
 export function Icon({ name, size = 15 }: { name: string; size?: number }) {

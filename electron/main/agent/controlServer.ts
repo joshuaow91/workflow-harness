@@ -19,6 +19,11 @@ export function setActivitySink(fn: (a: AgentActivity) => void): void {
   activitySink = fn
 }
 
+let mermaidSink: ((code: string) => void) | null = null
+export function setMermaidSink(fn: (code: string) => void): void {
+  mermaidSink = fn
+}
+
 function summarize(body: Record<string, unknown>): string {
   return Object.entries(body)
     .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
@@ -44,7 +49,11 @@ const handlers: Record<string, Handler> = {
       text: b.text as string | undefined,
       timeoutMs: b.timeoutMs as number | undefined
     }),
-  upload: (b) => bc.uploadFile(String(b.ref), (b.paths as string[]) ?? [])
+  upload: (b) => bc.uploadFile(String(b.ref), (b.paths as string[]) ?? []),
+  mermaid: (b) => {
+    mermaidSink?.(String(b.code))
+    return 'rendered'
+  }
 }
 
 function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {

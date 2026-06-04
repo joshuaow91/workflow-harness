@@ -113,4 +113,11 @@ server.tool(
   async ({ ref, paths }) => text(await call('upload', { ref, paths }))
 )
 
+server.tool(
+  'render_mermaid',
+  'Render a Mermaid diagram (flowchart, sequence, etc.) in the harness Mermaid tab.',
+  { code: z.string().describe('Mermaid diagram source') },
+  async ({ code }) => text(await call('mermaid', { code }))
+)
+
 await server.connect(new StdioServerTransport())
