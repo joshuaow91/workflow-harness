@@ -1,36 +1,7 @@
-import { useEffect, type ReactNode } from 'react'
-import type { GhLabel } from '@shared/types'
-import { useRepos } from '../sidebar/useRepos'
-import { githubStore, useSelectedRepo } from './githubStore'
+import { type ReactNode } from 'react'
 
 export function openExternal(url: string): void {
   if (url) void window.api.system.openExternal(url)
-}
-
-/** Dropdown of repos (those with a GitHub remote), bound to the shared store. */
-export function RepoPicker() {
-  const { repos } = useRepos()
-  const selected = useSelectedRepo()
-  const options = repos.filter((r) => r.nameWithOwner)
-
-  useEffect(() => {
-    if (!selected && options.length > 0) githubStore.set(options[0].nameWithOwner as string)
-  }, [selected, options])
-
-  return (
-    <select
-      className="gh-select"
-      value={selected ?? ''}
-      onChange={(e) => githubStore.set(e.target.value)}
-    >
-      {options.length === 0 && <option value="">No repos</option>}
-      {options.map((r) => (
-        <option key={r.path} value={r.nameWithOwner as string}>
-          {r.nameWithOwner}
-        </option>
-      ))}
-    </select>
-  )
 }
 
 export function GhHeader({
@@ -75,22 +46,6 @@ export function ReviewBadge({ decision }: { decision: string | null }) {
   const m = map[decision]
   if (!m) return null
   return <span className={`gh-badge ${m.cls}`}>{m.label}</span>
-}
-
-export function LabelChips({ labels }: { labels: GhLabel[] }) {
-  return (
-    <>
-      {labels.slice(0, 4).map((l) => (
-        <span
-          key={l.name}
-          className="gh-label"
-          style={{ borderColor: `#${l.color}`, color: `#${l.color}` }}
-        >
-          {l.name}
-        </span>
-      ))}
-    </>
-  )
 }
 
 export function GhState({

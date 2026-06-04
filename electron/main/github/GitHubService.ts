@@ -129,6 +129,40 @@ export async function listMyPRs(repo: string): Promise<GhPullRequest[]> {
   return rows.map((r) => mapPR(r, repo))
 }
 
+export async function listMyPRsAll(): Promise<GhPullRequest[]> {
+  type Raw = {
+    number: number
+    title: string
+    repository: { nameWithOwner: string }
+    url: string
+    isDraft?: boolean
+    updatedAt: string
+  }
+  const rows = await ghJson<Raw[]>([
+    'search',
+    'prs',
+    '--author=@me',
+    '--state=open',
+    '--limit',
+    '100',
+    '--json',
+    'number,title,repository,url,updatedAt,isDraft'
+  ])
+  return rows.map((r) => ({
+    number: r.number,
+    title: r.title,
+    state: 'OPEN',
+    isDraft: r.isDraft ?? false,
+    headRefName: '',
+    reviewDecision: null,
+    checksState: null,
+    author: '',
+    updatedAt: r.updatedAt,
+    url: r.url,
+    repo: r.repository?.nameWithOwner ?? ''
+  }))
+}
+
 export async function listReviewPRs(): Promise<GhPullRequest[]> {
   type Raw = {
     number: number

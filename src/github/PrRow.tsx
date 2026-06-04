@@ -16,14 +16,17 @@ function reviewWithClaude(pr: GhPullRequest, cwd: string): void {
 export function PrRow({
   pr,
   showRepo,
-  reviewCwd
+  reviewCwd,
+  onOpen
 }: {
   pr: GhPullRequest
   showRepo?: boolean
   reviewCwd?: string
+  /** If provided, the row opens this handler instead of the external browser. */
+  onOpen?: (pr: GhPullRequest) => void
 }) {
   return (
-    <div className="gh-row" onClick={() => openExternal(pr.url)}>
+    <div className="gh-row" onClick={() => (onOpen ? onOpen(pr) : openExternal(pr.url))}>
       <div className="gh-row-main">
         <span className="gh-num">#{pr.number}</span>
         <span className="gh-title">{pr.title}</span>

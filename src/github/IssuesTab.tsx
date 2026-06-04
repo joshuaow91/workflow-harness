@@ -1,43 +1,38 @@
-import { useAsync } from '../lib/useAsync'
-import { relativeTime } from '../lib/time'
-import { GhHeader, GhState, LabelChips, RepoPicker, openExternal } from './GhShared'
-import { useSelectedRepo } from './githubStore'
+import { useEffect, useMemo, useState } from 'react'
+import { useRepos } from '../sidebar/useRepos'
+import { WebFrame } from '../panes/WebFrame'
+
+const DEFAULT_REPO = 'blink-ai/blink_server'
 
 export function IssuesTab() {
-  const repo = useSelectedRepo()
-  const { data, error, loading, reload } = useAsync(
-    () => (repo ? window.api.github.issues(repo) : Promise.resolve([])),
-    [repo]
+  const { repos } = useRepos()
+  const ghRepos = useMemo(
+    () => repos.filter((r) => r.nameWithOwner).map((r) => r.nameWithOwner as string),
+    [repos]
   )
-  const issues = data ?? []
+  const [repo, setRepo] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!repo && ghRepos.length > 0) setRepo(ghRepos.includes(DEFAULT_REPO) ? DEFAULT_REPO : ghRepos[0])
+  }, [repo, ghRepos])
+
+  const url = repo ? `https://github.com/${repo}/issues` : 'https://github.com'
 
   return (
     <div className="gh-tab">
-      <GhHeader onRefresh={reload} count={issues.length}>
-        <RepoPicker />
-      </GhHeader>
-      <div className="gh-list">
-        <GhState
-          loading={loading}
-          error={error}
-          empty={issues.length === 0}
-          emptyText="No open issues."
-        />
-        {issues.map((it) => (
-          <div key={it.number} className="gh-row" onClick={() => openExternal(it.url)}>
-            <div className="gh-row-main">
-              <span className="gh-num">#{it.number}</span>
-              <span className="gh-title">{it.title}</span>
-            </div>
-            <div className="gh-row-meta">
-              <LabelChips labels={it.labels} />
-              {it.assignees.length > 0 && (
-                <span className="gh-assignee">@{it.assignees.join(', @')}</span>
-              )}
-              <span className="gh-time">{relativeTime(it.updatedAt)}</span>
-            </div>
-          </div>
-        ))}
+      <div className="gh-header">
+        <span className="gh-heading">Issues</span>
+        <select className="gh-select" value={repo ?? ''} onChange={(e) => setRepo(e.target.value)}>
+          {ghRepos.length === 0 && <option value="">No repos</option>}
+          {ghRepos.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="gh-embed">
+        <WebFrame src={url} editableAddress={false} />
       </div>
     </div>
   )

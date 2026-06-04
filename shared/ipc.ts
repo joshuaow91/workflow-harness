@@ -23,11 +23,17 @@ export const IPC = {
   github: {
     issues: 'github:issues',
     myPRs: 'github:myPRs',
+    myPRsAll: 'github:myPRsAll',
     reviewPRs: 'github:reviewPRs',
     listProjects: 'github:listProjects',
     projectItems: 'github:projectItems'
   },
+  devtools: {
+    attach: 'devtools:attach',
+    detach: 'devtools:detach'
+  },
   system: {
-    openExternal: 'system:openExternal'
+    openExternal: 'system:openExternal',
+    openInBrave: 'system:openInBrave'
   }
 } as const

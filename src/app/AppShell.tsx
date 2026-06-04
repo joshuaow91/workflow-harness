@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
-import { BrowserPane } from '../panes/BrowserPane'
+import { WebWorkspace } from '../panes/WebWorkspace'
 import { IssuesTab } from '../github/IssuesTab'
 import { BoardTab } from '../github/BoardTab'
 import { MyPRsTab } from '../github/MyPRsTab'
@@ -73,7 +73,7 @@ export function AppShell() {
             <TerminalsTab />
           </div>
           <div className="tab-layer" style={{ display: activeTab === 'browser' ? 'block' : 'none' }}>
-            <BrowserPane />
+            <WebWorkspace />
           </div>
           {activeTab !== 'terminals' && activeTab !== 'browser' && <TabPanel tab={activeTab} />}
         </div>

@@ -52,15 +52,22 @@ const api = {
   github: {
     issues: (repo: string): Promise<GhIssue[]> => ipcRenderer.invoke(IPC.github.issues, repo),
     myPRs: (repo: string): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRs, repo),
+    myPRsAll: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRsAll),
     reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),
     listProjects: (owner: string): Promise<GhProjectSummary[]> =>
       ipcRenderer.invoke(IPC.github.listProjects, owner),
     projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
       ipcRenderer.invoke(IPC.github.projectItems, owner, number)
   },
+  devtools: {
+    attach: (targetId: number, devtoolsId: number): Promise<void> =>
+      ipcRenderer.invoke(IPC.devtools.attach, targetId, devtoolsId),
+    detach: (targetId: number): Promise<void> => ipcRenderer.invoke(IPC.devtools.detach, targetId)
+  },
   system: {
     homeDir: homedir(),
-    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url)
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url),
+    openInBrave: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openInBrave, url)
   }
 }
 

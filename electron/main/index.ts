@@ -1,6 +1,8 @@
+import { execFile } from 'child_process'
 import { join } from 'path'
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
+import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -43,6 +45,13 @@ function createWindow(): void {
 function registerIpc(): void {
   // System helpers.
   ipcMain.handle(IPC.system.openExternal, (_e, url: string) => shell.openExternal(url))
+  ipcMain.handle(IPC.system.openInBrave, (_e, url: string) => {
+    // Hand a URL to the installed Brave app; fall back to the default browser.
+    execFile('open', ['-a', 'Brave Browser', url], (err) => {
+      if (err) void shell.openExternal(url)
+    })
+  })
+  registerDevtoolsIpc()
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)
