@@ -95,6 +95,15 @@ export function Sidebar() {
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  const toggleExpanded = (slug: string): void =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      return next
+    })
 
   const titleOf = (s: ClaudeSession): string => titles[s.sessionId] ?? s.title
 
@@ -150,7 +159,10 @@ export function Sidebar() {
             >
               ＋ new claude session
             </button>
-            {project.sessions.map((s) => (
+            {(expanded.has(project.slug)
+              ? project.sessions
+              : project.sessions.slice(0, 10)
+            ).map((s) => (
               <SessionRow
                 key={s.sessionId}
                 session={s}
@@ -174,6 +186,13 @@ export function Sidebar() {
                 }}
               />
             ))}
+            {project.sessions.length > 10 && (
+              <button className="side-more" onClick={() => toggleExpanded(project.slug)}>
+                {expanded.has(project.slug)
+                  ? 'Show less'
+                  : `Show ${project.sessions.length - 10} more`}
+              </button>
+            )}
           </SideSection>
         ))
       )}

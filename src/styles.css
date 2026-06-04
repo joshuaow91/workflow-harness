@@ -783,6 +783,22 @@ button {
   letter-spacing: 0.05em;
 }
 
+.side-more {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 2px 14px 8px;
+  padding: 4px 8px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.side-more:hover {
+  color: var(--accent);
+}
+
 .side-action {
   display: block;
   width: calc(100% - 12px);
