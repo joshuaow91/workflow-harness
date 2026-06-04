@@ -105,6 +105,8 @@ export interface Repo {
   /** owner/name parsed from the origin remote, if any. */
   nameWithOwner: string | null
   currentBranch: string | null
+  /** Detected default branch (main/master), for branching new worktrees off. */
+  defaultBranch: string | null
   worktrees: Worktree[]
 }
 

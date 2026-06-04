@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Repo, Worktree } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
+import { Dropdown } from '../components/Dropdown'
 import { useRepos } from './useRepos'
 import { useFlatSessions } from './useFlatSessions'
 
@@ -73,13 +74,21 @@ function RepoRow({
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [branch, setBranch] = useState('')
+  const [base, setBase] = useState('')
   const [busy, setBusy] = useState(false)
 
   const extraWorktrees = repo.worktrees.filter((w) => !w.isMain).length
   const liveCount = repo.worktrees.filter((w) => liveCwds.has(w.path)).length
 
+  // Base options: the detected default branch (main/master) + current HEAD.
+  const baseOptions = [
+    ...(repo.defaultBranch ? [{ value: repo.defaultBranch, label: repo.defaultBranch }] : []),
+    { value: 'HEAD', label: `current (${repo.currentBranch ?? 'HEAD'})` }
+  ]
+
   const startAdding = (): void => {
     setBranch(`session-${extraWorktrees + 1}`)
+    setBase(repo.defaultBranch ?? 'HEAD')
     setAdding(true)
     setOpen(true)
   }
@@ -90,7 +99,7 @@ function RepoRow({
     if (!name) return
     setBusy(true)
     try {
-      const wt = await window.api.worktree.add(repo.path, name)
+      const wt = await window.api.worktree.add(repo.path, name, base || undefined)
       setAdding(false)
       setBranch('')
       onChanged()
@@ -147,34 +156,40 @@ function RepoRow({
             />
           ))}
           {adding ? (
-            <div className="wt-add">
-              <input
-                autoFocus
-                className="wt-input"
-                placeholder="branch name"
-                value={branch}
-                disabled={busy}
-                onChange={(e) => setBranch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void createAndOpen()
-                  if (e.key === 'Escape') {
+            <div className="wt-addbox">
+              <div className="wt-add">
+                <input
+                  autoFocus
+                  className="wt-input"
+                  placeholder="branch name"
+                  value={branch}
+                  disabled={busy}
+                  onChange={(e) => setBranch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void createAndOpen()
+                    if (e.key === 'Escape') {
+                      setAdding(false)
+                      setBranch('')
+                    }
+                  }}
+                />
+                <button className="term-act" disabled={busy} title="Create + open" onClick={() => void createAndOpen()}>
+                  ✓
+                </button>
+                <button
+                  className="term-act"
+                  onClick={() => {
                     setAdding(false)
                     setBranch('')
-                  }
-                }}
-              />
-              <button className="term-act" disabled={busy} title="Create + open" onClick={() => void createAndOpen()}>
-                ✓
-              </button>
-              <button
-                className="term-act"
-                onClick={() => {
-                  setAdding(false)
-                  setBranch('')
-                }}
-              >
-                ✕
-              </button>
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="wt-from">
+                <span className="wt-from-label">from</span>
+                <Dropdown value={base} options={baseOptions} onChange={setBase} minWidth={140} />
+              </div>
             </div>
           ) : (
             <button className="wt-new" onClick={startAdding}>

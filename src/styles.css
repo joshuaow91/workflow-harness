@@ -2283,10 +2283,19 @@ button {
 }
 
 .repo-name {
+  flex: 1;
+  min-width: 0;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* On hover, prioritize the repo name: reveal it fully and drop the badges. */
+.repo-row:hover .repo-branch,
+.repo-row:hover .repo-wt-count,
+.repo-row:hover .repo-live-count {
+  display: none;
 }
 
 .repo-branch {
@@ -2416,6 +2425,18 @@ button {
   color: var(--text);
   font-size: 11.5px;
   font-family: SFMono-Regular, Menlo, monospace;
+}
+
+.wt-from {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 6px 34px;
+}
+
+.wt-from-label {
+  font-size: 11px;
+  color: var(--text-faint);
 }
 
 .wt-input:focus {

@@ -65,17 +65,28 @@ function parseWorktreeList(porcelain: string): Worktree[] {
   return trees
 }
 
+async function detectDefaultBranch(path: string): Promise<string | null> {
+  const sym = await tryGit(path, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
+  if (sym) return sym.replace(/^origin\//, '')
+  if ((await tryGit(path, ['show-ref', '--verify', '--quiet', 'refs/heads/main'])) !== null) return 'main'
+  if ((await tryGit(path, ['show-ref', '--verify', '--quiet', 'refs/heads/master'])) !== null)
+    return 'master'
+  return null
+}
+
 async function loadRepo(name: string, path: string): Promise<Repo> {
-  const [remote, branch, wtList] = await Promise.all([
+  const [remote, branch, wtList, defaultBranch] = await Promise.all([
     tryGit(path, ['remote', 'get-url', 'origin']),
     tryGit(path, ['rev-parse', '--abbrev-ref', 'HEAD']),
-    tryGit(path, ['worktree', 'list', '--porcelain'])
+    tryGit(path, ['worktree', 'list', '--porcelain']),
+    detectDefaultBranch(path)
   ])
   return {
     name,
     path,
     nameWithOwner: parseNameWithOwner(remote),
     currentBranch: branch,
+    defaultBranch,
     worktrees: wtList ? parseWorktreeList(wtList) : []
   }
 }
