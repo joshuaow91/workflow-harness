@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
-import { useDefaultSessionDir } from '../lib/settingsStore'
+import { useDefaultSessionDir, useSettings } from '../lib/settingsStore'
+import { Dropdown, type DropdownOption } from '../components/Dropdown'
 import { DevToolsPane } from './DevToolsPane'
 import { TerminalPane } from './TerminalPane'
 import { WebFrame } from './WebFrame'
 
-const NEW_TAB_URL = 'https://github.com'
+const FALLBACK_URL = 'https://github.com'
 
 interface Tab {
   id: number
@@ -21,6 +22,10 @@ interface SidePane {
 
 // ---- Right-sidebar terminal with a session picker ----
 
+function basename(p: string): string {
+  return p.split('/').filter(Boolean).pop() ?? p
+}
+
 function SideTerminal({ onClose }: { onClose: () => void }) {
   const sessions = useFlatSessions()
   const defaultDir = useDefaultSessionDir()
@@ -33,30 +38,37 @@ function SideTerminal({ onClose }: { onClose: () => void }) {
   }
 
   const onSelect = (value: string): void => {
-    if (value === '__shell') launch({ cwd: defaultDir })
-    else if (value === '__claude') launch({ cwd: defaultDir, initialCommand: 'claude' })
+    if (value === '__shell') launch({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
+    else if (value === '__claude')
+      launch({ cwd: defaultDir, initialCommand: 'claude', label: `claude · ${basename(defaultDir)}` })
     else {
       const s = sessions.find((x) => x.sessionId === value)
       if (s) launch({ cwd: s.cwd, initialCommand: `claude --resume ${s.sessionId}`, label: s.title })
     }
   }
 
+  const dirName = basename(defaultDir)
+  const options: DropdownOption[] = [
+    { value: '__claude', label: `＋ new claude`, sublabel: dirName },
+    { value: '__shell', label: `＋ shell`, sublabel: dirName },
+    ...sessions.slice(0, 60).map((s) => ({
+      value: s.sessionId,
+      label: `${s.live ? '● ' : ''}${s.title}`,
+      sublabel: s.projectName
+    }))
+  ]
+
   return (
     <div className="side-term">
       <div className="side-term-head">
-        <select className="gh-select" value="" onChange={(e) => onSelect(e.target.value)}>
-          <option value="" disabled>
-            {opts ? opts.label ?? 'session…' : 'Pick a session…'}
-          </option>
-          <option value="__claude">＋ new claude (home)</option>
-          <option value="__shell">＋ shell</option>
-          {sessions.slice(0, 40).map((s) => (
-            <option key={s.sessionId} value={s.sessionId}>
-              {s.live ? '● ' : ''}
-              {s.projectName} — {s.title}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value=""
+          triggerLabel={opts?.label ?? 'Pick a session…'}
+          options={options}
+          onChange={onSelect}
+          searchable
+          minWidth={240}
+        />
         <button className="term-act" title="Close pane" onClick={onClose}>
           ✕
         </button>
@@ -75,12 +87,25 @@ function SideTerminal({ onClose }: { onClose: () => void }) {
 // ---- Workspace ----
 
 export function WebWorkspace() {
-  const [tabs, setTabs] = useState<Tab[]>([{ id: 1, url: NEW_TAB_URL, title: 'New Tab' }])
-  const [activeTab, setActiveTab] = useState(1)
+  const settings = useSettings()
+  const defaultUrl = settings?.defaultBrowserUrl ?? FALLBACK_URL
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [activeTab, setActiveTab] = useState(0)
   const [sidePanes, setSidePanes] = useState<SidePane[]>([])
   const [showDevtools, setShowDevtools] = useState(true)
-  const tabCounter = useRef(2)
+  const tabCounter = useRef(1)
   const sideCounter = useRef(1)
+  const didInit = useRef(false)
+
+  // Open the first tab at the configured default once settings load.
+  useEffect(() => {
+    if (settings && !didInit.current) {
+      didInit.current = true
+      const id = tabCounter.current++
+      setTabs([{ id, url: settings.defaultBrowserUrl, title: 'New Tab' }])
+      setActiveTab(id)
+    }
+  }, [settings])
 
   const [activeWC, setActiveWC] = useState<number | null>(null)
   const [devtoolsWC, setDevtoolsWC] = useState<number | null>(null)
@@ -116,7 +141,7 @@ export function WebWorkspace() {
 
   const addTab = (): void => {
     const id = tabCounter.current++
-    setTabs((t) => [...t, { id, url: NEW_TAB_URL, title: 'New Tab' }])
+    setTabs((t) => [...t, { id, url: defaultUrl, title: 'New Tab' }])
     setActiveTab(id)
   }
   const closeTab = (id: number): void => {
@@ -233,6 +258,7 @@ export function WebWorkspace() {
                     key={p.id}
                     first={i === 0}
                     pane={p}
+                    browserUrl={defaultUrl}
                     onActivate={setActiveWC}
                     onClose={() => closeSide(p.id)}
                   />
@@ -249,11 +275,13 @@ export function WebWorkspace() {
 function SidePaneFragment({
   pane,
   first,
+  browserUrl,
   onActivate,
   onClose
 }: {
   pane: SidePane
   first: boolean
+  browserUrl: string
   onActivate: (wc: number) => void
   onClose: () => void
 }) {
@@ -265,7 +293,7 @@ function SidePaneFragment({
           <SideTerminal onClose={onClose} />
         ) : (
           <div className="side-browser">
-            <WebFrame src="https://github.com" onActivate={onActivate} />
+            <WebFrame src={browserUrl} onActivate={onActivate} />
             <button className="side-browser-close term-act" title="Close" onClick={onClose}>
               ✕
             </button>

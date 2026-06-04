@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRepos } from '../sidebar/useRepos'
 import { WebFrame } from '../panes/WebFrame'
+import { Dropdown } from '../components/Dropdown'
 
 const DEFAULT_REPO = 'blink-ai/blink_server'
 
@@ -22,14 +23,14 @@ export function IssuesTab() {
     <div className="gh-tab">
       <div className="gh-header">
         <span className="gh-heading">Issues</span>
-        <select className="gh-select" value={repo ?? ''} onChange={(e) => setRepo(e.target.value)}>
-          {ghRepos.length === 0 && <option value="">No repos</option>}
-          {ghRepos.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={repo ?? ''}
+          options={ghRepos.map((r) => ({ value: r, label: r }))}
+          onChange={setRepo}
+          searchable
+          minWidth={240}
+          placeholder="Select repo…"
+        />
       </div>
       <div className="gh-embed">
         <WebFrame src={url} editableAddress={false} />

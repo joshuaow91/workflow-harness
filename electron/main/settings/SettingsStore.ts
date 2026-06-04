@@ -8,7 +8,8 @@ function defaults(): AppSettings {
   const code = join(homedir(), 'Documents', 'Code')
   return {
     defaultSessionDir: existsSync(code) ? code : homedir(),
-    themeName: 'Catppuccin Mocha'
+    themeName: 'Catppuccin Mocha',
+    defaultBrowserUrl: 'https://github.com'
   }
 }
 

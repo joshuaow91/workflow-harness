@@ -1,8 +1,15 @@
+import { useMemo } from 'react'
+import { Dropdown, type DropdownOption } from '../components/Dropdown'
 import { settingsStore } from '../lib/settingsStore'
 import { THEMES, themeStore, useTheme } from './themeStore'
 
 export function ThemePicker() {
   const current = useTheme()
+
+  const options = useMemo<DropdownOption[]>(
+    () => THEMES.map((t) => ({ value: t.name, label: t.name, swatch: t.palette[4] })),
+    []
+  )
 
   const onChange = (name: string): void => {
     themeStore.apply(name)
@@ -10,19 +17,13 @@ export function ThemePicker() {
   }
 
   return (
-    <div className="theme-picker" title="Theme">
-      <span className="theme-swatch" style={{ background: current.palette[4] }} />
-      <select
-        className="theme-select"
-        value={current.name}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {THEMES.map((t) => (
-          <option key={t.name} value={t.name}>
-            {t.name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Dropdown
+      value={current.name}
+      options={options}
+      onChange={onChange}
+      searchable
+      align="right"
+      minWidth={220}
+    />
   )
 }

@@ -8,6 +8,8 @@ export interface AppSettings {
   defaultSessionDir: string
   /** Name of the active Ghostty theme. */
   themeName: string
+  /** URL that new browser tabs open to. */
+  defaultBrowserUrl: string
 }
 
 // ---- Claude sidebar ----
