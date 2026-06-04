@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 export interface ContextMenuItem {
@@ -18,27 +18,34 @@ export function ContextMenu({
   items: ContextMenuItem[]
   onClose: () => void
 }) {
+  const menuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    const close = (): void => onClose()
+    // Close on clicks/right-clicks OUTSIDE the menu. Crucially, ignore events
+    // inside the menu — otherwise mousedown closes (and unmounts) the menu
+    // before a menu item's click can fire.
+    const onDown = (e: MouseEvent): void => {
+      if (menuRef.current?.contains(e.target as Node)) return
+      onClose()
+    }
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
     }
-    // Defer so the opening contextmenu event doesn't immediately close it.
     const t = setTimeout(() => {
-      document.addEventListener('mousedown', close)
-      document.addEventListener('contextmenu', close)
+      document.addEventListener('mousedown', onDown)
+      document.addEventListener('contextmenu', onDown)
     }, 0)
     document.addEventListener('keydown', onKey)
     return () => {
       clearTimeout(t)
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('contextmenu', close)
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('contextmenu', onDown)
       document.removeEventListener('keydown', onKey)
     }
   }, [onClose])
 
   return createPortal(
-    <div className="ctx-menu" style={{ top: y, left: x }}>
+    <div ref={menuRef} className="ctx-menu" style={{ top: y, left: x }}>
       {items.map((item) => (
         <button
           key={item.label}
