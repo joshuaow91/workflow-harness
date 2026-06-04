@@ -41,7 +41,10 @@ export function MongoTab() {
 
   useEffect(() => {
     if (!db && dbs.data?.length) {
-      setDb(dbs.data.find((d) => !SYSTEM_DBS.includes(d.name))?.name ?? dbs.data[0].name)
+      const nonSystem = dbs.data.filter((d) => !SYSTEM_DBS.includes(d.name))
+      const preferred =
+        nonSystem.find((d) => /workflow/i.test(d.name)) ?? nonSystem[0] ?? dbs.data[0]
+      setDb(preferred.name)
     }
   }, [dbs.data, db])
   useEffect(() => {
