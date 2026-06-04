@@ -30,6 +30,16 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     term.open(container)
     fit.fit()
 
+    // Shift+Enter -> insert a newline (Option/Alt+Enter = ESC+CR), like Ghostty,
+    // so claude's prompt accepts multi-line input instead of submitting.
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
+        window.api.terminal.write(id, '\x1b\r')
+        return false
+      }
+      return true
+    })
+
     const offTheme = themeStore.subscribe(() => {
       term.options.theme = xtermTheme(themeStore.get())
     })

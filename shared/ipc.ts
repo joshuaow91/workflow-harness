@@ -70,6 +70,10 @@ export const IPC = {
     generate: 'knowledge:generate',
     mapInfo: 'knowledge:mapInfo'
   },
+  autoUpdate: {
+    status: 'autoUpdate:status',
+    runNow: 'autoUpdate:runNow'
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',

@@ -18,7 +18,8 @@ function defaults(): AppSettings {
     obsidianVault: '',
     mongoUri: '',
     repoOrder: [],
-    injectRepoMap: true
+    injectRepoMap: true,
+    autoUpdateRepos: 'off'
   }
 }
 

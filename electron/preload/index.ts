@@ -4,6 +4,7 @@ import { IPC } from '@shared/ipc'
 import type {
   AgentActivity,
   AppSettings,
+  AutoUpdateStatus,
   ClaudeProject,
   DatadogDashboard,
   GhIssue,
@@ -117,6 +118,10 @@ const api = {
     ): Promise<unknown[]> => ipcRenderer.invoke(IPC.mongo.run, db, coll, operation, query, limit),
     aiQuery: (db: string, prompt: string): Promise<string> =>
       ipcRenderer.invoke(IPC.mongo.aiQuery, db, prompt)
+  },
+  autoUpdate: {
+    status: (): Promise<AutoUpdateStatus> => ipcRenderer.invoke(IPC.autoUpdate.status),
+    runNow: (): Promise<unknown> => ipcRenderer.invoke(IPC.autoUpdate.runNow)
   },
   knowledge: {
     get: (): Promise<RepoKnowledge[]> => ipcRenderer.invoke(IPC.knowledge.get),

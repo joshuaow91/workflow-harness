@@ -11,12 +11,24 @@ function storeFile(): string {
   return join(app.getPath('userData'), 'repo-knowledge.json')
 }
 
-function load(): RepoKnowledge[] {
+function loadRaw(): RepoKnowledge[] {
   try {
     return JSON.parse(readFileSync(storeFile(), 'utf8')) as RepoKnowledge[]
   } catch {
     return []
   }
+}
+
+// Drop entries whose repo directory no longer exists (e.g. a deleted repo), so
+// the graph self-heals without a manual regenerate.
+function load(): RepoKnowledge[] {
+  const all = loadRaw()
+  const pruned = all.filter((r) => existsSync(r.path))
+  if (pruned.length !== all.length) {
+    save(pruned)
+    writeMapFile(pruned)
+  }
+  return pruned
 }
 
 function save(graph: RepoKnowledge[]): void {

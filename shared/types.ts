@@ -26,6 +26,22 @@ export interface AppSettings {
   repoOrder: string[]
   /** Inject the repo knowledge map into new claude sessions (when a map exists). */
   injectRepoMap: boolean
+  /** Auto fast-forward repos/worktrees from their upstream on a schedule. */
+  autoUpdateRepos: 'off' | 'hourly' | 'daily'
+}
+
+export interface UpdateResult {
+  repo: string
+  branch: string
+  status: 'updated' | 'skipped' | 'error'
+  detail?: string
+}
+
+export interface AutoUpdateStatus {
+  interval: 'off' | 'hourly' | 'daily'
+  lastRunAt: number | null
+  running: boolean
+  results: UpdateResult[]
 }
 
 export interface MongoDatabase {
