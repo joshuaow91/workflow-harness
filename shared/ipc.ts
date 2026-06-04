@@ -55,7 +55,8 @@ export const IPC = {
     saveNote: 'obsidian:saveNote'
   },
   mermaid: {
-    render: 'mermaid:render' // main -> renderer push (code from Claude)
+    render: 'mermaid:render', // main -> renderer push (code from Claude)
+    generate: 'mermaid:generate' // renderer -> main (prompt claude for a diagram)
   },
   system: {
     openExternal: 'system:openExternal',

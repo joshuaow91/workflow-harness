@@ -28,6 +28,26 @@ export function registerAgentIpc(getWindow: () => BrowserWindow | null): void {
     setAgentTarget(webContentsId)
   })
 
+  // Generate a Mermaid diagram by prompting the user's `claude` CLI.
+  ipcMain.handle(IPC.mermaid.generate, (_e, prompt: string): Promise<string> => {
+    const full = `Create a Mermaid diagram for this request. Output ONLY valid Mermaid source — no explanation, no markdown code fences.\n\nRequest: ${prompt}`
+    return new Promise((resolve, reject) => {
+      execFile(
+        'claude',
+        ['-p', full],
+        { timeout: 120000, maxBuffer: 1024 * 1024 },
+        (err, stdout, stderr) => {
+          if (err) return reject(new Error((stderr || err.message).trim()))
+          const cleaned = stdout
+            .replace(/^\s*```(?:mermaid)?\s*/i, '')
+            .replace(/\s*```\s*$/i, '')
+            .trim()
+          resolve(cleaned)
+        }
+      )
+    })
+  })
+
   // Is the agent-browser MCP already registered with Claude?
   ipcMain.handle(IPC.agent.checkConnected, (): Promise<boolean> => {
     return new Promise((resolve) => {

@@ -14,10 +14,26 @@ export function MermaidTab() {
   const [code, setCode] = useState(DEFAULT)
   const [svg, setSvg] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  const [prompt, setPrompt] = useState('')
+  const [generating, setGenerating] = useState(false)
   const idRef = useRef(0)
 
   // Claude can push a diagram via the render_mermaid MCP tool.
   useEffect(() => window.api.mermaid.onRender((c) => setCode(c)), [])
+
+  const generate = async (): Promise<void> => {
+    if (!prompt.trim() || generating) return
+    setGenerating(true)
+    setErr(null)
+    try {
+      const result = await window.api.mermaid.generate(prompt.trim())
+      if (result) setCode(result)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -44,6 +60,19 @@ export function MermaidTab() {
       <PanelGroup direction="horizontal" autoSaveId="mmd-h">
         <Panel defaultSize={42} minSize={20}>
           <div className="mmd-editor-col">
+            <div className="mmd-ask">
+              <input
+                className="mmd-ask-input"
+                placeholder="Ask Claude to create a diagram…"
+                value={prompt}
+                disabled={generating}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && generate()}
+              />
+              <button className="tbtn" onClick={generate} disabled={generating || !prompt.trim()}>
+                {generating ? 'Generating…' : 'Generate'}
+              </button>
+            </div>
             <div className="mmd-bar">Mermaid source</div>
             <textarea
               className="mmd-editor"

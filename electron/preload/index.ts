@@ -98,7 +98,8 @@ const api = {
       ipcRenderer.invoke(IPC.obsidian.saveNote, path, content)
   },
   mermaid: {
-    onRender: (cb: (code: string) => void) => on<string>(IPC.mermaid.render, cb)
+    onRender: (cb: (code: string) => void) => on<string>(IPC.mermaid.render, cb),
+    generate: (prompt: string): Promise<string> => ipcRenderer.invoke(IPC.mermaid.generate, prompt)
   },
   system: {
     homeDir: homedir(),
