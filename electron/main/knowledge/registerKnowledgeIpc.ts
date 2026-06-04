@@ -23,6 +23,33 @@ function save(graph: RepoKnowledge[]): void {
   writeFileSync(storeFile(), JSON.stringify(graph, null, 2))
 }
 
+function mapFile(): string {
+  return join(app.getPath('userData'), 'repo-map.txt')
+}
+
+function buildMap(graph: RepoKnowledge[]): string {
+  const lines = [
+    'WORKSPACE REPO MAP (repos live under ~/Documents/Code)',
+    '',
+    'Use this to identify which repos a task touches even if the user did not name them.',
+    'For full detail on any repo (key paths, deeper summary), call the repo_knowledge MCP tool.',
+    ''
+  ]
+  for (const r of graph) {
+    const rel = r.related.length ? ` | related: ${r.related.join(', ')}` : ''
+    lines.push(`- ${r.name} [${r.stack}] — ${r.purpose}${rel}`)
+  }
+  return lines.join('\n')
+}
+
+function writeMapFile(graph: RepoKnowledge[]): void {
+  try {
+    if (graph.length) writeFileSync(mapFile(), buildMap(graph))
+  } catch {
+    /* ignore */
+  }
+}
+
 // Gather lightweight context (no Claude tool use needed) for one repo.
 async function gatherContext(path: string): Promise<string> {
   let entries: string[] = []
@@ -105,6 +132,7 @@ async function generate(repoPath: string): Promise<RepoKnowledge> {
   if (idx >= 0) graph[idx] = entry
   else graph.push(entry)
   save(graph)
+  writeMapFile(graph)
   return entry
 }
 
@@ -115,4 +143,9 @@ export function getKnowledge(): RepoKnowledge[] {
 export function registerKnowledgeIpc(): void {
   ipcMain.handle(IPC.knowledge.get, () => load())
   ipcMain.handle(IPC.knowledge.generate, (_e, repoPath: string) => generate(repoPath))
+  ipcMain.handle(IPC.knowledge.mapInfo, (): { path: string; available: boolean } => {
+    const graph = load()
+    if (graph.length) writeMapFile(graph)
+    return { path: mapFile(), available: graph.length > 0 }
+  })
 }

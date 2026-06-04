@@ -67,7 +67,8 @@ export const IPC = {
   },
   knowledge: {
     get: 'knowledge:get',
-    generate: 'knowledge:generate'
+    generate: 'knowledge:generate',
+    mapInfo: 'knowledge:mapInfo'
   },
   system: {
     openExternal: 'system:openExternal',

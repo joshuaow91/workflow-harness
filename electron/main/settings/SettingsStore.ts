@@ -17,7 +17,8 @@ function defaults(): AppSettings {
     ddSite: 'datadoghq.com',
     obsidianVault: '',
     mongoUri: '',
-    repoOrder: []
+    repoOrder: [],
+    injectRepoMap: true
   }
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import type { RepoKnowledge } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
+import { refreshMapInfo } from '../lib/launchClaude'
 import { useRepos } from '../sidebar/useRepos'
 
 mermaid.initialize({ startOnLoad: false, theme: 'dark' })
@@ -52,6 +53,7 @@ export function KnowledgeTab() {
     try {
       await window.api.knowledge.generate(path)
       know.reload()
+      refreshMapInfo()
     } catch (e) {
       window.alert(`Could not generate:\n${(e as Error).message}`)
     } finally {
@@ -70,6 +72,7 @@ export function KnowledgeTab() {
       setProgress({ done: i + 1, total: repos.length })
       know.reload()
     }
+    refreshMapInfo()
     setProgress(null)
   }
 

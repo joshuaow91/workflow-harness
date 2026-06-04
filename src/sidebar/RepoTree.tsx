@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Repo, Worktree } from '@shared/types'
-import { terminalBus } from '../lib/terminalBus'
+import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
@@ -8,7 +8,7 @@ import { useRepos } from './useRepos'
 import { useFlatSessions } from './useFlatSessions'
 
 function openClaude(cwd: string, label: string): void {
-  terminalBus.open({ cwd, initialCommand: 'claude', label })
+  launchClaude({ cwd, label })
 }
 
 function WorktreeRow({

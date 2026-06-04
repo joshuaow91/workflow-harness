@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
-import { terminalBus } from '../lib/terminalBus'
+import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { ContextMenu } from '../components/ContextMenu'
 import { RepoTree } from './RepoTree'
@@ -45,11 +45,7 @@ function SessionRow({
 
   const resume = (): void => {
     onSelect()
-    terminalBus.open({
-      cwd: session.cwd,
-      initialCommand: `claude --resume ${session.sessionId}`,
-      label: displayTitle
-    })
+    launchClaude({ cwd: session.cwd, resumeId: session.sessionId, label: displayTitle })
   }
 
   return (
@@ -152,9 +148,7 @@ export function Sidebar() {
           >
             <button
               className="side-action"
-              onClick={() =>
-                terminalBus.open({ cwd: project.path, initialCommand: 'claude', label: project.name })
-              }
+              onClick={() => launchClaude({ cwd: project.path, label: project.name })}
               title={`Start a new claude session in ${project.path}`}
             >
               ＋ new claude session

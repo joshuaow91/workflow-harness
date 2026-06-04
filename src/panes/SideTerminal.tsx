@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { useDefaultSessionDir } from '../lib/settingsStore'
+import { claudeCommand } from '../lib/launchClaude'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
 import { TerminalPane } from './TerminalPane'
 
@@ -34,12 +35,12 @@ export function SideTerminal({ onClose }: { onClose?: () => void }) {
   }
 
   const onSelect = (value: string): void => {
-    if (value === '__shell') launch({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
+    if (value === '__shell') void launch({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
     else if (value === '__claude')
-      launch({ cwd: defaultDir, initialCommand: 'claude', label: `claude · ${basename(defaultDir)}` })
+      void launch({ cwd: defaultDir, initialCommand: claudeCommand(), label: `claude · ${basename(defaultDir)}` })
     else {
       const s = sessions.find((x) => x.sessionId === value)
-      if (s) launch({ cwd: s.cwd, initialCommand: `claude --resume ${s.sessionId}`, label: s.title })
+      if (s) void launch({ cwd: s.cwd, initialCommand: claudeCommand(s.sessionId), label: s.title })
     }
   }
 

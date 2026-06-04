@@ -121,7 +121,9 @@ const api = {
   knowledge: {
     get: (): Promise<RepoKnowledge[]> => ipcRenderer.invoke(IPC.knowledge.get),
     generate: (repoPath: string): Promise<RepoKnowledge> =>
-      ipcRenderer.invoke(IPC.knowledge.generate, repoPath)
+      ipcRenderer.invoke(IPC.knowledge.generate, repoPath),
+    mapInfo: (): Promise<{ path: string; available: boolean }> =>
+      ipcRenderer.invoke(IPC.knowledge.mapInfo)
   },
   system: {
     homeDir: homedir(),

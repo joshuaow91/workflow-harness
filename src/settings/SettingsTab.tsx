@@ -65,6 +65,23 @@ export function SettingsTab() {
         </p>
       </section>
 
+      <section className="settings-section">
+        <div className="settings-label">Claude sessions</div>
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={settings?.injectRepoMap ?? true}
+            onChange={(e) => void settingsStore.update({ injectRepoMap: e.target.checked })}
+          />
+          Inject the repo knowledge map into new claude sessions
+        </label>
+        <p className="settings-hint">
+          When you launch claude from the harness, the workspace repo map (from the Knowledge tab) is
+          passed via <code>--append-system-prompt-file</code>, so a session knows which repos a task
+          touches without you naming them. Only applies once you’ve generated the map.
+        </p>
+      </section>
+
       <TotpSection />
 
       <DatadogSettings />

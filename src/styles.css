@@ -413,6 +413,21 @@ button {
   font-family: SFMono-Regular, Menlo, monospace;
 }
 
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.settings-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
 .settings-input:focus {
   outline: none;
   border-color: var(--accent);

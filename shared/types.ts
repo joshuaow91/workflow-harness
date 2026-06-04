@@ -24,6 +24,8 @@ export interface AppSettings {
   mongoUri: string
   /** Custom sidebar repo order (by repo path); unlisted repos sort after, alphabetically. */
   repoOrder: string[]
+  /** Inject the repo knowledge map into new claude sessions (when a map exists). */
+  injectRepoMap: boolean
 }
 
 export interface MongoDatabase {
