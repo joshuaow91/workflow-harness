@@ -16,7 +16,7 @@ let mainWindow: BrowserWindow | null = null
 function wireGuestWebview(contents: Electron.WebContents): void {
   const openTab = (url: string): void => {
     if (url && url !== 'about:blank' && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPC.browser.openTab, url)
+      mainWindow.webContents.send(IPC.browser.openTab, { url, sourceId: contents.id })
     }
   }
   const openInBrave = (url: string): void => {

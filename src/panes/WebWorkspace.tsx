@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
-import { browserBus } from '../lib/browserBus'
+import { browserRouter } from '../lib/browserRouter'
 import { useDefaultSessionDir, useSettings } from '../lib/settingsStore'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
 import { AgentBrowser } from './AgentBrowser'
@@ -147,12 +147,16 @@ export function WebWorkspace() {
     setActiveTab(id)
   }
 
-  // "Open link in new tab" from any embedded webview lands here.
+  // Fallback target for "open link in new tab" when no specific view owns the
+  // source webview (e.g. links from the workspace's own tabs).
   useEffect(() => {
-    return browserBus.subscribe((url) => {
-      const id = tabCounter.current++
-      setTabs((t) => [...t, { id, url, title: 'New Tab' }])
-      setActiveTab(id)
+    return browserRouter.setFallback({
+      ownsWc: () => false,
+      addTab: (url) => {
+        const id = tabCounter.current++
+        setTabs((t) => [...t, { id, url, title: 'New Tab' }])
+        setActiveTab(id)
+      }
     })
   }, [])
   const closeTab = (id: number): void => {

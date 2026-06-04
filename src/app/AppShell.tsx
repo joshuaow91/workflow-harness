@@ -11,7 +11,7 @@ import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
 import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
-import { browserBus } from '../lib/browserBus'
+import { browserRouter } from '../lib/browserRouter'
 
 type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review' | 'settings'
 
@@ -52,9 +52,13 @@ export function AppShell() {
   // Jump to the Terminals tab whenever something requests a new terminal.
   useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
 
-  // Embedded webviews asking to open a link in a new tab -> add it to the Browser
-  // workspace as a BACKGROUND tab (don't yank the user off the current tab).
-  useEffect(() => window.api.browser.onOpenTab((url) => browserBus.open(url)), [])
+  // Embedded webviews asking to open a link in a new tab -> route to the view it
+  // came from (e.g. the Issues tab opens it in its own tab strip), else fall back
+  // to the Browser workspace. Never yanks you off the current app tab.
+  useEffect(
+    () => window.api.browser.onOpenTab(({ url, sourceId }) => browserRouter.dispatch(url, sourceId)),
+    []
+  )
 
   // Apply the saved theme once settings load (and whenever it changes).
   useEffect(() => {

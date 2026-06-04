@@ -63,7 +63,8 @@ const api = {
       ipcRenderer.invoke(IPC.github.projectItems, owner, number)
   },
   browser: {
-    onOpenTab: (cb: (url: string) => void) => on<string>(IPC.browser.openTab, cb)
+    onOpenTab: (cb: (payload: { url: string; sourceId: number }) => void) =>
+      on<{ url: string; sourceId: number }>(IPC.browser.openTab, cb)
   },
   agent: {
     setTarget: (webContentsId: number | null): Promise<void> =>
