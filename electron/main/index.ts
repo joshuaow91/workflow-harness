@@ -1,6 +1,7 @@
 import { join } from 'path'
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
+import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -40,12 +41,16 @@ function registerIpc(): void {
   // System helpers.
   ipcMain.handle(IPC.system.openExternal, (_e, url: string) => shell.openExternal(url))
 
-  // Feature handlers are registered here as each step lands:
-  //   registerClaudeIpc(() => mainWindow)   — step 2
+  // Feature handlers, registered as each step lands:
+  registerClaudeIpc(() => mainWindow)
   //   registerTerminalIpc(() => mainWindow) — step 3
   //   registerWorktreeIpc()                 — step 4
   //   registerGithubIpc()                   — step 6
 }
+
+app.on('before-quit', () => {
+  void disposeClaudeWatcher()
+})
 
 app.whenReady().then(() => {
   registerIpc()
