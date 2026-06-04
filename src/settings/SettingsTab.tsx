@@ -3,6 +3,7 @@ import { settingsStore, useSettings } from '../lib/settingsStore'
 import { normalizeInput } from '../lib/url'
 import { TotpSection } from './TotpSection'
 import { DatadogSettings } from './DatadogSettings'
+import { MongoSettings } from './MongoSettings'
 
 export function SettingsTab() {
   const settings = useSettings()
@@ -67,6 +68,8 @@ export function SettingsTab() {
       <TotpSection />
 
       <DatadogSettings />
+
+      <MongoSettings />
 
       <section className="settings-section">
         <div className="settings-label">GitHub sign-in</div>

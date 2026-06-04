@@ -15,7 +15,8 @@ function defaults(): AppSettings {
     ddApiKey: '',
     ddAppKey: '',
     ddSite: 'datadoghq.com',
-    obsidianVault: ''
+    obsidianVault: '',
+    mongoUri: ''
   }
 }
 

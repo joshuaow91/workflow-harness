@@ -58,6 +58,11 @@ export const IPC = {
     render: 'mermaid:render', // main -> renderer push (code from Claude)
     generate: 'mermaid:generate' // renderer -> main (prompt claude for a diagram)
   },
+  mongo: {
+    listDatabases: 'mongo:listDatabases',
+    listCollections: 'mongo:listCollections',
+    find: 'mongo:find'
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',

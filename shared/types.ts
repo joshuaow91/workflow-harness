@@ -20,6 +20,13 @@ export interface AppSettings {
   ddSite: string
   /** Absolute path to the Obsidian vault directory. */
   obsidianVault: string
+  /** MongoDB connection string (fallback to MONGODB_URI env). */
+  mongoUri: string
+}
+
+export interface MongoDatabase {
+  name: string
+  sizeOnDisk?: number
 }
 
 export interface ObsidianNote {

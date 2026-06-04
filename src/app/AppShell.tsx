@@ -10,6 +10,7 @@ import { ReviewTab } from '../github/ReviewTab'
 import { DatadogTab } from '../datadog/DatadogTab'
 import { ObsidianTab } from '../obsidian/ObsidianTab'
 import { MermaidTab } from '../mermaid/MermaidTab'
+import { MongoTab } from '../mongo/MongoTab'
 import { SettingsTab } from '../settings/SettingsTab'
 import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
@@ -29,6 +30,7 @@ type TabId =
   | 'datadog'
   | 'notes'
   | 'mermaid'
+  | 'mongo'
   | 'settings'
 
 interface TabDef {
@@ -47,7 +49,8 @@ const TABS: TabDef[] = [
   { id: 'review', label: 'Review', icon: 'check' },
   { id: 'datadog', label: 'Datadog', icon: 'chart' },
   { id: 'notes', label: 'Notes', icon: 'notebook' },
-  { id: 'mermaid', label: 'Diagram', icon: 'diagram' }
+  { id: 'mermaid', label: 'Diagram', icon: 'diagram' },
+  { id: 'mongo', label: 'Mongo', icon: 'database' }
 ]
 
 function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
@@ -66,6 +69,8 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agen
       return <ObsidianTab />
     case 'mermaid':
       return <MermaidTab />
+    case 'mongo':
+      return <MongoTab />
     case 'settings':
       return <SettingsTab />
   }

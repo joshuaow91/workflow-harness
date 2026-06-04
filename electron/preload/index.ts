@@ -7,6 +7,7 @@ import type {
   ClaudeProject,
   DatadogDashboard,
   GhIssue,
+  MongoDatabase,
   ObsidianNote,
   GhProjectBoard,
   GhProjectSummary,
@@ -100,6 +101,13 @@ const api = {
   mermaid: {
     onRender: (cb: (code: string) => void) => on<string>(IPC.mermaid.render, cb),
     generate: (prompt: string): Promise<string> => ipcRenderer.invoke(IPC.mermaid.generate, prompt)
+  },
+  mongo: {
+    listDatabases: (): Promise<MongoDatabase[]> => ipcRenderer.invoke(IPC.mongo.listDatabases),
+    listCollections: (db: string): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.mongo.listCollections, db),
+    find: (db: string, coll: string, filter: string, limit: number): Promise<unknown[]> =>
+      ipcRenderer.invoke(IPC.mongo.find, db, coll, filter, limit)
   },
   system: {
     homeDir: homedir(),
