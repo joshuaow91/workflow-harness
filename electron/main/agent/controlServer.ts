@@ -7,6 +7,24 @@ export const CONTROL_PORT = 51789
 
 type Handler = (body: Record<string, unknown>) => Promise<unknown> | unknown
 
+export interface AgentActivity {
+  tool: string
+  ok: boolean
+  detail: string
+  at: number
+}
+
+let activitySink: ((a: AgentActivity) => void) | null = null
+export function setActivitySink(fn: (a: AgentActivity) => void): void {
+  activitySink = fn
+}
+
+function summarize(body: Record<string, unknown>): string {
+  return Object.entries(body)
+    .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
+    .join(' ')
+}
+
 const handlers: Record<string, Handler> = {
   status: () => ({ ready: bc.agentReady() }),
   navigate: (b) => bc.navigate(String(b.url)),
@@ -58,11 +76,14 @@ export function startControlServer(): void {
       res.end(JSON.stringify({ ok: false, error: 'unknown command: ' + name }))
       return
     }
+    const body = req.method === 'POST' ? await readBody(req) : {}
     try {
-      const body = req.method === 'POST' ? await readBody(req) : {}
       const result = await handler(body)
+      if (name !== 'status') activitySink?.({ tool: name, ok: true, detail: summarize(body), at: Date.now() })
       res.end(JSON.stringify({ ok: true, result }))
     } catch (err) {
+      if (name !== 'status')
+        activitySink?.({ tool: name, ok: false, detail: (err as Error).message, at: Date.now() })
       res.statusCode = 200
       res.end(JSON.stringify({ ok: false, error: (err as Error).message }))
     }

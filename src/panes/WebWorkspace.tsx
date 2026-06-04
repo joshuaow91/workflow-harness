@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import type { TerminalSpawnOptions } from '@shared/types'
-import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { browserRouter } from '../lib/browserRouter'
-import { useDefaultSessionDir, useSettings } from '../lib/settingsStore'
-import { Dropdown, type DropdownOption } from '../components/Dropdown'
-import { AgentBrowser } from './AgentBrowser'
+import { useSettings } from '../lib/settingsStore'
 import { DevToolsPane } from './DevToolsPane'
-import { TerminalPane } from './TerminalPane'
+import { SideTerminal } from './SideTerminal'
 import { WebFrame } from './WebFrame'
 
 const FALLBACK_URL = 'https://github.com'
@@ -19,71 +15,7 @@ interface Tab {
 }
 interface SidePane {
   id: number
-  kind: 'terminal' | 'browser' | 'agent'
-}
-
-// ---- Right-sidebar terminal with a session picker ----
-
-function basename(p: string): string {
-  return p.split('/').filter(Boolean).pop() ?? p
-}
-
-function SideTerminal({ onClose }: { onClose: () => void }) {
-  const sessions = useFlatSessions()
-  const defaultDir = useDefaultSessionDir()
-  const [opts, setOpts] = useState<TerminalSpawnOptions | null>(null)
-  const [mountKey, setMountKey] = useState(0)
-
-  const launch = (next: TerminalSpawnOptions): void => {
-    setOpts(next)
-    setMountKey((k) => k + 1)
-  }
-
-  const onSelect = (value: string): void => {
-    if (value === '__shell') launch({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
-    else if (value === '__claude')
-      launch({ cwd: defaultDir, initialCommand: 'claude', label: `claude · ${basename(defaultDir)}` })
-    else {
-      const s = sessions.find((x) => x.sessionId === value)
-      if (s) launch({ cwd: s.cwd, initialCommand: `claude --resume ${s.sessionId}`, label: s.title })
-    }
-  }
-
-  const dirName = basename(defaultDir)
-  const options: DropdownOption[] = [
-    { value: '__claude', label: `＋ new claude`, sublabel: dirName },
-    { value: '__shell', label: `＋ shell`, sublabel: dirName },
-    ...sessions.slice(0, 60).map((s) => ({
-      value: s.sessionId,
-      label: `${s.live ? '● ' : ''}${s.title}`,
-      sublabel: s.projectName
-    }))
-  ]
-
-  return (
-    <div className="side-term">
-      <div className="side-term-head">
-        <Dropdown
-          value=""
-          triggerLabel={opts?.label ?? 'Pick a session…'}
-          options={options}
-          onChange={onSelect}
-          searchable
-          minWidth={240}
-        />
-        <button className="term-act" title="Close pane" onClick={onClose}>
-          ✕
-        </button>
-      </div>
-      <div className="side-term-body">
-        {opts ? (
-          <TerminalPane key={mountKey} opts={opts} />
-        ) : (
-          <div className="side-term-hint">Pick a session to resume, or start a new claude.</div>
-        )}
-      </div>
-    </div>
-  )
+  kind: 'terminal' | 'browser'
 }
 
 // ---- Workspace ----
@@ -261,13 +193,6 @@ export function WebWorkspace() {
               <button className="tbtn" onClick={() => addSide('browser')}>
                 ＋ browser
               </button>
-              <button
-                className="tbtn"
-                onClick={() => addSide('agent')}
-                title="A browser pane Claude can drive via MCP"
-              >
-                🤖 agent
-              </button>
             </div>
             {sidePanes.length === 0 ? (
               <div className="side-term-hint" style={{ padding: 16 }}>
@@ -313,8 +238,6 @@ function SidePaneFragment({
       <Panel minSize={12}>
         {pane.kind === 'terminal' ? (
           <SideTerminal onClose={onClose} />
-        ) : pane.kind === 'agent' ? (
-          <AgentBrowser onClose={onClose} />
         ) : (
           <div className="side-browser">
             <WebFrame src={browserUrl} onActivate={onActivate} />

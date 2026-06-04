@@ -23,6 +23,15 @@ export interface TotpAccount {
   secret: string
 }
 
+// ---- Agent browser ----
+
+export interface AgentActivity {
+  tool: string
+  ok: boolean
+  detail: string
+  at: number
+}
+
 // ---- Claude sidebar ----
 
 export interface ClaudeSession {

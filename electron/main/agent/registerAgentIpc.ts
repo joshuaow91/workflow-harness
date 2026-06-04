@@ -1,9 +1,9 @@
 import { execFile } from 'child_process'
 import { join } from 'path'
-import { app, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { setAgentTarget } from './BrowserController'
-import { CONTROL_PORT, startControlServer } from './controlServer'
+import { CONTROL_PORT, setActivitySink, startControlServer } from './controlServer'
 
 // Absolute path to the standalone MCP server script (resolves from the project
 // root in dev; bundled under resources when packaged).
@@ -11,8 +11,13 @@ function mcpScriptPath(): string {
   return join(app.getAppPath(), 'mcp', 'agent-browser.mjs')
 }
 
-export function registerAgentIpc(): void {
+export function registerAgentIpc(getWindow: () => BrowserWindow | null): void {
   startControlServer()
+
+  setActivitySink((activity) => {
+    const win = getWindow()
+    if (win && !win.isDestroyed()) win.webContents.send(IPC.agent.activity, activity)
+  })
 
   ipcMain.handle(IPC.agent.setTarget, (_e, webContentsId: number | null) => {
     setAgentTarget(webContentsId)

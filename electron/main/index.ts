@@ -134,7 +134,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
-  registerAgentIpc()
+  registerAgentIpc(() => mainWindow)
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)

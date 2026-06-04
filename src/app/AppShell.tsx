@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
+import { AgentTab } from '../panes/AgentTab'
 import { IssuesTab } from '../github/IssuesTab'
 import { BoardTab } from '../github/BoardTab'
 import { MyPRsTab } from '../github/MyPRsTab'
@@ -13,7 +14,15 @@ import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
 import { browserRouter } from '../lib/browserRouter'
 
-type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review' | 'settings'
+type TabId =
+  | 'terminals'
+  | 'browser'
+  | 'agent'
+  | 'issues'
+  | 'board'
+  | 'myprs'
+  | 'review'
+  | 'settings'
 
 interface TabDef {
   id: TabId
@@ -24,13 +33,14 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: 'terminals', label: 'Terminals', icon: '⌘' },
   { id: 'browser', label: 'Browser', icon: '◍' },
+  { id: 'agent', label: 'Agent', icon: '🤖' },
   { id: 'issues', label: 'Issues', icon: '◇' },
   { id: 'board', label: 'Board', icon: '▦' },
   { id: 'myprs', label: 'My PRs', icon: '⤴' },
   { id: 'review', label: 'Review', icon: '✓' }
 ]
 
-function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
+function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
   switch (tab) {
     case 'issues':
       return <IssuesTab />
@@ -106,7 +116,12 @@ export function AppShell() {
           <div className="tab-layer" style={{ display: activeTab === 'browser' ? 'block' : 'none' }}>
             <WebWorkspace />
           </div>
-          {activeTab !== 'terminals' && activeTab !== 'browser' && <TabPanel tab={activeTab} />}
+          <div className="tab-layer" style={{ display: activeTab === 'agent' ? 'block' : 'none' }}>
+            <AgentTab />
+          </div>
+          {activeTab !== 'terminals' && activeTab !== 'browser' && activeTab !== 'agent' && (
+            <TabPanel tab={activeTab} />
+          )}
         </div>
       </div>
     </div>
