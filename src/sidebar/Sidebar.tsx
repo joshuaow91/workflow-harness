@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
+import { terminalBus } from '../lib/terminalBus'
 import { SideSection } from './SideSection'
 import { useClaudeProjects } from './useClaudeProjects'
 
@@ -17,11 +18,20 @@ function SessionRow({
   const dotClass = live ? (live.status === 'busy' ? 'busy' : 'idle') : 'dormant'
   const branch = session.gitBranch && session.gitBranch !== 'HEAD' ? session.gitBranch : null
 
+  const resume = (): void => {
+    onSelect()
+    terminalBus.open({
+      cwd: session.cwd,
+      initialCommand: `claude --resume ${session.sessionId}`,
+      label: session.title
+    })
+  }
+
   return (
-    <button
+    <div
       className={`session-row${selected ? ' selected' : ''}`}
-      onClick={onSelect}
-      title={session.title}
+      onClick={resume}
+      title={`${session.title}\n${session.cwd}\nClick to resume with claude --resume`}
     >
       <span className={`session-dot ${dotClass}`} />
       <span className="session-body">
@@ -32,7 +42,7 @@ function SessionRow({
           {live && <span className="session-live">{live.status}</span>}
         </span>
       </span>
-    </button>
+    </div>
   )
 }
 
@@ -58,6 +68,19 @@ export function Sidebar() {
             count={project.sessions.length}
             defaultOpen={projects.length <= 3}
           >
+            <button
+              className="side-action"
+              onClick={() =>
+                terminalBus.open({
+                  cwd: project.path,
+                  initialCommand: 'claude',
+                  label: project.name
+                })
+              }
+              title={`Start a new claude session in ${project.path}`}
+            >
+              ＋ new claude session
+            </button>
             {project.sessions.map((s) => (
               <SessionRow
                 key={s.sessionId}

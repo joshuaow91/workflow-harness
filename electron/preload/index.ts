@@ -1,3 +1,4 @@
+import { homedir } from 'os'
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc'
 import type {
@@ -54,6 +55,7 @@ const api = {
     board: (): Promise<GhProjectBoard | null> => ipcRenderer.invoke(IPC.github.board)
   },
   system: {
+    homeDir: homedir(),
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url)
   }
 }

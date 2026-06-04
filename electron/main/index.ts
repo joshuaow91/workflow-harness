@@ -2,6 +2,7 @@ import { join } from 'path'
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
+import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -43,13 +44,14 @@ function registerIpc(): void {
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)
-  //   registerTerminalIpc(() => mainWindow) — step 3
+  registerTerminalIpc(() => mainWindow)
   //   registerWorktreeIpc()                 — step 4
   //   registerGithubIpc()                   — step 6
 }
 
 app.on('before-quit', () => {
   void disposeClaudeWatcher()
+  killAllTerminals()
 })
 
 app.whenReady().then(() => {

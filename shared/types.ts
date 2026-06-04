@@ -52,8 +52,10 @@ export interface Repo {
 
 export interface TerminalSpawnOptions {
   cwd: string
-  /** Defaults to running `claude`; pass [] for an interactive shell. */
-  args?: string[]
+  /** Optional command typed into the shell on start, e.g. "claude" or "claude --resume <id>". */
+  initialCommand?: string
+  /** Short label shown in the pane header; defaults to the cwd basename. */
+  label?: string
   cols?: number
   rows?: number
 }

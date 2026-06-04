@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
+import { TerminalsTab } from '../panes/TerminalsTab'
+import { terminalBus } from '../lib/terminalBus'
 
 type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review'
 
@@ -28,10 +30,8 @@ function Placeholder({ emoji, title, sub }: { emoji: string; title: string; sub:
   )
 }
 
-function TabPanel({ tab }: { tab: TabId }) {
+function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals'> }) {
   switch (tab) {
-    case 'terminals':
-      return <Placeholder emoji="⌨️" title="Terminals" sub="Split panes running the claude CLI land here (step 3)." />
     case 'browser':
       return <Placeholder emoji="🌐" title="Browser" sub="An embedded web browser pane lands here (step 5)." />
     case 'issues':
@@ -47,6 +47,9 @@ function TabPanel({ tab }: { tab: TabId }) {
 
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
+
+  // Jump to the Terminals tab whenever something requests a new terminal.
+  useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
 
   return (
     <div className="shell">
@@ -72,7 +75,11 @@ export function AppShell() {
           ))}
         </div>
         <div className="tab-content">
-          <TabPanel tab={activeTab} />
+          {/* Terminals stays mounted so PTYs survive tab switches. */}
+          <div className="tab-layer" style={{ display: activeTab === 'terminals' ? 'block' : 'none' }}>
+            <TerminalsTab />
+          </div>
+          {activeTab !== 'terminals' && <TabPanel tab={activeTab} />}
         </div>
       </div>
     </div>
