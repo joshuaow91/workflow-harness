@@ -1,0 +1,63 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import { IPC } from '@shared/ipc'
+import type {
+  ClaudeProject,
+  GhIssue,
+  GhProjectBoard,
+  GhPullRequest,
+  Repo,
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalSpawnOptions,
+  Worktree
+} from '@shared/types'
+
+/** Subscribe helper that returns an unsubscribe function. */
+function on<T>(channel: string, cb: (payload: T) => void): () => void {
+  const listener = (_e: Electron.IpcRendererEvent, payload: T): void => cb(payload)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
+}
+
+const api = {
+  claude: {
+    getProjects: (): Promise<ClaudeProject[]> => ipcRenderer.invoke(IPC.claude.getProjects),
+    onSidebarUpdate: (cb: (projects: ClaudeProject[]) => void) =>
+      on<ClaudeProject[]>(IPC.claude.sidebarUpdate, cb)
+  },
+  worktree: {
+    listRepos: (): Promise<Repo[]> => ipcRenderer.invoke(IPC.worktree.listRepos),
+    add: (repoPath: string, branch: string, fromRef?: string): Promise<Worktree> =>
+      ipcRenderer.invoke(IPC.worktree.add, repoPath, branch, fromRef),
+    remove: (repoPath: string, worktreePath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.worktree.remove, repoPath, worktreePath)
+  },
+  terminal: {
+    create: (opts: TerminalSpawnOptions): Promise<string> =>
+      ipcRenderer.invoke(IPC.terminal.create, opts),
+    write: (id: string, data: string): void => {
+      ipcRenderer.send(IPC.terminal.write, id, data)
+    },
+    resize: (id: string, cols: number, rows: number): void => {
+      ipcRenderer.send(IPC.terminal.resize, id, cols, rows)
+    },
+    kill: (id: string): void => {
+      ipcRenderer.send(IPC.terminal.kill, id)
+    },
+    onData: (cb: (e: TerminalDataEvent) => void) => on<TerminalDataEvent>(IPC.terminal.data, cb),
+    onExit: (cb: (e: TerminalExitEvent) => void) => on<TerminalExitEvent>(IPC.terminal.exit, cb)
+  },
+  github: {
+    issues: (repo: string): Promise<GhIssue[]> => ipcRenderer.invoke(IPC.github.issues, repo),
+    myPRs: (repo: string): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRs, repo),
+    reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),
+    board: (): Promise<GhProjectBoard | null> => ipcRenderer.invoke(IPC.github.board)
+  },
+  system: {
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url)
+  }
+}
+
+export type HarnessApi = typeof api
+
+contextBridge.exposeInMainWorld('api', api)
