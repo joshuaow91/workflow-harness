@@ -1177,6 +1177,30 @@ button {
   flex: 0 0 auto;
 }
 
+.dd-links {
+  display: flex;
+  gap: 4px;
+}
+
+.dd-link {
+  background: var(--surface);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 9px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.dd-link:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.dd-link.active {
+  color: var(--accent);
+  background: rgba(137, 180, 250, 0.12);
+}
+
 .twv-body {
   flex: 1;
   min-height: 0;
@@ -1735,6 +1759,11 @@ button {
 .tbtn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.tbtn.connected {
+  color: var(--green);
+  background: rgba(166, 227, 161, 0.12);
 }
 
 .terminals-hint {

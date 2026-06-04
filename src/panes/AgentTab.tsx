@@ -8,6 +8,7 @@ export function AgentTab() {
   const [activity, setActivity] = useState<AgentActivity[]>([])
   const [connectMsg, setConnectMsg] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const [connected, setConnected] = useState(false)
   const [active, setActive] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
   const activeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -25,10 +26,16 @@ export function AgentTab() {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
   }, [activity])
 
+  // Reflect existing registration on load.
+  useEffect(() => {
+    void window.api.agent.checkConnected().then(setConnected)
+  }, [])
+
   const connect = async (): Promise<void> => {
     setConnecting(true)
     const r = await window.api.agent.connectClaude()
     setConnectMsg(r.message)
+    setConnected(r.ok)
     setConnecting(false)
   }
 
@@ -48,12 +55,13 @@ export function AgentTab() {
                 {active ? 'Claude acting' : 'idle'}
               </span>
               <button
-                className="tbtn"
+                className={`tbtn${connected ? ' connected' : ''}`}
                 style={{ marginLeft: 'auto' }}
                 onClick={connect}
                 disabled={connecting}
+                title={connected ? 'MCP registered — click to re-register' : 'Register the agent-browser MCP with Claude'}
               >
-                {connecting ? 'Connecting…' : 'Connect Claude'}
+                {connecting ? 'Connecting…' : connected ? '✓ Connected' : 'Connect Claude'}
               </button>
             </div>
             {connectMsg && <div className="agent-msg">{connectMsg}</div>}

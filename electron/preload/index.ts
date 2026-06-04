@@ -72,6 +72,7 @@ const api = {
       ipcRenderer.invoke(IPC.agent.setTarget, webContentsId),
     connectClaude: (): Promise<{ ok: boolean; message: string }> =>
       ipcRenderer.invoke(IPC.agent.connectClaude),
+    checkConnected: (): Promise<boolean> => ipcRenderer.invoke(IPC.agent.checkConnected),
     onActivity: (cb: (a: AgentActivity) => void) => on<AgentActivity>(IPC.agent.activity, cb)
   },
   devtools: {

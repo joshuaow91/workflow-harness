@@ -35,6 +35,7 @@ export const IPC = {
   agent: {
     setTarget: 'agent:setTarget',
     connectClaude: 'agent:connectClaude',
+    checkConnected: 'agent:checkConnected',
     activity: 'agent:activity' // main -> renderer push
   },
   devtools: {

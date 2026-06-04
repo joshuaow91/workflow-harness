@@ -23,6 +23,13 @@ export function registerAgentIpc(getWindow: () => BrowserWindow | null): void {
     setAgentTarget(webContentsId)
   })
 
+  // Is the agent-browser MCP already registered with Claude?
+  ipcMain.handle(IPC.agent.checkConnected, (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      execFile('claude', ['mcp', 'get', 'agent-browser'], (err) => resolve(!err))
+    })
+  })
+
   // Register the MCP server with Claude Code (user scope) so `claude` picks it up.
   ipcMain.handle(IPC.agent.connectClaude, (): Promise<{ ok: boolean; message: string }> => {
     return new Promise((resolve) => {

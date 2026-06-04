@@ -7,6 +7,7 @@ import { IssuesTab } from '../github/IssuesTab'
 import { BoardTab } from '../github/BoardTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
+import { DatadogTab } from '../datadog/DatadogTab'
 import { SettingsTab } from '../settings/SettingsTab'
 import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
@@ -22,6 +23,7 @@ type TabId =
   | 'board'
   | 'myprs'
   | 'review'
+  | 'datadog'
   | 'settings'
 
 interface TabDef {
@@ -37,7 +39,8 @@ const TABS: TabDef[] = [
   { id: 'issues', label: 'Issues', icon: '◇' },
   { id: 'board', label: 'Board', icon: '▦' },
   { id: 'myprs', label: 'My PRs', icon: '⤴' },
-  { id: 'review', label: 'Review', icon: '✓' }
+  { id: 'review', label: 'Review', icon: '✓' },
+  { id: 'datadog', label: 'Datadog', icon: '📊' }
 ]
 
 function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
@@ -50,6 +53,8 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agen
       return <MyPRsTab />
     case 'review':
       return <ReviewTab />
+    case 'datadog':
+      return <DatadogTab />
     case 'settings':
       return <SettingsTab />
   }
