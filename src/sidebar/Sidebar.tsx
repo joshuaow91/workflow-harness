@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
 import { terminalBus } from '../lib/terminalBus'
+import { RepoTree } from './RepoTree'
 import { SideSection } from './SideSection'
 import { useClaudeProjects } from './useClaudeProjects'
 
@@ -94,7 +95,7 @@ export function Sidebar() {
       )}
 
       <SideSection title="Repos">
-        <div className="side-empty">Repos &amp; worktrees appear here (step 4).</div>
+        <RepoTree />
       </SideSection>
     </div>
   )

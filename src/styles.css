@@ -361,6 +361,123 @@ button {
   background: rgba(137, 180, 250, 0.08);
 }
 
+/* ---- Repo / worktree tree ---- */
+
+.repo-block {
+  font-size: 12.5px;
+}
+
+.repo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 14px;
+  cursor: pointer;
+}
+
+.repo-row:hover {
+  background: var(--surface);
+}
+
+.repo-row .chev {
+  font-size: 9px;
+  color: var(--text-faint);
+  transition: transform 0.12s ease;
+}
+
+.repo-row .chev.collapsed {
+  transform: rotate(-90deg);
+}
+
+.repo-name {
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-branch {
+  color: var(--accent-dim);
+  font-size: 10.5px;
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 0 5px;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-wt-count {
+  color: var(--mauve);
+  font-size: 10px;
+}
+
+.repo-actions,
+.wt-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.repo-row:hover .repo-actions,
+.wt-row:hover .wt-actions {
+  opacity: 1;
+}
+
+.repo-children {
+  padding-bottom: 4px;
+}
+
+.wt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 34px;
+  cursor: pointer;
+}
+
+.wt-row:hover {
+  background: var(--surface);
+}
+
+.wt-branch {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-row:hover .wt-branch {
+  color: var(--text-dim);
+}
+
+.wt-add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px 4px 34px;
+}
+
+.wt-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--surface-hover);
+  border-radius: 5px;
+  padding: 3px 7px;
+  color: var(--text);
+  font-size: 11.5px;
+  font-family: SFMono-Regular, Menlo, monospace;
+}
+
+.wt-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ---- Terminals tab ---- */
 
 .tab-layer {
