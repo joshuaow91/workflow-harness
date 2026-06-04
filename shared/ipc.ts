@@ -49,6 +49,11 @@ export const IPC = {
   datadog: {
     listDashboards: 'datadog:listDashboards'
   },
+  obsidian: {
+    listNotes: 'obsidian:listNotes',
+    readNote: 'obsidian:readNote',
+    saveNote: 'obsidian:saveNote'
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',

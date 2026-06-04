@@ -14,7 +14,8 @@ function defaults(): AppSettings {
     totpAccounts: [],
     ddApiKey: '',
     ddAppKey: '',
-    ddSite: 'datadoghq.com'
+    ddSite: 'datadoghq.com',
+    obsidianVault: ''
   }
 }
 

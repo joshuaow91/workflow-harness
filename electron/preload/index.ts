@@ -7,6 +7,7 @@ import type {
   ClaudeProject,
   DatadogDashboard,
   GhIssue,
+  ObsidianNote,
   GhProjectBoard,
   GhProjectSummary,
   GhPullRequest,
@@ -89,6 +90,12 @@ const api = {
   datadog: {
     listDashboards: (): Promise<DatadogDashboard[]> =>
       ipcRenderer.invoke(IPC.datadog.listDashboards)
+  },
+  obsidian: {
+    listNotes: (): Promise<ObsidianNote[]> => ipcRenderer.invoke(IPC.obsidian.listNotes),
+    readNote: (path: string): Promise<string> => ipcRenderer.invoke(IPC.obsidian.readNote, path),
+    saveNote: (path: string, content: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.obsidian.saveNote, path, content)
   },
   system: {
     homeDir: homedir(),

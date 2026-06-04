@@ -8,9 +8,11 @@ import { BoardTab } from '../github/BoardTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
 import { DatadogTab } from '../datadog/DatadogTab'
+import { ObsidianTab } from '../obsidian/ObsidianTab'
 import { SettingsTab } from '../settings/SettingsTab'
 import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
+import { Icon } from '../components/Icon'
 import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
 import { browserRouter } from '../lib/browserRouter'
@@ -24,6 +26,7 @@ type TabId =
   | 'myprs'
   | 'review'
   | 'datadog'
+  | 'notes'
   | 'settings'
 
 interface TabDef {
@@ -33,14 +36,15 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: 'terminals', label: 'Terminals', icon: '⌘' },
-  { id: 'browser', label: 'Browser', icon: '◍' },
-  { id: 'agent', label: 'Agent', icon: '🤖' },
-  { id: 'issues', label: 'Issues', icon: '◇' },
-  { id: 'board', label: 'Board', icon: '▦' },
-  { id: 'myprs', label: 'My PRs', icon: '⤴' },
-  { id: 'review', label: 'Review', icon: '✓' },
-  { id: 'datadog', label: 'Datadog', icon: '📊' }
+  { id: 'terminals', label: 'Terminals', icon: 'terminal' },
+  { id: 'browser', label: 'Browser', icon: 'globe' },
+  { id: 'agent', label: 'Agent', icon: 'bot' },
+  { id: 'issues', label: 'Issues', icon: 'issue' },
+  { id: 'board', label: 'Board', icon: 'board' },
+  { id: 'myprs', label: 'My PRs', icon: 'pr' },
+  { id: 'review', label: 'Review', icon: 'check' },
+  { id: 'datadog', label: 'Datadog', icon: 'chart' },
+  { id: 'notes', label: 'Notes', icon: 'notebook' }
 ]
 
 function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
@@ -55,6 +59,8 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agen
       return <ReviewTab />
     case 'datadog':
       return <DatadogTab />
+    case 'notes':
+      return <ObsidianTab />
     case 'settings':
       return <SettingsTab />
   }
@@ -93,7 +99,7 @@ export function AppShell() {
             onClick={() => setActiveTab('settings')}
             title="Settings"
           >
-            ⚙
+            <Icon name="settings" size={15} />
           </button>
         </div>
       </div>
@@ -108,7 +114,9 @@ export function AppShell() {
               className={`tab${t.id === activeTab ? ' active' : ''}`}
               onClick={() => setActiveTab(t.id)}
             >
-              <span className="tab-icon">{t.icon}</span>
+              <span className="tab-icon">
+                <Icon name={t.icon} />
+              </span>
               {t.label}
             </button>
           ))}

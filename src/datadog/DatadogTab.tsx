@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { DatadogDashboard } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
+import { useSettings } from '../lib/settingsStore'
 import { WebFrame } from '../panes/WebFrame'
+
+const SECTIONS: { key: string; label: string; path?: string }[] = [
+  { key: 'dashboards', label: 'Dashboards' },
+  { key: 'rum', label: 'RUM', path: '/rum/explorer' },
+  { key: 'logs', label: 'Logs', path: '/logs' },
+  { key: 'apm', label: 'APM', path: '/apm/traces' },
+  { key: 'monitors', label: 'Monitors', path: '/monitors/manage' },
+  { key: 'notebooks', label: 'Notebooks', path: '/notebook/list' }
+]
 
 function MissingKeys() {
   return (
@@ -17,7 +27,7 @@ function MissingKeys() {
   )
 }
 
-export function DatadogTab() {
+function DashboardsSection() {
   const { data, error, loading, reload } = useAsync(() => window.api.datadog.listDashboards(), [])
   const [selected, setSelected] = useState<DatadogDashboard | null>(null)
   const [q, setQ] = useState('')
@@ -92,6 +102,51 @@ export function DatadogTab() {
           </div>
         </Panel>
       </PanelGroup>
+    </div>
+  )
+}
+
+export function DatadogTab() {
+  const settings = useSettings()
+  const appBase = `https://app.${settings?.ddSite || 'datadoghq.com'}`
+  const [section, setSection] = useState('dashboards')
+  const [visited, setVisited] = useState<Set<string>>(() => new Set(['dashboards']))
+
+  const show = (key: string): void => {
+    setSection(key)
+    setVisited((v) => (v.has(key) ? v : new Set(v).add(key)))
+  }
+
+  return (
+    <div className="dd-tab-wrap">
+      <div className="dd-sectionbar">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.key}
+            className={`dd-section${section === s.key ? ' active' : ''}`}
+            onClick={() => show(s.key)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <div className="dd-section-body">
+        <div className="tab-layer" style={{ display: section === 'dashboards' ? 'block' : 'none' }}>
+          <DashboardsSection />
+        </div>
+        {SECTIONS.filter((s) => s.path).map(
+          (s) =>
+            visited.has(s.key) && (
+              <div
+                key={s.key}
+                className="tab-layer"
+                style={{ display: section === s.key ? 'block' : 'none' }}
+              >
+                <WebFrame src={appBase + s.path} editableAddress={false} />
+              </div>
+            )
+        )}
+      </div>
     </div>
   )
 }

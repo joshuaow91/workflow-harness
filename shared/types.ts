@@ -18,6 +18,16 @@ export interface AppSettings {
   ddApiKey: string
   ddAppKey: string
   ddSite: string
+  /** Absolute path to the Obsidian vault directory. */
+  obsidianVault: string
+}
+
+export interface ObsidianNote {
+  /** Path relative to the vault root, e.g. "Work/Ideas.md". */
+  path: string
+  title: string
+  folder: string
+  mtime: number
 }
 
 export interface DatadogDashboard {

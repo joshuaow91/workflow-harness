@@ -1,11 +1,12 @@
 import { execFile } from 'child_process'
 import { join } from 'path'
-import { app, BrowserWindow, shell, ipcMain, session, Menu, clipboard } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, session, Menu, clipboard, nativeTheme } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerSettingsIpc } from './settings/registerSettingsIpc'
 import { registerAgentIpc } from './agent/registerAgentIpc'
 import { registerDatadogIpc } from './datadog/registerDatadogIpc'
+import { registerObsidianIpc } from './obsidian/registerObsidianIpc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -137,6 +138,7 @@ function registerIpc(): void {
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)
   registerDatadogIpc()
+  registerObsidianIpc()
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)
@@ -156,6 +158,8 @@ const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
 
 app.whenReady().then(() => {
+  // Make embedded sites (Datadog, GitHub, …) report a dark color scheme.
+  nativeTheme.themeSource = 'dark'
   session.fromPartition('persist:harness').setUserAgent(CHROME_UA)
   registerIpc()
   createWindow()
