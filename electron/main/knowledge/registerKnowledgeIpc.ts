@@ -122,8 +122,11 @@ async function generate(repoPath: string): Promise<RepoKnowledge> {
   const prompt =
     `You are documenting a code repository named "${repo.name}". Based only on the context below, ` +
     `output ONLY a JSON object (no prose, no code fences):\n` +
-    `{"purpose":"one sentence","stack":"main language/framework","keyPaths":["important dir or file", "..."],"related":["names of other repos this integrates with"],"summary":"2-3 sentences"}\n` +
-    `Other repos in this workspace (only reference these in "related"): ${allNames.join(', ')}\n\n` +
+    `{"purpose":"one sentence","stack":"<short>","keyPaths":["important dir or file", "..."],"related":["names of other repos this integrates with"],"summary":"2-3 sentences"}\n` +
+    `Rules for "stack": keep it SHORT — primary language + framework only, max ~3 tokens, ` +
+    `use " · " as a separator, NO version numbers, NO build tools, NO parentheses. ` +
+    `Examples: "Java · Spring Boot", "React/TS · Electron", "Python · LiveKit", "TypeScript · Node".\n` +
+    `For "related": only list repos you are confident integrate with this one, from this set: ${allNames.join(', ')}\n\n` +
     `Context:\n${ctx}`
 
   const parsed = JSON.parse(await runClaude(prompt)) as Partial<RepoKnowledge>

@@ -11,6 +11,11 @@ function sanitize(name: string): string {
   return name.replace(/[^a-zA-Z0-9_]/g, '_')
 }
 
+// Tidy verbose stacks from older cards (strip parentheticals).
+function cleanStack(s: string): string {
+  return s.replace(/\s*\([^)]*\)/g, '').trim()
+}
+
 function buildMermaid(graph: RepoKnowledge[]): string {
   if (graph.length === 0) return ''
   const names = new Set(graph.map((r) => r.name))
@@ -123,7 +128,11 @@ export function KnowledgeTab() {
               <div key={repo.path} className="kg-card">
                 <div className="kg-card-head">
                   <span className="kg-card-name">{repo.name}</span>
-                  {k?.stack && <span className="kg-chip">{k.stack}</span>}
+                  {k?.stack && (
+                    <span className="kg-chip" title={k.stack}>
+                      {cleanStack(k.stack)}
+                    </span>
+                  )}
                   <button
                     className="term-act"
                     style={{ marginLeft: 'auto' }}
