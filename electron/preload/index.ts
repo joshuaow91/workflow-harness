@@ -77,7 +77,8 @@ const api = {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url),
     openInBrave: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openInBrave, url),
     pickDirectory: (defaultPath?: string): Promise<string | null> =>
-      ipcRenderer.invoke(IPC.system.pickDirectory, defaultPath)
+      ipcRenderer.invoke(IPC.system.pickDirectory, defaultPath),
+    openTotpWindow: (): Promise<void> => ipcRenderer.invoke(IPC.system.openTotpWindow)
   }
 }
 

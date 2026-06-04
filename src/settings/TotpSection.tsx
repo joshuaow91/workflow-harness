@@ -1,50 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { TotpAccount } from '@shared/types'
 import { settingsStore, useSettings } from '../lib/settingsStore'
-import { generateTotp, parseOtp, totpRemaining } from '../lib/totp'
-
-function TotpRow({ account, onRemove }: { account: TotpAccount; onRemove: () => void }) {
-  const [code, setCode] = useState('------')
-  const [remaining, setRemaining] = useState(30)
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    let active = true
-    const tick = async (): Promise<void> => {
-      setRemaining(totpRemaining())
-      const c = await generateTotp(account.secret)
-      if (active) setCode(c)
-    }
-    void tick()
-    const iv = setInterval(() => void tick(), 1000)
-    return () => {
-      active = false
-      clearInterval(iv)
-    }
-  }, [account.secret])
-
-  const copy = (): void => {
-    void navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1200)
-  }
-
-  return (
-    <div className="totp-row">
-      <span className="totp-label">{account.label || 'TOTP'}</span>
-      <button className="totp-code" onClick={copy} title="Copy code">
-        {code.slice(0, 3)} {code.slice(3)}
-      </button>
-      <span className="totp-remaining" title="Seconds until refresh">
-        {remaining}s
-      </span>
-      {copied && <span className="totp-copied">copied</span>}
-      <button className="term-act" title="Remove" onClick={onRemove}>
-        ✕
-      </button>
-    </div>
-  )
-}
+import { parseOtp } from '../lib/totp'
+import { TotpRow } from './TotpRow'
 
 export function TotpSection() {
   const settings = useSettings()
@@ -76,7 +34,21 @@ export function TotpSection() {
 
   return (
     <section className="settings-section">
-      <div className="settings-label">Authenticator (TOTP) — for GitHub 2FA inside the app</div>
+      <div className="settings-row" style={{ marginBottom: 10 }}>
+        <div className="settings-label" style={{ margin: 0 }}>
+          Authenticator (TOTP) — for GitHub 2FA inside the app
+        </div>
+        {accounts.length > 0 && (
+          <button
+            className="tbtn"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => void window.api.system.openTotpWindow()}
+            title="Open a floating always-on-top window with your codes"
+          >
+            ⧉ Open in window
+          </button>
+        )}
+      </div>
 
       {accounts.length > 0 && (
         <div className="totp-list">

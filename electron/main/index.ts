@@ -43,6 +43,40 @@ function createWindow(): void {
   }
 }
 
+let totpWindow: BrowserWindow | null = null
+
+function createTotpWindow(): void {
+  if (totpWindow && !totpWindow.isDestroyed()) {
+    totpWindow.focus()
+    return
+  }
+  totpWindow = new BrowserWindow({
+    width: 300,
+    height: 260,
+    resizable: true,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    title: 'Authenticator',
+    backgroundColor: '#1e1e2e',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+  totpWindow.setAlwaysOnTop(true, 'floating')
+  totpWindow.on('closed', () => {
+    totpWindow = null
+  })
+
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    totpWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#totp')
+  } else {
+    totpWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'totp' })
+  }
+}
+
 function registerIpc(): void {
   // System helpers.
   ipcMain.handle(IPC.system.openExternal, (_e, url: string) => shell.openExternal(url))
@@ -52,6 +86,7 @@ function registerIpc(): void {
       if (err) void shell.openExternal(url)
     })
   })
+  ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
 

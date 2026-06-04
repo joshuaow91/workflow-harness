@@ -456,6 +456,31 @@ button {
   gap: 8px;
 }
 
+.totp-popout {
+  height: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.totp-popout-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.totp-popout-hint {
+  margin-top: auto;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
 .sidebar {
   grid-area: sidebar;
   background: var(--bg-alt);
