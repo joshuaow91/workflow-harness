@@ -3,6 +3,7 @@ import { join } from 'path'
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
+import { registerSettingsIpc } from './settings/registerSettingsIpc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -52,6 +53,7 @@ function registerIpc(): void {
     })
   })
   registerDevtoolsIpc()
+  registerSettingsIpc(() => mainWindow)
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)

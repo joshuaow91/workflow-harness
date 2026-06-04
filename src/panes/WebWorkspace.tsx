@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
+import { useDefaultSessionDir } from '../lib/settingsStore'
 import { DevToolsPane } from './DevToolsPane'
 import { TerminalPane } from './TerminalPane'
 import { WebFrame } from './WebFrame'
@@ -22,6 +23,7 @@ interface SidePane {
 
 function SideTerminal({ onClose }: { onClose: () => void }) {
   const sessions = useFlatSessions()
+  const defaultDir = useDefaultSessionDir()
   const [opts, setOpts] = useState<TerminalSpawnOptions | null>(null)
   const [mountKey, setMountKey] = useState(0)
 
@@ -31,9 +33,8 @@ function SideTerminal({ onClose }: { onClose: () => void }) {
   }
 
   const onSelect = (value: string): void => {
-    const home = window.api.system.homeDir
-    if (value === '__shell') launch({ cwd: home })
-    else if (value === '__claude') launch({ cwd: home, initialCommand: 'claude' })
+    if (value === '__shell') launch({ cwd: defaultDir })
+    else if (value === '__claude') launch({ cwd: defaultDir, initialCommand: 'claude' })
     else {
       const s = sessions.find((x) => x.sessionId === value)
       if (s) launch({ cwd: s.cwd, initialCommand: `claude --resume ${s.sessionId}`, label: s.title })
@@ -84,6 +85,7 @@ export function WebWorkspace() {
   const [activeWC, setActiveWC] = useState<number | null>(null)
   const [devtoolsWC, setDevtoolsWC] = useState<number | null>(null)
   const prevTarget = useRef<number | null>(null)
+  const tabWc = useRef<Record<number, number>>({})
 
   // Wire the active browser's DevTools into the bottom pane.
   useEffect(() => {
@@ -105,15 +107,23 @@ export function WebWorkspace() {
     })
   }
 
+  // Select a tab and point DevTools at that tab's browser (if known yet).
+  const selectTab = (id: number): void => {
+    setActiveTab(id)
+    const wc = tabWc.current[id]
+    if (wc != null) setActiveWC(wc)
+  }
+
   const addTab = (): void => {
     const id = tabCounter.current++
     setTabs((t) => [...t, { id, url: NEW_TAB_URL, title: 'New Tab' }])
     setActiveTab(id)
   }
   const closeTab = (id: number): void => {
+    delete tabWc.current[id]
     setTabs((t) => {
       const next = t.filter((x) => x.id !== id)
-      if (id === activeTab && next.length) setActiveTab(next[next.length - 1].id)
+      if (id === activeTab && next.length) selectTab(next[next.length - 1].id)
       return next
     })
   }
@@ -134,7 +144,7 @@ export function WebWorkspace() {
                 <div
                   key={t.id}
                   className={`ws-tab${t.id === activeTab ? ' active' : ''}`}
-                  onClick={() => setActiveTab(t.id)}
+                  onClick={() => selectTab(t.id)}
                   title={t.url}
                 >
                   <span className="ws-tab-title">{t.title || 'New Tab'}</span>
@@ -177,7 +187,10 @@ export function WebWorkspace() {
                       >
                         <WebFrame
                           src={t.url}
-                          onActivate={setActiveWC}
+                          onActivate={(wc) => {
+                            tabWc.current[t.id] = wc
+                            setActiveWC(wc)
+                          }}
                           onTitle={(title) => setTabTitle(t.id, title)}
                         />
                       </div>

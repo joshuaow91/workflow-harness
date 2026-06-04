@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
+import { useDefaultSessionDir } from '../lib/settingsStore'
 import { TerminalPane } from './TerminalPane'
 
 interface Pane {
@@ -18,6 +19,7 @@ export function TerminalsTab() {
   const [panes, setPanes] = useState<Pane[]>([])
   const [direction, setDirection] = useState<'horizontal' | 'vertical'>('horizontal')
   const nextId = useRef(1)
+  const defaultDir = useDefaultSessionDir()
 
   const addPane = (opts: TerminalSpawnOptions): void => {
     setPanes((prev) => [...prev, { id: nextId.current++, mountKey: 0, opts }])
@@ -29,7 +31,7 @@ export function TerminalsTab() {
   const restartPane = (id: number): void =>
     setPanes((prev) => prev.map((p) => (p.id === id ? { ...p, mountKey: p.mountKey + 1 } : p)))
 
-  const newShell = (): void => addPane({ cwd: window.api.system.homeDir })
+  const newShell = (): void => addPane({ cwd: defaultDir })
 
   return (
     <div className="terminals">

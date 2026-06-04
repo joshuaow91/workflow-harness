@@ -2,6 +2,7 @@ import { homedir } from 'os'
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc'
 import type {
+  AppSettings,
   ClaudeProject,
   GhIssue,
   GhProjectBoard,
@@ -64,10 +65,17 @@ const api = {
       ipcRenderer.invoke(IPC.devtools.attach, targetId, devtoolsId),
     detach: (targetId: number): Promise<void> => ipcRenderer.invoke(IPC.devtools.detach, targetId)
   },
+  settings: {
+    get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settings.get),
+    set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
+      ipcRenderer.invoke(IPC.settings.set, patch)
+  },
   system: {
     homeDir: homedir(),
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openExternal, url),
-    openInBrave: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openInBrave, url)
+    openInBrave: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openInBrave, url),
+    pickDirectory: (defaultPath?: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.system.pickDirectory, defaultPath)
   }
 }
 

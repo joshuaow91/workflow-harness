@@ -4,29 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalSpawnOptions } from '@shared/types'
-
-const THEME = {
-  background: '#11111b',
-  foreground: '#cdd6f4',
-  cursor: '#f5e0dc',
-  selectionBackground: '#45475a',
-  black: '#45475a',
-  red: '#f38ba8',
-  green: '#a6e3a1',
-  yellow: '#f9e2af',
-  blue: '#89b4fa',
-  magenta: '#cba6f7',
-  cyan: '#94e2d5',
-  white: '#bac2de',
-  brightBlack: '#585b70',
-  brightRed: '#f38ba8',
-  brightGreen: '#a6e3a1',
-  brightYellow: '#f9e2af',
-  brightBlue: '#89b4fa',
-  brightMagenta: '#cba6f7',
-  brightCyan: '#94e2d5',
-  brightWhite: '#a6adc8'
-}
+import { themeStore, xtermTheme } from '../themes/themeStore'
 
 export function TerminalPane({ opts, onExit }: { opts: TerminalSpawnOptions; onExit?: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -41,12 +19,17 @@ export function TerminalPane({ opts, onExit }: { opts: TerminalSpawnOptions; onE
       lineHeight: 1.15,
       cursorBlink: true,
       allowProposedApi: true,
-      theme: THEME,
+      theme: xtermTheme(themeStore.get()),
       scrollback: 10000
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.loadAddon(new WebLinksAddon((_e, uri) => void window.api.system.openExternal(uri)))
+
+    // Live-update the terminal palette when the theme changes.
+    const offTheme = themeStore.subscribe(() => {
+      term.options.theme = xtermTheme(themeStore.get())
+    })
 
     term.open(container)
     fit.fit()
@@ -92,6 +75,7 @@ export function TerminalPane({ opts, onExit }: { opts: TerminalSpawnOptions; onE
     return () => {
       container.removeEventListener('mousedown', focus)
       ro.disconnect()
+      offTheme()
       offData()
       offExit()
       if (idRef.current) window.api.terminal.kill(idRef.current)

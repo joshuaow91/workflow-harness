@@ -1,6 +1,15 @@
 // Shared types used across the Electron main, preload, and renderer.
 // Keep this file dependency-free so it can be imported from any process.
 
+// ---- Settings ----
+
+export interface AppSettings {
+  /** Directory used to launch new claude sessions / shells when no repo or session cwd is given. */
+  defaultSessionDir: string
+  /** Name of the active Ghostty theme. */
+  themeName: string
+}
+
 // ---- Claude sidebar ----
 
 export interface ClaudeSession {

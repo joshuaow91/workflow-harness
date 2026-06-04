@@ -6,9 +6,13 @@ import { IssuesTab } from '../github/IssuesTab'
 import { BoardTab } from '../github/BoardTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
+import { SettingsTab } from '../settings/SettingsTab'
+import { ThemePicker } from '../themes/ThemePicker'
+import { themeStore } from '../themes/themeStore'
+import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
 
-type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review'
+type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review' | 'settings'
 
 interface TabDef {
   id: TabId
@@ -35,14 +39,22 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
       return <MyPRsTab />
     case 'review':
       return <ReviewTab />
+    case 'settings':
+      return <SettingsTab />
   }
 }
 
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
+  const settings = useSettings()
 
   // Jump to the Terminals tab whenever something requests a new terminal.
   useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
+
+  // Apply the saved theme once settings load (and whenever it changes).
+  useEffect(() => {
+    if (settings?.themeName) themeStore.apply(settings.themeName)
+  }, [settings?.themeName])
 
   return (
     <div className="shell">
@@ -50,6 +62,16 @@ export function AppShell() {
         <span className="brand">
           workflow<span className="brand-dot">·</span>harness
         </span>
+        <div className="titlebar-right">
+          <ThemePicker />
+          <button
+            className={`titlebar-gear${activeTab === 'settings' ? ' on' : ''}`}
+            onClick={() => setActiveTab('settings')}
+            title="Settings"
+          >
+            ⚙
+          </button>
+        </div>
       </div>
 
       <Sidebar />

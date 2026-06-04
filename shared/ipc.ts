@@ -32,8 +32,13 @@ export const IPC = {
     attach: 'devtools:attach',
     detach: 'devtools:detach'
   },
+  settings: {
+    get: 'settings:get',
+    set: 'settings:set'
+  },
   system: {
     openExternal: 'system:openExternal',
-    openInBrave: 'system:openInBrave'
+    openInBrave: 'system:openInBrave',
+    pickDirectory: 'system:pickDirectory'
   }
 } as const
