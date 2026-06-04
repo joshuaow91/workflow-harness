@@ -50,6 +50,18 @@ button {
   cursor: pointer;
 }
 
+/* Pointer cursor on clickable non-button elements for a native feel. */
+.session-row,
+.repo-row,
+.wt-row,
+.gh-row,
+.ws-tab,
+.twv-tab,
+.board-card,
+.tab {
+  cursor: pointer;
+}
+
 /* Thin, theme-colored scrollbars (everywhere in our own DOM). */
 ::-webkit-scrollbar {
   width: 9px;
@@ -677,6 +689,7 @@ button {
   background: transparent;
   border: none;
   border-left: 2px solid transparent;
+  cursor: pointer;
 }
 
 .session-row:hover {
