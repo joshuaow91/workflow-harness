@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import * as bc from './BrowserController'
+import { getKnowledge } from '../knowledge/registerKnowledgeIpc'
 
 // A localhost-only JSON command server that the standalone MCP process calls to
 // drive the agent browser. No external network exposure.
@@ -53,7 +54,8 @@ const handlers: Record<string, Handler> = {
   mermaid: (b) => {
     mermaidSink?.(String(b.code))
     return 'rendered'
-  }
+  },
+  knowledge: () => getKnowledge()
 }
 
 function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -86,12 +88,13 @@ export function startControlServer(): void {
       return
     }
     const body = req.method === 'POST' ? await readBody(req) : {}
+    const silent = name === 'status' || name === 'knowledge'
     try {
       const result = await handler(body)
-      if (name !== 'status') activitySink?.({ tool: name, ok: true, detail: summarize(body), at: Date.now() })
+      if (!silent) activitySink?.({ tool: name, ok: true, detail: summarize(body), at: Date.now() })
       res.end(JSON.stringify({ ok: true, result }))
     } catch (err) {
-      if (name !== 'status')
+      if (!silent)
         activitySink?.({ tool: name, ok: false, detail: (err as Error).message, at: Date.now() })
       res.statusCode = 200
       res.end(JSON.stringify({ ok: false, error: (err as Error).message }))

@@ -120,4 +120,11 @@ server.tool(
   async ({ code }) => text(await call('mermaid', { code }))
 )
 
+server.tool(
+  'repo_knowledge',
+  "Get the workspace's repo knowledge graph: each repo's purpose, stack, key paths, and related repos. Use this to understand what a repo is WITHOUT exploring its files.",
+  {},
+  async () => text(await call('knowledge', {}))
+)
+
 await server.connect(new StdioServerTransport())

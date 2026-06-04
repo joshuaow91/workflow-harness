@@ -64,6 +64,10 @@ export const IPC = {
     run: 'mongo:run',
     aiQuery: 'mongo:aiQuery'
   },
+  knowledge: {
+    get: 'knowledge:get',
+    generate: 'knowledge:generate'
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',

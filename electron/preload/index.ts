@@ -9,6 +9,7 @@ import type {
   GhIssue,
   MongoDatabase,
   ObsidianNote,
+  RepoKnowledge,
   GhProjectBoard,
   GhProjectSummary,
   GhPullRequest,
@@ -115,6 +116,11 @@ const api = {
     ): Promise<unknown[]> => ipcRenderer.invoke(IPC.mongo.run, db, coll, operation, query, limit),
     aiQuery: (db: string, prompt: string): Promise<string> =>
       ipcRenderer.invoke(IPC.mongo.aiQuery, db, prompt)
+  },
+  knowledge: {
+    get: (): Promise<RepoKnowledge[]> => ipcRenderer.invoke(IPC.knowledge.get),
+    generate: (repoPath: string): Promise<RepoKnowledge> =>
+      ipcRenderer.invoke(IPC.knowledge.generate, repoPath)
   },
   system: {
     homeDir: homedir(),

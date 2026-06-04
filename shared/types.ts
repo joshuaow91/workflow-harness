@@ -31,6 +31,21 @@ export interface MongoDatabase {
   sizeOnDisk?: number
 }
 
+// ---- Repo knowledge graph ----
+
+export interface RepoKnowledge {
+  name: string
+  path: string
+  defaultBranch: string | null
+  purpose: string
+  stack: string
+  keyPaths: string[]
+  /** Names of other repos this one integrates with / depends on. */
+  related: string[]
+  summary: string
+  updatedAt: number
+}
+
 export interface ObsidianNote {
   /** Path relative to the vault root, e.g. "Work/Ideas.md". */
   path: string

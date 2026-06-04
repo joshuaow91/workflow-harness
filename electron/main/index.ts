@@ -8,6 +8,7 @@ import { registerAgentIpc } from './agent/registerAgentIpc'
 import { registerDatadogIpc } from './datadog/registerDatadogIpc'
 import { registerObsidianIpc } from './obsidian/registerObsidianIpc'
 import { registerMongoIpc } from './mongo/registerMongoIpc'
+import { registerKnowledgeIpc } from './knowledge/registerKnowledgeIpc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -141,6 +142,7 @@ function registerIpc(): void {
   registerDatadogIpc()
   registerObsidianIpc()
   registerMongoIpc()
+  registerKnowledgeIpc()
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)
