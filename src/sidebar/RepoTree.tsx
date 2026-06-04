@@ -45,7 +45,11 @@ function WorktreeRow({
         <Icon name="branch" size={12} />
       </span>
       <span className="wt-branch">{label}</span>
-      {wt.isMain && <span className="wt-tag">main</span>}
+      {wt.isMain && (
+        <span className="wt-tag" title="The repo's primary checkout (not the main/master branch)">
+          primary
+        </span>
+      )}
       {live && <span className="wt-live" title="claude running here" />}
       <div className="wt-actions">
         <button
