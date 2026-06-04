@@ -4,6 +4,7 @@ import { useAsync } from '../lib/useAsync'
 import { Dropdown } from '../components/Dropdown'
 
 const SYSTEM_DBS = ['admin', 'local', 'config']
+type Op = 'find' | 'aggregate'
 
 function MissingUri() {
   return (
@@ -21,19 +22,20 @@ function MissingUri() {
 export function MongoTab() {
   const dbs = useAsync(() => window.api.mongo.listDatabases(), [])
   const [db, setDb] = useState<string | null>(null)
-  const colls = useAsync(
-    () => (db ? window.api.mongo.listCollections(db) : Promise.resolve([])),
-    [db]
-  )
+  const colls = useAsync(() => (db ? window.api.mongo.listCollections(db) : Promise.resolve([])), [db])
   const [coll, setColl] = useState<string | null>(null)
-  const [filter, setFilter] = useState('{}')
+  const [op, setOp] = useState<Op>('find')
+  const [queryText, setQueryText] = useState('{}')
   const [limit, setLimit] = useState(50)
   const [nonce, setNonce] = useState(0)
+
   const [ai, setAi] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState<string | null>(null)
+
   const docs = useAsync(
-    () => (db && coll ? window.api.mongo.find(db, coll, filter, limit) : Promise.resolve([])),
+    () =>
+      db && coll ? window.api.mongo.run(db, coll, op, queryText, limit) : Promise.resolve([]),
     [db, coll, nonce]
   )
 
@@ -42,18 +44,34 @@ export function MongoTab() {
       setDb(dbs.data.find((d) => !SYSTEM_DBS.includes(d.name))?.name ?? dbs.data[0].name)
     }
   }, [dbs.data, db])
-  useEffect(() => setColl(null), [db])
   useEffect(() => {
-    if (db && !coll && colls.data?.length) setColl(colls.data[0])
+    setColl(null)
+  }, [db])
+  useEffect(() => {
+    if (db && !coll && colls.data?.length) {
+      setColl(colls.data[0])
+      setOp('find')
+      setQueryText('{}')
+    }
   }, [colls.data, coll, db])
 
+  const selectColl = (c: string): void => {
+    setColl(c)
+    setOp('find')
+    setQueryText('{}')
+  }
+
   const askAi = async (): Promise<void> => {
-    if (!ai.trim() || !db || !coll || aiLoading) return
+    if (!ai.trim() || !db || aiLoading) return
     setAiLoading(true)
     setAiErr(null)
     try {
-      const generated = await window.api.mongo.aiQuery(db, coll, ai.trim())
-      setFilter(generated)
+      const raw = await window.api.mongo.aiQuery(db, ai.trim())
+      const spec = JSON.parse(raw) as { collection: string; operation: Op; query: unknown; limit?: number }
+      setColl(spec.collection)
+      setOp(spec.operation === 'aggregate' ? 'aggregate' : 'find')
+      setQueryText(JSON.stringify(spec.query ?? (spec.operation === 'aggregate' ? [] : {}), null, 2))
+      if (spec.limit) setLimit(spec.limit)
       setNonce((n) => n + 1)
     } catch (e) {
       setAiErr(e instanceof Error ? e.message : String(e))
@@ -69,7 +87,7 @@ export function MongoTab() {
   return (
     <div className="mongo-tab">
       <PanelGroup direction="horizontal" autoSaveId="mongo-h">
-        <Panel defaultSize={22} minSize={14}>
+        <Panel defaultSize={20} minSize={13}>
           <div className="mongo-listcol">
             <div className="mongo-dbbar">
               <Dropdown
@@ -90,7 +108,7 @@ export function MongoTab() {
                 <button
                   key={c}
                   className={`mongo-coll${coll === c ? ' sel' : ''}`}
-                  onClick={() => setColl(c)}
+                  onClick={() => selectColl(c)}
                   title={c}
                 >
                   {c}
@@ -100,34 +118,45 @@ export function MongoTab() {
           </div>
         </Panel>
         <PanelResizeHandle className="resize-handle" />
-        <Panel defaultSize={78} minSize={30}>
+        <Panel defaultSize={80} minSize={30}>
           <div className="mongo-view">
             <div className="mongo-ai">
-              <input
+              <textarea
                 className="mongo-ai-input"
-                placeholder={
-                  coll ? `Ask AI to query "${coll}"…` : 'Select a collection, then ask AI…'
-                }
+                rows={2}
+                placeholder="Describe what you want — AI picks the collection and writes the find/aggregate query. (⌘↵ to run)"
                 value={ai}
-                disabled={!coll || aiLoading}
+                disabled={!db || aiLoading}
                 onChange={(e) => setAi(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && askAi()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault()
+                    void askAi()
+                  }
+                }}
               />
-              <button className="tbtn" onClick={askAi} disabled={!coll || aiLoading || !ai.trim()}>
+              <button className="tbtn" onClick={askAi} disabled={!db || aiLoading || !ai.trim()}>
                 {aiLoading ? 'Asking…' : 'Ask AI'}
               </button>
             </div>
             {aiErr && <div className="gh-state gh-error">{aiErr}</div>}
+
             <div className="mongo-querybar">
+              <div className="mongo-ops">
+                <button
+                  className={`mongo-op${op === 'find' ? ' active' : ''}`}
+                  onClick={() => setOp('find')}
+                >
+                  find
+                </button>
+                <button
+                  className={`mongo-op${op === 'aggregate' ? ' active' : ''}`}
+                  onClick={() => setOp('aggregate')}
+                >
+                  aggregate
+                </button>
+              </div>
               <span className="mongo-coll-name">{coll ?? '—'}</span>
-              <input
-                className="mongo-filter"
-                value={filter}
-                spellCheck={false}
-                onChange={(e) => setFilter(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && setNonce((n) => n + 1)}
-                placeholder='filter, e.g. { "status": "active" }'
-              />
               <input
                 className="mongo-limit"
                 type="number"
@@ -135,10 +164,18 @@ export function MongoTab() {
                 onChange={(e) => setLimit(Number(e.target.value) || 50)}
                 title="Limit"
               />
-              <button className="tbtn" onClick={() => setNonce((n) => n + 1)}>
+              <button className="tbtn" onClick={() => setNonce((n) => n + 1)} disabled={!coll}>
                 Run
               </button>
             </div>
+            <textarea
+              className="mongo-query"
+              value={queryText}
+              spellCheck={false}
+              onChange={(e) => setQueryText(e.target.value)}
+              placeholder={op === 'aggregate' ? '[ { "$match": { } } ]' : '{ "field": "value" }'}
+            />
+
             <div className="mongo-results">
               {docs.loading && <div className="side-term-hint">Querying…</div>}
               {docs.error && <div className="gh-state gh-error">{docs.error}</div>}

@@ -1398,8 +1398,9 @@ button {
 
 .mongo-ai {
   display: flex;
-  gap: 6px;
-  padding: 8px 10px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
   background: var(--bg-alt);
   border-bottom: 1px solid var(--mauve);
 }
@@ -1407,17 +1408,62 @@ button {
 .mongo-ai-input {
   flex: 1;
   min-width: 0;
+  resize: vertical;
+  min-height: 44px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 7px;
+  padding: 8px 11px;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: inherit;
 }
 
 .mongo-ai-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.mongo-ops {
+  display: flex;
+  gap: 2px;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.mongo-op {
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 3px 10px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-family: SFMono-Regular, Menlo, monospace;
+}
+
+.mongo-op.active {
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+.mongo-query {
+  resize: vertical;
+  min-height: 56px;
+  max-height: 240px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 10px 12px;
+  font-family: SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mongo-query:focus {
+  outline: none;
 }
 
 .mongo-querybar {

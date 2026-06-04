@@ -39,42 +39,79 @@ async function listCollections(db: string): Promise<string[]> {
   return colls.map((x) => x.name).sort()
 }
 
-async function find(
+const WRITE_STAGES = ['$out', '$merge']
+
+// Run a read-only find or aggregate. queryJson is a filter object (find) or a
+// pipeline array (aggregate), in extended JSON.
+async function run(
   db: string,
   coll: string,
-  filterJson: string,
+  operation: 'find' | 'aggregate',
+  queryJson: string,
   limit: number
 ): Promise<unknown[]> {
   const c = await getClient()
-  let filter: Record<string, unknown> = {}
-  if (filterJson && filterJson.trim()) {
+  const col = c.db(db).collection(coll)
+  const cap = Math.min(limit || 50, 500)
+
+  let parsed: unknown = operation === 'aggregate' ? [] : {}
+  if (queryJson && queryJson.trim()) {
     try {
-      filter = EJSON.parse(filterJson) as Record<string, unknown>
+      parsed = EJSON.parse(queryJson)
     } catch {
-      throw new Error('Invalid filter JSON')
+      throw new Error('Invalid query JSON')
     }
   }
-  const docs = await c
-    .db(db)
-    .collection(coll)
-    .find(filter)
-    .limit(Math.min(limit || 50, 200))
-    .toArray()
+
+  if (operation === 'aggregate') {
+    const pipeline = Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : []
+    for (const stage of pipeline) {
+      if (Object.keys(stage ?? {}).some((k) => WRITE_STAGES.includes(k))) {
+        throw new Error('Write stages ($out/$merge) are not allowed — this browser is read-only.')
+      }
+    }
+    const capped = pipeline.some((s) => '$limit' in (s ?? {}))
+      ? pipeline
+      : [...pipeline, { $limit: cap }]
+    const docs = await col.aggregate(capped, { maxTimeMS: 20000 }).toArray()
+    return toPlain(docs)
+  }
+
+  const filter = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  const docs = await col.find(filter as Record<string, unknown>).limit(cap).toArray()
   return toPlain(docs)
 }
 
-// Turn a natural-language request into a MongoDB find filter via the claude CLI,
-// giving it a sample document so it knows the schema.
-async function aiQuery(db: string, coll: string, prompt: string): Promise<string> {
+// Natural language -> a full query spec. Gives Claude every collection in the db
+// plus a sample document of each, and lets it pick the collection and build a
+// find filter or an aggregation pipeline.
+async function aiQuery(db: string, prompt: string): Promise<string> {
   const c = await getClient()
-  const sample = await c.db(db).collection(coll).findOne({})
-  const sampleJson = sample ? (EJSON.stringify(sample, { relaxed: true }) as string).slice(0, 1500) : '{}'
+  const names = (await c.db(db).listCollections().toArray()).map((x) => x.name).sort()
+
+  const samples: Record<string, unknown> = {}
+  await Promise.all(
+    names.slice(0, 40).map(async (name) => {
+      try {
+        const doc = await c.db(db).collection(name).findOne({})
+        if (doc) samples[name] = JSON.parse((EJSON.stringify(doc, { relaxed: true }) as string).slice(0, 400))
+      } catch {
+        /* skip */
+      }
+    })
+  )
+
+  const schema = JSON.stringify(samples).slice(0, 8000)
   const full =
-    `You write MongoDB find() query filters. Database "${db}", collection "${coll}".\n` +
-    `Sample document:\n${sampleJson}\n\n` +
-    `Write a single JSON filter object for this request. Output ONLY the JSON filter — no prose, ` +
-    `no markdown code fences. Use MongoDB operators ($gt, $in, $regex, $date, etc.) as needed.\n\n` +
+    `You are a MongoDB query generator for database "${db}". ` +
+    `Here are its collections, each with a sample document showing the schema:\n${schema}\n\n` +
+    `For the user's request, pick the right collection and build a query. Respond with ONLY a JSON ` +
+    `object (no prose, no code fences) of this exact shape:\n` +
+    `{"collection":"<name>","operation":"find"|"aggregate","query":<filter object OR aggregation pipeline array>,"limit":<number>}\n` +
+    `Use "aggregate" with a pipeline array for grouping/counting/joining/sorting-by-computed; use "find" ` +
+    `with a filter object for simple lookups. Never use $out or $merge. Use extended JSON for dates: {"$date":"ISO"}.\n\n` +
     `Request: ${prompt}`
+
   return new Promise((resolve, reject) => {
     execFile('claude', ['-p', full], { timeout: 120000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) return reject(new Error((stderr || err.message).trim()))
@@ -90,10 +127,10 @@ async function aiQuery(db: string, coll: string, prompt: string): Promise<string
 export function registerMongoIpc(): void {
   ipcMain.handle(IPC.mongo.listDatabases, () => listDatabases())
   ipcMain.handle(IPC.mongo.listCollections, (_e, db: string) => listCollections(db))
-  ipcMain.handle(IPC.mongo.find, (_e, db: string, coll: string, filter: string, limit: number) =>
-    find(db, coll, filter, limit)
+  ipcMain.handle(
+    IPC.mongo.run,
+    (_e, db: string, coll: string, operation: 'find' | 'aggregate', query: string, limit: number) =>
+      run(db, coll, operation, query, limit)
   )
-  ipcMain.handle(IPC.mongo.aiQuery, (_e, db: string, coll: string, prompt: string) =>
-    aiQuery(db, coll, prompt)
-  )
+  ipcMain.handle(IPC.mongo.aiQuery, (_e, db: string, prompt: string) => aiQuery(db, prompt))
 }

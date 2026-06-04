@@ -106,10 +106,15 @@ const api = {
     listDatabases: (): Promise<MongoDatabase[]> => ipcRenderer.invoke(IPC.mongo.listDatabases),
     listCollections: (db: string): Promise<string[]> =>
       ipcRenderer.invoke(IPC.mongo.listCollections, db),
-    find: (db: string, coll: string, filter: string, limit: number): Promise<unknown[]> =>
-      ipcRenderer.invoke(IPC.mongo.find, db, coll, filter, limit),
-    aiQuery: (db: string, coll: string, prompt: string): Promise<string> =>
-      ipcRenderer.invoke(IPC.mongo.aiQuery, db, coll, prompt)
+    run: (
+      db: string,
+      coll: string,
+      operation: 'find' | 'aggregate',
+      query: string,
+      limit: number
+    ): Promise<unknown[]> => ipcRenderer.invoke(IPC.mongo.run, db, coll, operation, query, limit),
+    aiQuery: (db: string, prompt: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.mongo.aiQuery, db, prompt)
   },
   system: {
     homeDir: homedir(),
