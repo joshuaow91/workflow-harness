@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
 import { BrowserPane } from '../panes/BrowserPane'
+import { IssuesTab } from '../github/IssuesTab'
+import { BoardTab } from '../github/BoardTab'
+import { MyPRsTab } from '../github/MyPRsTab'
+import { ReviewTab } from '../github/ReviewTab'
 import { terminalBus } from '../lib/terminalBus'
 
 type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review'
@@ -21,26 +25,16 @@ const TABS: TabDef[] = [
   { id: 'review', label: 'Review', icon: '✓' }
 ]
 
-function Placeholder({ emoji, title, sub }: { emoji: string; title: string; sub: string }) {
-  return (
-    <div className="placeholder">
-      <div className="ph-emoji">{emoji}</div>
-      <div className="ph-title">{title}</div>
-      <div className="ph-sub">{sub}</div>
-    </div>
-  )
-}
-
 function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
   switch (tab) {
     case 'issues':
-      return <Placeholder emoji="◇" title="GitHub Issues" sub="Issues for the selected repo, via the gh CLI (step 6)." />
+      return <IssuesTab />
     case 'board':
-      return <Placeholder emoji="▦" title="Project Board" sub="Your assigned Projects v2 board, via gh GraphQL (step 6)." />
+      return <BoardTab />
     case 'myprs':
-      return <Placeholder emoji="⤴" title="My Pull Requests" sub="PRs you authored, via the gh CLI (step 6)." />
+      return <MyPRsTab />
     case 'review':
-      return <Placeholder emoji="✓" title="Review Requests" sub="PRs awaiting your review, via the gh CLI (step 6)." />
+      return <ReviewTab />
   }
 }
 

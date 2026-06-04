@@ -24,7 +24,8 @@ export const IPC = {
     issues: 'github:issues',
     myPRs: 'github:myPRs',
     reviewPRs: 'github:reviewPRs',
-    board: 'github:board'
+    listProjects: 'github:listProjects',
+    projectItems: 'github:projectItems'
   },
   system: {
     openExternal: 'system:openExternal'

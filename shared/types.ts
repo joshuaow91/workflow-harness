@@ -103,6 +103,12 @@ export interface GhPullRequest {
   repo: string
 }
 
+export interface GhProjectSummary {
+  number: number
+  title: string
+  url: string
+}
+
 export interface GhProjectItem {
   id: string
   title: string
@@ -119,3 +125,6 @@ export interface GhProjectBoard {
   columns: string[]
   items: GhProjectItem[]
 }
+
+/** Thrown (as an Error message substring) when the gh token lacks read:project. */
+export const GH_MISSING_PROJECT_SCOPE = 'GH_MISSING_PROJECT_SCOPE'

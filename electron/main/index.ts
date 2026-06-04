@@ -4,6 +4,7 @@ import { IPC } from '@shared/ipc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
+import { registerGithubIpc } from './github/registerGithubIpc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -47,7 +48,7 @@ function registerIpc(): void {
   registerClaudeIpc(() => mainWindow)
   registerTerminalIpc(() => mainWindow)
   registerWorktreeIpc()
-  //   registerGithubIpc()                   — step 6
+  registerGithubIpc()
 }
 
 app.on('before-quit', () => {

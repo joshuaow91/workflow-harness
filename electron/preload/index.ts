@@ -5,6 +5,7 @@ import type {
   ClaudeProject,
   GhIssue,
   GhProjectBoard,
+  GhProjectSummary,
   GhPullRequest,
   Repo,
   TerminalDataEvent,
@@ -52,7 +53,10 @@ const api = {
     issues: (repo: string): Promise<GhIssue[]> => ipcRenderer.invoke(IPC.github.issues, repo),
     myPRs: (repo: string): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRs, repo),
     reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),
-    board: (): Promise<GhProjectBoard | null> => ipcRenderer.invoke(IPC.github.board)
+    listProjects: (owner: string): Promise<GhProjectSummary[]> =>
+      ipcRenderer.invoke(IPC.github.listProjects, owner),
+    projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
+      ipcRenderer.invoke(IPC.github.projectItems, owner, number)
   },
   system: {
     homeDir: homedir(),
