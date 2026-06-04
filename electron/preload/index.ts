@@ -5,6 +5,7 @@ import type {
   AgentActivity,
   AppSettings,
   ClaudeProject,
+  DatadogDashboard,
   GhIssue,
   GhProjectBoard,
   GhProjectSummary,
@@ -84,6 +85,10 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settings.get),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke(IPC.settings.set, patch)
+  },
+  datadog: {
+    listDashboards: (): Promise<DatadogDashboard[]> =>
+      ipcRenderer.invoke(IPC.datadog.listDashboards)
   },
   system: {
     homeDir: homedir(),

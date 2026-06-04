@@ -5,6 +5,7 @@ import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerSettingsIpc } from './settings/registerSettingsIpc'
 import { registerAgentIpc } from './agent/registerAgentIpc'
+import { registerDatadogIpc } from './datadog/registerDatadogIpc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -135,6 +136,7 @@ function registerIpc(): void {
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)
+  registerDatadogIpc()
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)

@@ -11,7 +11,10 @@ function defaults(): AppSettings {
     themeName: 'Catppuccin Mocha',
     defaultBrowserUrl: 'https://github.com',
     sessionTitles: {},
-    totpAccounts: []
+    totpAccounts: [],
+    ddApiKey: '',
+    ddAppKey: '',
+    ddSite: 'datadoghq.com'
   }
 }
 

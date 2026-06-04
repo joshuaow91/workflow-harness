@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { normalizeInput } from '../lib/url'
 import { TotpSection } from './TotpSection'
+import { DatadogSettings } from './DatadogSettings'
 
 export function SettingsTab() {
   const settings = useSettings()
@@ -64,6 +65,8 @@ export function SettingsTab() {
       </section>
 
       <TotpSection />
+
+      <DatadogSettings />
 
       <section className="settings-section">
         <div className="settings-label">GitHub sign-in</div>

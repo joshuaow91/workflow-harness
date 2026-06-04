@@ -14,6 +14,18 @@ export interface AppSettings {
   sessionTitles: Record<string, string>
   /** Built-in authenticator (TOTP) accounts. Secrets stored locally in plaintext. */
   totpAccounts: TotpAccount[]
+  /** Datadog API credentials (fallback to DD_API_KEY/DD_APP_KEY/DD_SITE env). */
+  ddApiKey: string
+  ddAppKey: string
+  ddSite: string
+}
+
+export interface DatadogDashboard {
+  id: string
+  title: string
+  url: string
+  /** Custom (user-authored) dashboards have alphanumeric ids; built-ins are numeric. */
+  custom: boolean
 }
 
 export interface TotpAccount {

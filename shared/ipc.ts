@@ -46,6 +46,9 @@ export const IPC = {
     get: 'settings:get',
     set: 'settings:set'
   },
+  datadog: {
+    listDashboards: 'datadog:listDashboards'
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',
