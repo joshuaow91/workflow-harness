@@ -25,6 +25,8 @@ function on<T>(channel: string, cb: (payload: T) => void): () => void {
 const api = {
   claude: {
     getProjects: (): Promise<ClaudeProject[]> => ipcRenderer.invoke(IPC.claude.getProjects),
+    deleteSession: (slug: string, sessionId: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.claude.deleteSession, slug, sessionId),
     onSidebarUpdate: (cb: (projects: ClaudeProject[]) => void) =>
       on<ClaudeProject[]>(IPC.claude.sidebarUpdate, cb)
   },

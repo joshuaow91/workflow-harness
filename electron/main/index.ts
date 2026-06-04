@@ -1,6 +1,6 @@
 import { execFile } from 'child_process'
 import { join } from 'path'
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, session } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerSettingsIpc } from './settings/registerSettingsIpc'
@@ -67,7 +67,13 @@ app.on('before-quit', () => {
   killAllTerminals()
 })
 
+// Present the embedded browser as a normal Chrome so github.com serves its
+// standard login flow (the default Electron UA can trigger odd/blocked behavior).
+const CHROME_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+
 app.whenReady().then(() => {
+  session.fromPartition('persist:harness').setUserAgent(CHROME_UA)
   registerIpc()
   createWindow()
 

@@ -9,7 +9,8 @@ function defaults(): AppSettings {
   return {
     defaultSessionDir: existsSync(code) ? code : homedir(),
     themeName: 'Catppuccin Mocha',
-    defaultBrowserUrl: 'https://github.com'
+    defaultBrowserUrl: 'https://github.com',
+    sessionTitles: {}
   }
 }
 

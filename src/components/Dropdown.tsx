@@ -64,14 +64,21 @@ export function Dropdown({
         setOpen(false)
       }
     }
-    const onScroll = (): void => setOpen(false)
+    // Close when the page *behind* the panel scrolls (the fixed panel would
+    // detach from its trigger) — but ignore scrolls inside the panel's own list,
+    // which fire from scrollIntoView when the menu opens.
+    const onScroll = (e: Event): void => {
+      if (panelRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
+    const onResize = (): void => setOpen(false)
     document.addEventListener('mousedown', onDoc)
     window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', onScroll)
+    window.addEventListener('resize', onResize)
     return () => {
       document.removeEventListener('mousedown', onDoc)
       window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('resize', onResize)
     }
   }, [open])
 

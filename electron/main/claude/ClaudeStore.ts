@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'fs/promises'
+import { readdir, readFile, rm, unlink } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 import chokidar, { type FSWatcher } from 'chokidar'
@@ -130,10 +130,20 @@ export async function buildProjects(): Promise<ClaudeProject[]> {
   return projects
 }
 
+/** Delete a session transcript (and its sidecar dir) from disk. */
+export async function deleteSession(slug: string, sessionId: string): Promise<void> {
+  const dir = join(PROJECTS_DIR, slug)
+  await unlink(join(dir, `${sessionId}.jsonl`)).catch(() => {})
+  await rm(join(dir, sessionId), { recursive: true, force: true }).catch(() => {})
+}
+
 let watcher: FSWatcher | null = null
 
 export function registerClaudeIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.claude.getProjects, () => buildProjects())
+  ipcMain.handle(IPC.claude.deleteSession, (_e, slug: string, sessionId: string) =>
+    deleteSession(slug, sessionId)
+  )
 
   let timer: NodeJS.Timeout | null = null
   const pushUpdate = (): void => {

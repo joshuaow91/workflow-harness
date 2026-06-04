@@ -5,6 +5,7 @@
 export const IPC = {
   claude: {
     getProjects: 'claude:getProjects',
+    deleteSession: 'claude:deleteSession',
     sidebarUpdate: 'claude:sidebarUpdate' // main -> renderer push
   },
   worktree: {

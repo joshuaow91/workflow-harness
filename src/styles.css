@@ -139,6 +139,56 @@ button {
   border-color: var(--accent);
 }
 
+/* ---- Context menu ---- */
+
+.ctx-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 140px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--surface-hover);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.ctx-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+.ctx-item:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.ctx-item.danger:hover {
+  background: rgba(243, 139, 168, 0.15);
+  color: var(--red);
+}
+
+.session-rename {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 2px 6px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+.session-rename:focus {
+  outline: none;
+}
+
 /* ---- Custom dropdown ---- */
 
 .dd {

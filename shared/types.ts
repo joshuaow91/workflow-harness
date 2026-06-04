@@ -10,6 +10,8 @@ export interface AppSettings {
   themeName: string
   /** URL that new browser tabs open to. */
   defaultBrowserUrl: string
+  /** User-renamed session titles, keyed by sessionId. */
+  sessionTitles: Record<string, string>
 }
 
 // ---- Claude sidebar ----
