@@ -2306,6 +2306,58 @@ button {
   font-size: 10px;
 }
 
+.repo-live-count {
+  color: var(--green);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(166, 227, 161, 0.12);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.wt-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.wt-dot.idle {
+  background: var(--overlay);
+  opacity: 0.6;
+}
+
+.wt-dot.main {
+  background: var(--accent-dim);
+}
+
+.wt-dot.live {
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(166, 227, 161, 0.6);
+  animation: pulse 1.6s infinite;
+}
+
+.wt-new {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 2px 12px 6px 34px;
+  padding: 4px 8px;
+  text-align: left;
+  background: transparent;
+  border: 1px dashed var(--surface-hover);
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.wt-new:hover {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(166, 227, 161, 0.06);
+}
+
 .repo-actions,
 .wt-actions {
   margin-left: auto;
