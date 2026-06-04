@@ -2671,14 +2671,62 @@ button {
 .terminals-grid {
   flex: 1;
   min-height: 0;
+  gap: 3px;
+  padding: 3px;
+}
+
+.term-layouts {
+  display: flex;
+  gap: 2px;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.term-layout {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 3px 7px;
+  color: var(--text-faint);
+}
+
+.term-layout:hover {
+  color: var(--text-dim);
+}
+
+.term-layout.active {
+  background: var(--bg-elevated);
+  color: var(--accent);
 }
 
 .term-panel {
-  display: flex !important;
+  display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   background: var(--bg-elevated);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.term-panel.dragging {
+  opacity: 0.5;
+}
+
+.term-panel.drag-over {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.term-panel-header {
+  cursor: grab;
+}
+
+.term-panel-header:active {
+  cursor: grabbing;
 }
 
 .term-panel-header {

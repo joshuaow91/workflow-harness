@@ -23,7 +23,12 @@ const PATHS: Record<string, string> = {
   branch:
     '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
   graph:
-    '<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.3 7.2 10.5 16M16.7 7.2 13.5 16M7.5 6h9"/>'
+    '<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.3 7.2 10.5 16M16.7 7.2 13.5 16M7.5 6h9"/>',
+  cols: '<rect x="3" y="4" width="7.5" height="16" rx="1"/><rect x="13.5" y="4" width="7.5" height="16" rx="1"/>',
+  rows: '<rect x="4" y="3" width="16" height="7.5" rx="1"/><rect x="4" y="13.5" width="16" height="7.5" rx="1"/>',
+  grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1"/>',
+  mainGrid:
+    '<rect x="3" y="3" width="10" height="18" rx="1"/><rect x="15" y="3" width="6" height="8" rx="1"/><rect x="15" y="13" width="6" height="8" rx="1"/>'
 }
 
 export function Icon({ name, size = 15 }: { name: string; size?: number }) {

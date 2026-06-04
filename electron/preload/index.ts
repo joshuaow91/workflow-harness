@@ -45,6 +45,7 @@ const api = {
   terminal: {
     create: (opts: TerminalSpawnOptions): Promise<string> =>
       ipcRenderer.invoke(IPC.terminal.create, opts),
+    getBuffer: (id: string): Promise<string> => ipcRenderer.invoke(IPC.terminal.getBuffer, id),
     write: (id: string, data: string): void => {
       ipcRenderer.send(IPC.terminal.write, id, data)
     },

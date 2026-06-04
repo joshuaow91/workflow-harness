@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { useDefaultSessionDir } from '../lib/settingsStore'
@@ -15,11 +15,22 @@ export function SideTerminal({ onClose }: { onClose?: () => void }) {
   const sessions = useFlatSessions()
   const defaultDir = useDefaultSessionDir()
   const [opts, setOpts] = useState<TerminalSpawnOptions | null>(null)
-  const [mountKey, setMountKey] = useState(0)
+  const [termId, setTermId] = useState<string | null>(null)
+  const termIdRef = useRef<string | null>(null)
 
-  const launch = (next: TerminalSpawnOptions): void => {
+  useEffect(
+    () => () => {
+      if (termIdRef.current) window.api.terminal.kill(termIdRef.current)
+    },
+    []
+  )
+
+  const launch = async (next: TerminalSpawnOptions): Promise<void> => {
+    if (termIdRef.current) window.api.terminal.kill(termIdRef.current)
+    const id = await window.api.terminal.create(next)
+    termIdRef.current = id
+    setTermId(id)
     setOpts(next)
-    setMountKey((k) => k + 1)
   }
 
   const onSelect = (value: string): void => {
@@ -61,8 +72,8 @@ export function SideTerminal({ onClose }: { onClose?: () => void }) {
         )}
       </div>
       <div className="side-term-body">
-        {opts ? (
-          <TerminalPane key={mountKey} opts={opts} />
+        {termId ? (
+          <TerminalPane id={termId} />
         ) : (
           <div className="side-term-hint">Pick a session to resume, or start a new claude.</div>
         )}

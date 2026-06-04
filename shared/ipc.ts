@@ -18,6 +18,7 @@ export const IPC = {
     write: 'terminal:write',
     resize: 'terminal:resize',
     kill: 'terminal:kill',
+    getBuffer: 'terminal:getBuffer',
     data: 'terminal:data', // main -> renderer push
     exit: 'terminal:exit' // main -> renderer push
   },

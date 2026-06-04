@@ -3,10 +3,12 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
-import type { TerminalSpawnOptions } from '@shared/types'
 import { themeStore, xtermTheme } from '../themes/themeStore'
 
-export function TerminalPane({ opts, onExit }: { opts: TerminalSpawnOptions; onExit?: () => void }) {
+// Attaches to an already-running PTY (created by TerminalsTab) by id. Replays the
+// session's recent output so re-mounting (layout change / restart) is seamless.
+// Does NOT kill the PTY on unmount — only the owner (the tab) does that.
+export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -25,65 +27,63 @@ export function TerminalPane({ opts, onExit }: { opts: TerminalSpawnOptions; onE
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.loadAddon(new WebLinksAddon((_e, uri) => void window.api.system.openExternal(uri)))
+    term.open(container)
+    fit.fit()
 
-    // Live-update the terminal palette when the theme changes.
     const offTheme = themeStore.subscribe(() => {
       term.options.theme = xtermTheme(themeStore.get())
     })
 
-    term.open(container)
-    fit.fit()
-
-    const idRef = { current: null as string | null }
-
+    // Queue live data until the history buffer is written, to keep order.
+    let ready = false
+    const queue: string[] = []
     const offData = window.api.terminal.onData((e) => {
-      if (e.id === idRef.current) term.write(e.data)
+      if (e.id !== id) return
+      if (ready) term.write(e.data)
+      else queue.push(e.data)
     })
     const offExit = window.api.terminal.onExit((e) => {
-      if (e.id === idRef.current) {
+      if (e.id === id) {
         term.write('\r\n\x1b[2m[process exited]\x1b[0m\r\n')
         onExit?.()
       }
     })
+    term.onData((data) => window.api.terminal.write(id, data))
 
-    term.onData((data) => {
-      if (idRef.current) window.api.terminal.write(idRef.current, data)
+    let cancelled = false
+    void window.api.terminal.getBuffer(id).then((buf) => {
+      if (cancelled) return
+      if (buf) term.write(buf)
+      for (const d of queue) term.write(d)
+      queue.length = 0
+      ready = true
+      window.api.terminal.resize(id, term.cols, term.rows)
     })
-
-    window.api.terminal
-      .create({ ...opts, cols: term.cols, rows: term.rows })
-      .then((id) => {
-        idRef.current = id
-      })
-      .catch(() => term.write('\r\n\x1b[31mFailed to start terminal.\x1b[0m\r\n'))
 
     const ro = new ResizeObserver(() => {
       try {
         fit.fit()
       } catch {
-        /* container detached */
+        /* detached */
       }
-      if (idRef.current) window.api.terminal.resize(idRef.current, term.cols, term.rows)
+      window.api.terminal.resize(id, term.cols, term.rows)
     })
     ro.observe(container)
 
-    // Focus on click anywhere in the pane.
     const focus = (): void => term.focus()
     container.addEventListener('mousedown', focus)
     term.focus()
 
     return () => {
+      cancelled = true
       container.removeEventListener('mousedown', focus)
       ro.disconnect()
       offTheme()
       offData()
       offExit()
-      if (idRef.current) window.api.terminal.kill(idRef.current)
       term.dispose()
     }
-    // opts is captured once at mount; panes are remounted via React key to "restart".
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [id])
 
   return <div className="term-host" ref={containerRef} />
 }

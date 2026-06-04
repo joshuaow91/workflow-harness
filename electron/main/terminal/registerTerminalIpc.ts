@@ -9,6 +9,10 @@ import { XtermPtyBackend } from './XtermPtyBackend'
 const backend = new XtermPtyBackend()
 
 const sessions = new Map<string, BackendSession>()
+// Recent output per session, so a re-mounted pane (layout change / reorder) can
+// replay history instead of showing a blank terminal. The PTY keeps running.
+const buffers = new Map<string, string>()
+const MAX_BUFFER = 256 * 1024
 
 export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void {
   const send = (channel: string, payload: unknown): void => {
@@ -19,15 +23,23 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.terminal.create, (_e, opts: TerminalSpawnOptions): string => {
     const session = backend.spawn(opts)
     sessions.set(session.id, session)
+    buffers.set(session.id, '')
 
-    session.onData((data) => send(IPC.terminal.data, { id: session.id, data }))
+    session.onData((data) => {
+      const buf = (buffers.get(session.id) ?? '') + data
+      buffers.set(session.id, buf.length > MAX_BUFFER ? buf.slice(-MAX_BUFFER) : buf)
+      send(IPC.terminal.data, { id: session.id, data })
+    })
     session.onExit(({ exitCode, signal }) => {
       send(IPC.terminal.exit, { id: session.id, exitCode, signal })
       sessions.delete(session.id)
+      buffers.delete(session.id)
     })
 
     return session.id
   })
+
+  ipcMain.handle(IPC.terminal.getBuffer, (_e, id: string): string => buffers.get(id) ?? '')
 
   ipcMain.on(IPC.terminal.write, (_e, id: string, data: string) => {
     sessions.get(id)?.write(data)
@@ -42,6 +54,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
     if (session) {
       session.kill()
       sessions.delete(id)
+      buffers.delete(id)
     }
   })
 }
