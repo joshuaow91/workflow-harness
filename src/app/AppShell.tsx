@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
+import { BrowserPane } from '../panes/BrowserPane'
 import { terminalBus } from '../lib/terminalBus'
 
 type TabId = 'terminals' | 'browser' | 'issues' | 'board' | 'myprs' | 'review'
@@ -30,10 +31,8 @@ function Placeholder({ emoji, title, sub }: { emoji: string; title: string; sub:
   )
 }
 
-function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals'> }) {
+function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
   switch (tab) {
-    case 'browser':
-      return <Placeholder emoji="🌐" title="Browser" sub="An embedded web browser pane lands here (step 5)." />
     case 'issues':
       return <Placeholder emoji="◇" title="GitHub Issues" sub="Issues for the selected repo, via the gh CLI (step 6)." />
     case 'board':
@@ -75,11 +74,14 @@ export function AppShell() {
           ))}
         </div>
         <div className="tab-content">
-          {/* Terminals stays mounted so PTYs survive tab switches. */}
+          {/* Terminals + browser stay mounted so PTYs and page state survive tab switches. */}
           <div className="tab-layer" style={{ display: activeTab === 'terminals' ? 'block' : 'none' }}>
             <TerminalsTab />
           </div>
-          {activeTab !== 'terminals' && <TabPanel tab={activeTab} />}
+          <div className="tab-layer" style={{ display: activeTab === 'browser' ? 'block' : 'none' }}>
+            <BrowserPane />
+          </div>
+          {activeTab !== 'terminals' && activeTab !== 'browser' && <TabPanel tab={activeTab} />}
         </div>
       </div>
     </div>

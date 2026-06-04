@@ -361,6 +361,76 @@ button {
   background: rgba(137, 180, 250, 0.08);
 }
 
+/* ---- Browser tab ---- */
+
+.browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: none;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.address {
+  flex: 1;
+  height: 26px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--surface);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.address:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.browser-view {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.browser-view webview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 /* ---- Repo / worktree tree ---- */
 
 .repo-block {
