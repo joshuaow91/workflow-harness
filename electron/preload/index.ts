@@ -65,6 +65,12 @@ const api = {
   browser: {
     onOpenTab: (cb: (url: string) => void) => on<string>(IPC.browser.openTab, cb)
   },
+  agent: {
+    setTarget: (webContentsId: number | null): Promise<void> =>
+      ipcRenderer.invoke(IPC.agent.setTarget, webContentsId),
+    connectClaude: (): Promise<{ ok: boolean; message: string }> =>
+      ipcRenderer.invoke(IPC.agent.connectClaude)
+  },
   devtools: {
     attach: (targetId: number, devtoolsId: number): Promise<void> =>
       ipcRenderer.invoke(IPC.devtools.attach, targetId, devtoolsId),

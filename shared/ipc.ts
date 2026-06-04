@@ -32,6 +32,10 @@ export const IPC = {
   browser: {
     openTab: 'browser:openTab' // main -> renderer push (open url in web workspace)
   },
+  agent: {
+    setTarget: 'agent:setTarget',
+    connectClaude: 'agent:connectClaude'
+  },
   devtools: {
     attach: 'devtools:attach',
     detach: 'devtools:detach'

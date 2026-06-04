@@ -1,0 +1,45 @@
+import { execFile } from 'child_process'
+import { join } from 'path'
+import { app, ipcMain } from 'electron'
+import { IPC } from '@shared/ipc'
+import { setAgentTarget } from './BrowserController'
+import { CONTROL_PORT, startControlServer } from './controlServer'
+
+// Absolute path to the standalone MCP server script (resolves from the project
+// root in dev; bundled under resources when packaged).
+function mcpScriptPath(): string {
+  return join(app.getAppPath(), 'mcp', 'agent-browser.mjs')
+}
+
+export function registerAgentIpc(): void {
+  startControlServer()
+
+  ipcMain.handle(IPC.agent.setTarget, (_e, webContentsId: number | null) => {
+    setAgentTarget(webContentsId)
+  })
+
+  // Register the MCP server with Claude Code (user scope) so `claude` picks it up.
+  ipcMain.handle(IPC.agent.connectClaude, (): Promise<{ ok: boolean; message: string }> => {
+    return new Promise((resolve) => {
+      const args = [
+        'mcp',
+        'add',
+        'agent-browser',
+        '-s',
+        'user',
+        '-e',
+        `CONTROL_URL=http://127.0.0.1:${CONTROL_PORT}`,
+        '--',
+        'node',
+        mcpScriptPath()
+      ]
+      execFile('claude', args, (err, _stdout, stderr) => {
+        if (err && !/already exists/i.test(stderr)) {
+          resolve({ ok: false, message: (stderr || err.message).trim() })
+        } else {
+          resolve({ ok: true, message: 'Connected. Restart any running claude session to load it.' })
+        }
+      })
+    })
+  })
+}

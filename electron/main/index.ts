@@ -4,6 +4,7 @@ import { app, BrowserWindow, shell, ipcMain, session, Menu, clipboard } from 'el
 import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerSettingsIpc } from './settings/registerSettingsIpc'
+import { registerAgentIpc } from './agent/registerAgentIpc'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -133,6 +134,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
+  registerAgentIpc()
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)

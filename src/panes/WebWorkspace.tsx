@@ -5,6 +5,7 @@ import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { browserBus } from '../lib/browserBus'
 import { useDefaultSessionDir, useSettings } from '../lib/settingsStore'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
+import { AgentBrowser } from './AgentBrowser'
 import { DevToolsPane } from './DevToolsPane'
 import { TerminalPane } from './TerminalPane'
 import { WebFrame } from './WebFrame'
@@ -18,7 +19,7 @@ interface Tab {
 }
 interface SidePane {
   id: number
-  kind: 'terminal' | 'browser'
+  kind: 'terminal' | 'browser' | 'agent'
 }
 
 // ---- Right-sidebar terminal with a session picker ----
@@ -165,7 +166,7 @@ export function WebWorkspace() {
   const setTabTitle = (id: number, title: string): void =>
     setTabs((t) => t.map((x) => (x.id === id ? { ...x, title } : x)))
 
-  const addSide = (kind: 'terminal' | 'browser'): void =>
+  const addSide = (kind: SidePane['kind']): void =>
     setSidePanes((p) => [...p, { id: sideCounter.current++, kind }])
   const closeSide = (id: number): void => setSidePanes((p) => p.filter((x) => x.id !== id))
 
@@ -256,6 +257,13 @@ export function WebWorkspace() {
               <button className="tbtn" onClick={() => addSide('browser')}>
                 ＋ browser
               </button>
+              <button
+                className="tbtn"
+                onClick={() => addSide('agent')}
+                title="A browser pane Claude can drive via MCP"
+              >
+                🤖 agent
+              </button>
             </div>
             {sidePanes.length === 0 ? (
               <div className="side-term-hint" style={{ padding: 16 }}>
@@ -301,6 +309,8 @@ function SidePaneFragment({
       <Panel minSize={12}>
         {pane.kind === 'terminal' ? (
           <SideTerminal onClose={onClose} />
+        ) : pane.kind === 'agent' ? (
+          <AgentBrowser onClose={onClose} />
         ) : (
           <div className="side-browser">
             <WebFrame src={browserUrl} onActivate={onActivate} />

@@ -1333,6 +1333,42 @@ button {
   background: var(--surface);
 }
 
+.agent-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-elevated);
+}
+
+.agent-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--mauve);
+}
+
+.agent-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mauve);
+}
+
+.agent-msg {
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--green);
+  background: rgba(166, 227, 161, 0.08);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-frame {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
 /* ---- Repo / worktree tree ---- */
 
 .repo-block {
