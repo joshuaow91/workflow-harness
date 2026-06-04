@@ -1,3 +1,4 @@
+import { execFile } from 'child_process'
 import { EJSON } from 'bson'
 import { MongoClient } from 'mongodb'
 import { ipcMain } from 'electron'
@@ -62,10 +63,37 @@ async function find(
   return toPlain(docs)
 }
 
+// Turn a natural-language request into a MongoDB find filter via the claude CLI,
+// giving it a sample document so it knows the schema.
+async function aiQuery(db: string, coll: string, prompt: string): Promise<string> {
+  const c = await getClient()
+  const sample = await c.db(db).collection(coll).findOne({})
+  const sampleJson = sample ? (EJSON.stringify(sample, { relaxed: true }) as string).slice(0, 1500) : '{}'
+  const full =
+    `You write MongoDB find() query filters. Database "${db}", collection "${coll}".\n` +
+    `Sample document:\n${sampleJson}\n\n` +
+    `Write a single JSON filter object for this request. Output ONLY the JSON filter — no prose, ` +
+    `no markdown code fences. Use MongoDB operators ($gt, $in, $regex, $date, etc.) as needed.\n\n` +
+    `Request: ${prompt}`
+  return new Promise((resolve, reject) => {
+    execFile('claude', ['-p', full], { timeout: 120000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) return reject(new Error((stderr || err.message).trim()))
+      const cleaned = stdout
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim()
+      resolve(cleaned)
+    })
+  })
+}
+
 export function registerMongoIpc(): void {
   ipcMain.handle(IPC.mongo.listDatabases, () => listDatabases())
   ipcMain.handle(IPC.mongo.listCollections, (_e, db: string) => listCollections(db))
   ipcMain.handle(IPC.mongo.find, (_e, db: string, coll: string, filter: string, limit: number) =>
     find(db, coll, filter, limit)
+  )
+  ipcMain.handle(IPC.mongo.aiQuery, (_e, db: string, coll: string, prompt: string) =>
+    aiQuery(db, coll, prompt)
   )
 }

@@ -29,6 +29,9 @@ export function MongoTab() {
   const [filter, setFilter] = useState('{}')
   const [limit, setLimit] = useState(50)
   const [nonce, setNonce] = useState(0)
+  const [ai, setAi] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiErr, setAiErr] = useState<string | null>(null)
   const docs = useAsync(
     () => (db && coll ? window.api.mongo.find(db, coll, filter, limit) : Promise.resolve([])),
     [db, coll, nonce]
@@ -43,6 +46,21 @@ export function MongoTab() {
   useEffect(() => {
     if (db && !coll && colls.data?.length) setColl(colls.data[0])
   }, [colls.data, coll, db])
+
+  const askAi = async (): Promise<void> => {
+    if (!ai.trim() || !db || !coll || aiLoading) return
+    setAiLoading(true)
+    setAiErr(null)
+    try {
+      const generated = await window.api.mongo.aiQuery(db, coll, ai.trim())
+      setFilter(generated)
+      setNonce((n) => n + 1)
+    } catch (e) {
+      setAiErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   if (dbs.error?.includes('NO_MONGO_URI')) return <MissingUri />
 
@@ -84,6 +102,22 @@ export function MongoTab() {
         <PanelResizeHandle className="resize-handle" />
         <Panel defaultSize={78} minSize={30}>
           <div className="mongo-view">
+            <div className="mongo-ai">
+              <input
+                className="mongo-ai-input"
+                placeholder={
+                  coll ? `Ask AI to query "${coll}"…` : 'Select a collection, then ask AI…'
+                }
+                value={ai}
+                disabled={!coll || aiLoading}
+                onChange={(e) => setAi(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && askAi()}
+              />
+              <button className="tbtn" onClick={askAi} disabled={!coll || aiLoading || !ai.trim()}>
+                {aiLoading ? 'Asking…' : 'Ask AI'}
+              </button>
+            </div>
+            {aiErr && <div className="gh-state gh-error">{aiErr}</div>}
             <div className="mongo-querybar">
               <span className="mongo-coll-name">{coll ?? '—'}</span>
               <input

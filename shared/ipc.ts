@@ -61,7 +61,8 @@ export const IPC = {
   mongo: {
     listDatabases: 'mongo:listDatabases',
     listCollections: 'mongo:listCollections',
-    find: 'mongo:find'
+    find: 'mongo:find',
+    aiQuery: 'mongo:aiQuery'
   },
   system: {
     openExternal: 'system:openExternal',
