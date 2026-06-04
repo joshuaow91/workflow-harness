@@ -2260,6 +2260,14 @@ button {
   font-size: 12.5px;
 }
 
+.repo-block.dragging {
+  opacity: 0.45;
+}
+
+.repo-block.drag-over {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
 .repo-row {
   display: flex;
   align-items: center;
@@ -2348,10 +2356,52 @@ button {
   animation: pulse 1.6s infinite;
 }
 
+.wt-icon {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.wt-icon[data-main='true'] {
+  color: var(--accent-dim);
+}
+
+.wt-icon[data-main='false'] {
+  color: var(--mauve);
+}
+
+.wt-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
+.wt-live {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(166, 227, 161, 0.6);
+  animation: pulse 1.6s infinite;
+}
+
+.wt-newrow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 2px 0 6px;
+}
+
 .wt-new {
   display: block;
   width: calc(100% - 40px);
-  margin: 2px 12px 6px 34px;
+  margin: 0 12px 0 34px;
   padding: 4px 8px;
   text-align: left;
   background: transparent;

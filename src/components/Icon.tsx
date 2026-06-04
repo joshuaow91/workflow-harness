@@ -19,7 +19,9 @@ const PATHS: Record<string, string> = {
   diagram:
     '<rect x="4" y="4" width="7" height="4" rx="1"/><rect x="13" y="16" width="7" height="4" rx="1"/><path d="M7.5 8v5a2 2 0 0 0 2 2h7"/>',
   database:
-    '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>'
+    '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+  branch:
+    '<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>'
 }
 
 export function Icon({ name, size = 15 }: { name: string; size?: number }) {

@@ -1,5 +1,5 @@
 import { execFile } from 'child_process'
-import { existsSync } from 'fs'
+import { statSync } from 'fs'
 import { readdir } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
@@ -91,6 +91,15 @@ async function loadRepo(name: string, path: string): Promise<Repo> {
   }
 }
 
+// A main checkout has `.git` as a directory; a linked worktree has it as a file.
+function isMainCheckout(path: string): boolean {
+  try {
+    return statSync(join(path, '.git')).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 export async function discoverRepos(): Promise<Repo[]> {
   let entries
   try {
@@ -102,7 +111,10 @@ export async function discoverRepos(): Promise<Repo[]> {
     entries
       .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       .map((e) => ({ name: e.name, path: join(CODE_ROOT, e.name) }))
-      .filter(({ path }) => existsSync(join(path, '.git')))
+      // Only main checkouts: a linked worktree has `.git` as a FILE (gitdir
+      // pointer), not a directory — those appear under their parent's worktree
+      // list instead of as their own top-level repo.
+      .filter(({ path }) => isMainCheckout(path))
       .map(({ name, path }) => loadRepo(name, path))
   )
   repos.sort((a, b) => a.name.localeCompare(b.name))

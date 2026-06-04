@@ -22,6 +22,8 @@ export interface AppSettings {
   obsidianVault: string
   /** MongoDB connection string (fallback to MONGODB_URI env). */
   mongoUri: string
+  /** Custom sidebar repo order (by repo path); unlisted repos sort after, alphabetically. */
+  repoOrder: string[]
 }
 
 export interface MongoDatabase {
