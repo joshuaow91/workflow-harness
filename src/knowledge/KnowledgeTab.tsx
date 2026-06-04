@@ -90,6 +90,28 @@ export function KnowledgeTab() {
         </button>
       </div>
       <div className="kg-body">
+        <div className="kg-info">
+          <div className="kg-info-title">What this is & why it saves tokens</div>
+          <p>
+            Normally, every Claude session re-discovers what a repo is — grepping, reading{' '}
+            <code>package.json</code>, walking directories — which burns hundreds to thousands of
+            tokens each time. This page builds a small, reusable <strong>knowledge graph</strong> so
+            that doesn&apos;t have to happen.
+          </p>
+          <p>
+            <strong>How it works:</strong> “Generate” runs <code>claude</code> once per repo — feeding
+            it that repo&apos;s README, manifest (package.json/go.mod/…), and top-level structure — to
+            write a concise card: <em>purpose, stack, key paths, and which repos it integrates with</em>
+            . The cards are cached locally and never re-explored unless you regenerate.
+          </p>
+          <p>
+            <strong>How Claude uses it:</strong> the graph is exposed through the harness&apos;s{' '}
+            <code>repo_knowledge</code> MCP tool. So instead of exploring files to learn “what is{' '}
+            <code>blink_reyrey_server</code>,” a session makes <strong>one cheap tool call</strong> and
+            gets the whole picture — including the relationship diagram below. Net effect: far fewer
+            tokens spent on orientation, more spent on the actual task.
+          </p>
+        </div>
         {mmd && <div className="kg-graph" dangerouslySetInnerHTML={{ __html: svg }} />}
         <div className="kg-cards">
           {repos.map((repo) => {

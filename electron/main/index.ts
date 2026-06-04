@@ -1,4 +1,5 @@
 import { execFile } from 'child_process'
+import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { app, BrowserWindow, shell, ipcMain, session, Menu, clipboard, nativeTheme } from 'electron'
 import { IPC } from '@shared/ipc'
@@ -15,6 +16,44 @@ import { registerWorktreeIpc } from './git/registerWorktreeIpc'
 import { registerGithubIpc } from './github/registerGithubIpc'
 
 let mainWindow: BrowserWindow | null = null
+
+// ---- Persist window size/position across restarts ----
+
+interface WindowState {
+  width: number
+  height: number
+  x?: number
+  y?: number
+  maximized?: boolean
+}
+
+function windowStateFile(): string {
+  return join(app.getPath('userData'), 'window-state.json')
+}
+
+function loadWindowState(): WindowState | null {
+  try {
+    return JSON.parse(readFileSync(windowStateFile(), 'utf8')) as WindowState
+  } catch {
+    return null
+  }
+}
+
+let saveTimer: NodeJS.Timeout | null = null
+function saveWindowState(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  const maximized = mainWindow.isMaximized()
+  const bounds = mainWindow.getNormalBounds()
+  try {
+    writeFileSync(windowStateFile(), JSON.stringify({ ...bounds, maximized }))
+  } catch {
+    /* ignore */
+  }
+}
+function scheduleSaveWindowState(): void {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(saveWindowState, 400)
+}
 
 // Give embedded <webview>s a browser-like context menu + new-tab behavior.
 function wireGuestWebview(contents: Electron.WebContents): void {
@@ -59,9 +98,12 @@ function wireGuestWebview(contents: Electron.WebContents): void {
 }
 
 function createWindow(): void {
+  const state = loadWindowState()
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: state?.width ?? 1440,
+    height: state?.height ?? 900,
+    x: state?.x,
+    y: state?.y,
     minWidth: 1000,
     minHeight: 640,
     show: false,
@@ -75,7 +117,12 @@ function createWindow(): void {
     }
   })
 
+  if (state?.maximized) mainWindow.maximize()
+
   mainWindow.on('ready-to-show', () => mainWindow?.show())
+  mainWindow.on('resize', scheduleSaveWindowState)
+  mainWindow.on('move', scheduleSaveWindowState)
+  mainWindow.on('close', saveWindowState)
 
   mainWindow.webContents.on('did-attach-webview', (_e, contents) => wireGuestWebview(contents))
 

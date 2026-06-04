@@ -38,6 +38,12 @@ export function TerminalsTab() {
   }
   useEffect(() => terminalBus.subscribe((opts) => void addPane(opts)), [])
 
+  // Refit all terminals when the layout changes (panes don't remount).
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 60)
+    return () => clearTimeout(t)
+  }, [layout, panes.length])
+
   const closePane = (paneId: number): void =>
     setPanes((p) => {
       const pane = p.find((x) => x.paneId === paneId)

@@ -60,15 +60,21 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
       window.api.terminal.resize(id, term.cols, term.rows)
     })
 
-    const ro = new ResizeObserver(() => {
+    const doFit = (): void => {
       try {
         fit.fit()
       } catch {
         /* detached */
       }
       window.api.terminal.resize(id, term.cols, term.rows)
-    })
+    }
+    const ro = new ResizeObserver(doFit)
     ro.observe(container)
+    if (container.parentElement) ro.observe(container.parentElement)
+    window.addEventListener('resize', doFit)
+    // A couple of post-layout fits to catch mount-while-hidden / first paint.
+    requestAnimationFrame(doFit)
+    setTimeout(doFit, 60)
 
     const focus = (): void => term.focus()
     container.addEventListener('mousedown', focus)
@@ -77,6 +83,7 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     return () => {
       cancelled = true
       container.removeEventListener('mousedown', focus)
+      window.removeEventListener('resize', doFit)
       ro.disconnect()
       offTheme()
       offData()
