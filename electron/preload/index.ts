@@ -142,7 +142,9 @@ const api = {
     listNotes: (): Promise<ObsidianNote[]> => ipcRenderer.invoke(IPC.obsidian.listNotes),
     readNote: (path: string): Promise<string> => ipcRenderer.invoke(IPC.obsidian.readNote, path),
     saveNote: (path: string, content: string): Promise<void> =>
-      ipcRenderer.invoke(IPC.obsidian.saveNote, path, content)
+      ipcRenderer.invoke(IPC.obsidian.saveNote, path, content),
+    createNote: (name: string): Promise<string> => ipcRenderer.invoke(IPC.obsidian.createNote, name),
+    deleteNote: (path: string): Promise<void> => ipcRenderer.invoke(IPC.obsidian.deleteNote, path)
   },
   mermaid: {
     onRender: (cb: (code: string) => void) => on<string>(IPC.mermaid.render, cb),

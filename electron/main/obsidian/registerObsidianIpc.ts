@@ -1,5 +1,6 @@
-import { readdir, readFile, stat, writeFile } from 'fs/promises'
-import { basename, join, relative } from 'path'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'fs/promises'
+import { existsSync } from 'fs'
+import { basename, dirname, join, relative } from 'path'
 import { ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { ObsidianNote } from '@shared/types'
@@ -65,5 +66,22 @@ export function registerObsidianIpc(): void {
 
   ipcMain.handle(IPC.obsidian.saveNote, (_e, rel: string, content: string): Promise<void> => {
     return writeFile(safeJoin(vaultDir(), rel), content, 'utf8')
+  })
+
+  // Create a new note; returns its vault-relative path (deduped).
+  ipcMain.handle(IPC.obsidian.createNote, async (_e, name: string): Promise<string> => {
+    const root = vaultDir()
+    const safe = (name || 'Untitled').replace(/[/\\:*?"<>|]/g, '-').trim() || 'Untitled'
+    let rel = `${safe}.md`
+    let n = 1
+    while (existsSync(join(root, rel))) rel = `${safe} ${++n}.md`
+    const full = safeJoin(root, rel)
+    await mkdir(dirname(full), { recursive: true })
+    await writeFile(full, `# ${safe}\n\n`, 'utf8')
+    return rel
+  })
+
+  ipcMain.handle(IPC.obsidian.deleteNote, (_e, rel: string): Promise<void> => {
+    return rm(safeJoin(vaultDir(), rel))
   })
 }
