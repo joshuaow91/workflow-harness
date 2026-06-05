@@ -129,7 +129,12 @@ export function WebFrame({
       </div>
       <div className="browser-view">
         {/* eslint-disable-next-line react/no-unknown-property */}
-        <webview ref={ref as never} src={src} partition={partition} />
+        <webview
+          ref={ref as never}
+          src={src}
+          partition={partition}
+          {...{ webpreferences: 'backgroundThrottling=no' }}
+        />
       </div>
     </div>
   )

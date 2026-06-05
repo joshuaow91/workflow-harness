@@ -72,8 +72,10 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
     }
     loadTasks()
     loadLinks()
+    // Tasks come from the local transcript (cheap). Links/states hit the GitHub
+    // API, so refresh them rarely to stay well under the rate limit.
     const t1 = setInterval(loadTasks, 5000)
-    const t2 = setInterval(loadLinks, 20000)
+    const t2 = setInterval(loadLinks, 600000)
     return () => {
       active = false
       clearInterval(t1)

@@ -30,7 +30,10 @@ const PATHS: Record<string, string> = {
   mainGrid:
     '<rect x="3" y="3" width="10" height="18" rx="1"/><rect x="15" y="3" width="6" height="8" rx="1"/><rect x="15" y="13" width="6" height="8" rx="1"/>',
   help:
-    '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.4"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>'
+    '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.4"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7.5 9 6 9-6"/>',
+  chat:
+    '<path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>'
 }
 
 export function Icon({ name, size = 15 }: { name: string; size?: number }) {

@@ -140,6 +140,8 @@ export async function listIssues(
   }))
 }
 
+const BOARD_QUERY = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issueOrPullRequest(number:$number){... on Issue{projectItems(first:5){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}} ... on PullRequest{projectItems(first:5){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}`
+
 async function fetchBoardStatus(repo: string, number: number): Promise<string | null> {
   const [owner, name] = repo.split('/')
   if (!owner || !name) return null
@@ -358,72 +360,66 @@ export async function listReviewPRs(): Promise<GhPullRequest[]> {
 const stateCache = new Map<string, { at: number; data: Partial<SessionRefImport> }>()
 type SessionRefImport = import('@shared/types').SessionRef
 
-const BOARD_QUERY = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issueOrPullRequest(number:$number){... on Issue{projectItems(first:10){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}} ... on PullRequest{projectItems(first:10){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}`
+const STATUS_FRAG = `projectItems(first:5){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}`
 
-// Project board Status single-select (needs read:project scope; absent otherwise).
-async function boardStatus(ref: SessionRefImport): Promise<string | undefined> {
-  const [owner, name] = ref.repo.split('/')
-  if (!owner || !name) return undefined
-  try {
-    const out = await ghJson<{
-      data?: { repository?: { issueOrPullRequest?: { projectItems?: { nodes?: { st?: { name?: string } }[] } } } }
-    }>([
+function refBlock(r: SessionRefImport, i: number, withBoard: boolean): string {
+  const [owner, name] = r.repo.split('/')
+  const frag = withBoard ? STATUS_FRAG : ''
+  return `r${i}: repository(owner:"${owner}", name:"${name}"){ issueOrPullRequest(number:${r.number}){ __typename ... on Issue{ state ${frag} } ... on PullRequest{ state isDraft reviewDecision ${frag} } } }`
+}
+
+type GqlNode = {
+  state?: string
+  isDraft?: boolean
+  reviewDecision?: string
+  projectItems?: { nodes?: { st?: { name?: string } }[] }
+}
+
+// Fetch every ref's state (+ board status) in ONE GraphQL request via aliases,
+// instead of 2 API calls per ref. Falls back to a board-less query if the token
+// lacks read:project (so states still resolve).
+async function batchStates(refs: SessionRefImport[]): Promise<Map<string, Partial<SessionRefImport>>> {
+  const map = new Map<string, Partial<SessionRefImport>>()
+  if (refs.length === 0) return map
+  const run = async (withBoard: boolean): Promise<void> => {
+    const query = `query{ ${refs.map((r, i) => refBlock(r, i, withBoard)).join('\n')} }`
+    const out = await ghJson<{ data?: Record<string, { issueOrPullRequest?: GqlNode }> }>([
       'api',
       'graphql',
       '-f',
-      `query=${BOARD_QUERY}`,
-      '-F',
-      `owner=${owner}`,
-      '-F',
-      `name=${name}`,
-      '-F',
-      `number=${ref.number}`
+      `query=${query}`
     ])
-    const nodes = out.data?.repository?.issueOrPullRequest?.projectItems?.nodes ?? []
-    for (const n of nodes) if (n?.st?.name) return n.st.name
-  } catch {
-    /* no project scope / not on a board */
+    refs.forEach((r, i) => {
+      const node = out.data?.[`r${i}`]?.issueOrPullRequest
+      if (!node) return
+      const board = node.projectItems?.nodes?.find((n) => n?.st?.name)?.st?.name
+      map.set(r.url, {
+        state: node.state,
+        isDraft: node.isDraft,
+        reviewDecision: node.reviewDecision || undefined,
+        boardStatus: board || undefined
+      })
+    })
   }
-  return undefined
-}
-
-async function refState(ref: SessionRefImport): Promise<Partial<SessionRefImport>> {
-  const cached = stateCache.get(ref.url)
-  if (cached && Date.now() - cached.at < 60000) return cached.data
-  let data: Partial<SessionRefImport> = {}
   try {
-    if (ref.kind === 'pr') {
-      const o = await ghJson<{ state: string; isDraft: boolean; reviewDecision: string }>([
-        'pr',
-        'view',
-        String(ref.number),
-        '-R',
-        ref.repo,
-        '--json',
-        'state,isDraft,reviewDecision'
-      ])
-      data = { state: o.state, isDraft: o.isDraft, reviewDecision: o.reviewDecision || undefined }
-    } else {
-      const o = await ghJson<{ state: string }>(['issue', 'view', String(ref.number), '-R', ref.repo, '--json', 'state'])
-      data = { state: o.state }
-    }
-  } catch {
-    /* gh unavailable / not found */
+    await run(true)
+  } catch (e) {
+    if (/read:project|required scopes/i.test((e as Error).message)) await run(false).catch(() => undefined)
   }
-  data.boardStatus = await boardStatus(ref)
-  stateCache.set(ref.url, { at: Date.now(), data })
-  return data
+  return map
 }
 
 export async function enrichLinks(refs: SessionRefImport[]): Promise<SessionRefImport[]> {
-  const out: SessionRefImport[] = []
-  // Limit concurrency so we don't spawn a flood of gh processes.
-  for (let i = 0; i < refs.length; i += 5) {
-    const batch = refs.slice(i, i + 5)
-    const states = await Promise.all(batch.map((r) => refState(r)))
-    batch.forEach((r, j) => out.push({ ...r, ...states[j] }))
+  const now = Date.now()
+  const stale = refs.filter((r) => {
+    const c = stateCache.get(r.url)
+    return !(c && now - c.at < 600000) // cache 10 min
+  })
+  if (stale.length) {
+    const states = await batchStates(stale)
+    for (const [url, data] of states) stateCache.set(url, { at: now, data })
   }
-  return out
+  return refs.map((r) => ({ ...r, ...(stateCache.get(r.url)?.data ?? {}) }))
 }
 
 // ---- Projects v2 (needs read:project scope) ----

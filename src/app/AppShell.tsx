@@ -3,6 +3,8 @@ import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
 import { AgentTab } from '../panes/AgentTab'
+import { OutlookTab } from '../panes/OutlookTab'
+import { TeamsTab } from '../panes/TeamsTab'
 import { IssuesTab } from '../github/IssuesTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
@@ -32,6 +34,8 @@ type TabId =
   | 'mermaid'
   | 'mongo'
   | 'knowledge'
+  | 'outlook'
+  | 'teams'
   | 'settings'
 
 interface TabDef {
@@ -51,10 +55,16 @@ const TABS: TabDef[] = [
   { id: 'notes', label: 'Notes', icon: 'notebook' },
   { id: 'mermaid', label: 'Diagram', icon: 'diagram' },
   { id: 'mongo', label: 'Mongo', icon: 'database' },
-  { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
+  { id: 'knowledge', label: 'Knowledge', icon: 'graph' },
+  { id: 'outlook', label: 'Outlook', icon: 'mail' },
+  { id: 'teams', label: 'Teams', icon: 'chat' }
 ]
 
-function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
+function TabPanel({
+  tab
+}: {
+  tab: Exclude<TabId, 'terminals' | 'browser' | 'agent' | 'outlook' | 'teams'>
+}) {
   switch (tab) {
     case 'issues':
       return <IssuesTab />
@@ -80,7 +90,14 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agen
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
   const [setupOpen, setSetupOpen] = useState(false)
+  // Outlook/Teams mount on first visit, then stay mounted for background push.
+  const [mountedComms, setMountedComms] = useState({ outlook: false, teams: false })
   const settings = useSettings()
+
+  useEffect(() => {
+    if (activeTab === 'outlook' || activeTab === 'teams')
+      setMountedComms((m) => (m[activeTab] ? m : { ...m, [activeTab]: true }))
+  }, [activeTab])
 
   // Jump to the Terminals tab whenever something requests a new terminal.
   useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
@@ -152,9 +169,22 @@ export function AppShell() {
           <div className="tab-layer" style={{ display: activeTab === 'agent' ? 'block' : 'none' }}>
             <AgentTab />
           </div>
-          {activeTab !== 'terminals' && activeTab !== 'browser' && activeTab !== 'agent' && (
-            <TabPanel tab={activeTab} />
+          {/* Outlook/Teams stay mounted so their service workers keep delivering push. */}
+          {mountedComms.outlook && (
+            <div className="tab-layer" style={{ display: activeTab === 'outlook' ? 'block' : 'none' }}>
+              <OutlookTab />
+            </div>
           )}
+          {mountedComms.teams && (
+            <div className="tab-layer" style={{ display: activeTab === 'teams' ? 'block' : 'none' }}>
+              <TeamsTab />
+            </div>
+          )}
+          {activeTab !== 'terminals' &&
+            activeTab !== 'browser' &&
+            activeTab !== 'agent' &&
+            activeTab !== 'outlook' &&
+            activeTab !== 'teams' && <TabPanel tab={activeTab} />}
         </div>
       </div>
     </div>
