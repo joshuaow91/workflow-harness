@@ -28,6 +28,7 @@ export function WebWorkspace() {
   const [activeTab, setActiveTab] = useState(0)
   const [sidePanes, setSidePanes] = useState<SidePane[]>([])
   const [bottom, setBottom] = useState<'devtools' | 'activity' | null>('devtools')
+  const [showSide, setShowSide] = useState(true)
   const tabCounter = useRef(1)
   const sideCounter = useRef(1)
   const didInit = useRef(false)
@@ -196,6 +197,13 @@ export function WebWorkspace() {
               >
                 ⌥ DevTools
               </button>
+              <button
+                className={`ws-dt-toggle${showSide ? ' on' : ''}`}
+                onClick={() => setShowSide((v) => !v)}
+                title="Toggle side panel"
+              >
+                {showSide ? '⟩ Panel' : '⟨ Panel'}
+              </button>
             </div>
 
             <PanelGroup direction="vertical" className="ws-vert" autoSaveId="ws-v">
@@ -258,8 +266,9 @@ export function WebWorkspace() {
           </div>
         </Panel>
 
-        <PanelResizeHandle className="resize-handle" />
+        {showSide && <PanelResizeHandle className="resize-handle" />}
 
+        {showSide && (
         <Panel defaultSize={28} minSize={14}>
           <div className="ws-side">
             <div className="ws-side-toolbar">
@@ -290,6 +299,7 @@ export function WebWorkspace() {
             )}
           </div>
         </Panel>
+        )}
       </PanelGroup>
     </div>
   )

@@ -14,6 +14,23 @@ import { IssueSidebar } from './IssueSidebar'
 
 const DEFAULT_REPO = 'blink-ai/blink_server'
 const PAGE = 50
+const UI_KEY = 'harness:issues-ui'
+
+interface SavedUi {
+  repo?: string | null
+  view?: 'list' | 'board'
+  stateFilter?: 'open' | 'closed'
+  search?: string
+  openTabs?: OpenTab[]
+  active?: string
+}
+function loadUi(): SavedUi {
+  try {
+    return JSON.parse(localStorage.getItem(UI_KEY) || '{}') as SavedUi
+  } catch {
+    return {}
+  }
+}
 
 function labelStyle(hex: string): React.CSSProperties {
   const c = (hex || '888888').replace('#', '')
@@ -219,11 +236,12 @@ export function IssuesTab() {
     () => repos.filter((r) => r.nameWithOwner).map((r) => r.nameWithOwner as string),
     [repos]
   )
-  const [repo, setRepo] = useState<string | null>(null)
-  const [view, setView] = useState<'list' | 'board'>('list')
-  const [stateFilter, setStateFilter] = useState<'open' | 'closed'>('open')
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
+  const saved = useRef(loadUi()).current
+  const [repo, setRepo] = useState<string | null>(saved.repo ?? null)
+  const [view, setView] = useState<'list' | 'board'>(saved.view ?? 'list')
+  const [stateFilter, setStateFilter] = useState<'open' | 'closed'>(saved.stateFilter ?? 'open')
+  const [searchInput, setSearchInput] = useState(saved.search ?? '')
+  const [search, setSearch] = useState(saved.search ?? '')
   const [limit, setLimit] = useState(PAGE)
 
   useEffect(() => {
@@ -246,8 +264,20 @@ export function IssuesTab() {
   )
   const issues = data ?? []
 
-  const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
-  const [active, setActive] = useState<string>('list')
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>(saved.openTabs ?? [])
+  const [active, setActive] = useState<string>(saved.active ?? 'list')
+
+  // Remember filters + open detail tabs across navigation/restarts.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        UI_KEY,
+        JSON.stringify({ repo, view, stateFilter, search: searchInput, openTabs, active })
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [repo, view, stateFilter, searchInput, openTabs, active])
 
   const localPathFor = (nwo: string): string | undefined =>
     repos.find((r) => r.nameWithOwner === nwo)?.path

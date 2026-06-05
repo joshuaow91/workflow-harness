@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { GH_MISSING_PROJECT_SCOPE, type GhProjectItem } from '@shared/types'
+
+const BOARD_KEY = 'harness:issues-board'
+function loadBoardUi(): { groupBy?: string; employee?: string } {
+  try {
+    return JSON.parse(localStorage.getItem(BOARD_KEY) || '{}')
+  } catch {
+    return {}
+  }
+}
 import { useAsync } from '../lib/useAsync'
 import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
@@ -60,9 +69,18 @@ export function IssuesBoard({
   const [items, setItems] = useState<GhProjectItem[]>([])
   useEffect(() => setItems(board.data?.items ?? []), [board.data])
 
-  const [groupBy, setGroupBy] = useState('Status')
-  const [employee, setEmployee] = useState('')
+  const savedBoard = useRef(loadBoardUi()).current
+  const [groupBy, setGroupBy] = useState(savedBoard.groupBy ?? 'Status')
+  const [employee, setEmployee] = useState(savedBoard.employee ?? '')
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BOARD_KEY, JSON.stringify({ groupBy, employee }))
+    } catch {
+      /* ignore */
+    }
+  }, [groupBy, employee])
   const [dragId, setDragId] = useState<string | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
