@@ -6,6 +6,8 @@ import { IssuesTab } from '../github/IssuesTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
 import { DiffTab } from '../diff/DiffTab'
+import { DiffModal } from '../diff/DiffModal'
+import { diffBus } from '../lib/diffBus'
 import { DatadogTab } from '../datadog/DatadogTab'
 import { ObsidianTab } from '../obsidian/ObsidianTab'
 import { MermaidTab } from '../mermaid/MermaidTab'
@@ -82,7 +84,12 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
   const [setupOpen, setSetupOpen] = useState(false)
+  const [diffModal, setDiffModal] = useState<{ path: string; title: string } | null>(null)
   const settings = useSettings()
+
+  // Sidebar diff shortcuts: focus the Changes tab, or pop a quick diff modal.
+  useEffect(() => diffBus.onTab(() => setActiveTab('changes')), [])
+  useEffect(() => diffBus.onModal((path, title) => setDiffModal({ path, title })), [])
 
   // Jump to the Terminals tab whenever something requests a new terminal.
   useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
@@ -104,7 +111,7 @@ export function AppShell() {
     <div className="shell">
       <div className="titlebar">
         <span className="brand">
-          workflow<span className="brand-dot">·</span>harness
+          blink<span className="brand-dot">·</span>workflow
         </span>
         <div className="titlebar-right">
           <ThemePicker />
@@ -125,6 +132,9 @@ export function AppShell() {
         </div>
       </div>
       {setupOpen && <SetupModal onClose={() => setSetupOpen(false)} />}
+      {diffModal && (
+        <DiffModal path={diffModal.path} title={diffModal.title} onClose={() => setDiffModal(null)} />
+      )}
 
       <Sidebar />
 

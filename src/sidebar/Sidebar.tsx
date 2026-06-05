@@ -2,8 +2,10 @@ import { useState } from 'react'
 import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
 import { launchClaude } from '../lib/launchClaude'
+import { diffBus } from '../lib/diffBus'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { ContextMenu } from '../components/ContextMenu'
+import { Icon } from '../components/Icon'
 import { RepoTree } from './RepoTree'
 import { SideSection } from './SideSection'
 import { useClaudeProjects } from './useClaudeProjects'
@@ -79,6 +81,18 @@ function SessionRow({
           {live && <span className="session-live">{live.status}</span>}
         </span>
       </span>
+      {!editing && (
+        <button
+          className="session-diff"
+          title="View this session's changes"
+          onClick={(e) => {
+            e.stopPropagation()
+            diffBus.openModal(session.cwd, displayTitle)
+          }}
+        >
+          <Icon name="diff" size={13} />
+        </button>
+      )}
     </div>
   )
 }

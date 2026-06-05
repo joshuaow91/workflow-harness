@@ -3873,6 +3873,40 @@ button {
   max-width: 90vw;
 }
 
+.diff-modal {
+  width: 92vw;
+  height: 86vh;
+  max-height: 86vh;
+}
+
+.diff-modal-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.session-diff {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  border-radius: 4px;
+  padding: 2px 4px;
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.session-row:hover .session-diff {
+  opacity: 1;
+}
+
+.session-diff:hover {
+  color: var(--accent);
+  background: var(--surface);
+}
+
 .setup-modal {
   width: 560px;
   max-width: 92vw;
