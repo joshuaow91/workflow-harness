@@ -48,13 +48,16 @@ export async function checkSetup(): Promise<SetupCheck[]> {
       fix: loggedIn ? undefined : 'gh auth login'
     })
     const scopes = auth.out.match(/Token scopes:\s*(.+)/)?.[1] ?? ''
-    const needed = ['repo', 'read:org', 'read:project']
+    // `project` (write) is needed to drag-update the board; it supersedes read:project.
+    const needed = ['repo', 'read:org', 'project']
     const missing = needed.filter((s) => !scopes.includes(s))
     checks.push({
-      name: 'gh scopes — repo, read:org, read:project',
+      name: 'gh scopes — repo, read:org, project',
       required: false,
       ok: missing.length === 0,
-      detail: scopes ? `Granted: ${scopes.replace(/'/g, '')}` : 'Unknown',
+      detail: scopes
+        ? `Granted: ${scopes.replace(/'/g, '')}${scopes.includes('project') ? '' : ' (read:project alone can view the board but not edit it)'}`
+        : 'Unknown',
       fix: missing.length ? `gh auth refresh -s ${missing.join(',')}` : undefined
     })
   }

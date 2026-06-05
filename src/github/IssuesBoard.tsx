@@ -143,7 +143,12 @@ export function IssuesBoard({
       await window.api.github.setProjectField(data.projectId, it.id, field.id, col.optionId ?? '')
       board.reload()
     } catch (e) {
-      window.alert(`Could not move:\n${(e as Error).message}`)
+      const msg = (e as Error).message
+      window.alert(
+        msg.includes(GH_MISSING_PROJECT_SCOPE)
+          ? 'Updating the board needs the write “project” scope (read:project is read-only).\nRun:  gh auth refresh -s project'
+          : `Could not move:\n${msg}`
+      )
       board.reload()
     } finally {
       setBusy(false)
