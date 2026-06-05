@@ -48,6 +48,13 @@ export function WebFrame({
     }
     const onDomReady = (): void => {
       wcId.current = (wv as unknown as { getWebContentsId(): number }).getWebContentsId()
+      // Normalize zoom to 100% (it can default/persist higher per-host).
+      try {
+        ;(wv as unknown as { setZoomLevel(n: number): void }).setZoomLevel(0)
+        ;(wv as unknown as { setZoomFactor(n: number): void }).setZoomFactor(1)
+      } catch {
+        /* not ready */
+      }
       activate()
     }
     const onTitleUpdate = (e: Event): void => onTitle?.((e as unknown as { title: string }).title)
