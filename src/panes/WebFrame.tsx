@@ -16,15 +16,30 @@ interface WebFrameProps {
   onBadge?: (count: number) => void
 }
 
-// Injected into comms webviews to bridge the Badging API back to the host via
-// console messages (no webview preload needed).
+// Injected into comms webviews to report unread back to the host via console
+// messages (no webview preload needed). Combines every signal these PWAs use —
+// the Badging API, the page title, and a DOM scrape — and reports the max.
 const BADGE_HOOK = `(function(){
   if(window.__hb)return; window.__hb=1;
-  var send=function(n){ try{console.log('__HB__'+(n>0?Math.floor(n):0))}catch(e){} };
+  var last=-1, badge=0;
+  function report(n){ n=n>0?Math.floor(n):0; if(n!==last){ last=n; try{console.log('__HB__'+n)}catch(e){} } }
+  function titleCount(){ var m=(document.title||'').match(/\\((\\d+)\\+?\\)/); return m?+m[1]:0; }
+  function scrape(){
+    var best=0, els=document.querySelectorAll('[aria-label],[title]');
+    for(var i=0;i<els.length;i++){
+      var s=els[i].getAttribute('aria-label')||els[i].getAttribute('title')||'';
+      var m=s.match(/(\\d+)\\s*(?:unread|new messages?|new notifications?)/i);
+      if(m){ var n=+m[1]; if(n>best) best=n; }
+    }
+    return best;
+  }
+  function tick(){ report(Math.max(badge, titleCount(), scrape())); }
   var os=navigator.setAppBadge&&navigator.setAppBadge.bind(navigator);
-  navigator.setAppBadge=function(n){ send(typeof n==='number'?n:1); return os?os(n):Promise.resolve(); };
+  if(navigator.setAppBadge) navigator.setAppBadge=function(n){ badge=typeof n==='number'?n:1; tick(); return os?os(n):Promise.resolve(); };
   var oc=navigator.clearAppBadge&&navigator.clearAppBadge.bind(navigator);
-  navigator.clearAppBadge=function(){ send(0); return oc?oc():Promise.resolve(); };
+  if(navigator.clearAppBadge) navigator.clearAppBadge=function(){ badge=0; tick(); return oc?oc():Promise.resolve(); };
+  setInterval(tick, 5000);
+  tick();
 })();`
 
 export function WebFrame({
