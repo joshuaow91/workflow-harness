@@ -6,7 +6,7 @@ import { useAsync } from '../lib/useAsync'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { LivePreviewEditor } from './LivePreviewEditor'
 import { ReadingView } from './ReadingView'
-import { applyThemeVars, clearThemeVars, extractThemeVars } from './obsidianTheme'
+import { extractThemeVars } from './obsidianTheme'
 
 function renderNote(md: string): string {
   const pre = md.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_m, name: string, alias?: string) => {
@@ -47,11 +47,6 @@ export function ObsidianTab() {
   useEffect(() => {
     if (vault) void window.api.obsidian.theme().then(setTheme)
   }, [vault])
-  useEffect(() => {
-    if (useTheme && theme?.css) applyThemeVars(extractThemeVars(theme.css, theme.scheme))
-    else clearThemeVars()
-    return () => clearThemeVars()
-  }, [useTheme, theme])
   const themed = useTheme && !!theme?.css
 
   useEffect(() => {
@@ -192,8 +187,14 @@ export function ObsidianTab() {
                   />
                 </div>
               ) : (
-                <div className={`obs-editor${themed ? ` obs-theme-scope theme-${theme!.scheme}` : ''}`}>
-                  <LivePreviewEditor doc={content} onChange={onEdit} />
+                <div className="obs-editor">
+                  <LivePreviewEditor
+                    doc={content}
+                    onChange={onEdit}
+                    themeCss={themed ? (theme?.css ?? '') : ''}
+                    scheme={theme?.scheme ?? 'dark'}
+                    vars={themed ? themeVars : {}}
+                  />
                 </div>
               )
             ) : (

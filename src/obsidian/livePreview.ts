@@ -26,7 +26,8 @@ class CheckWidget extends WidgetType {
     const i = document.createElement('input')
     i.type = 'checkbox'
     i.checked = this.checked
-    i.className = 'cm-task-check'
+    i.className = 'task-list-item-checkbox'
+    i.setAttribute('data-task', this.checked ? 'x' : ' ')
     i.addEventListener('mousedown', (e) => e.preventDefault())
     i.addEventListener('click', () => {
       view.dispatch({ changes: { from: this.from + 1, to: this.from + 2, insert: this.checked ? ' ' : 'x' } })
@@ -48,21 +49,26 @@ function activeLineSet(state: EditorState): Set<number> {
   return s
 }
 
-const MARKS = new Set([
-  'HeaderMark',
-  'EmphasisMark',
-  'CodeMark',
-  'StrikethroughMark',
-  'LinkMark',
-  'QuoteMark',
-  'URL'
-])
-
 function build(view: EditorView): DecorationSet {
   const decos: Range<Decoration>[] = []
   const state = view.state
   const active = activeLineSet(state)
   const isActive = (pos: number): boolean => active.has(state.doc.lineAt(pos).number)
+  const line = (cls: string, pos: number): void => {
+    decos.push(Decoration.line({ class: cls }).range(state.doc.lineAt(pos).from))
+  }
+  const mark = (cls: string, from: number, to: number): void => {
+    if (to > from) decos.push(Decoration.mark({ class: cls }).range(from, to))
+  }
+  // Hide a formatting mark off the active line; otherwise style it dimmed.
+  const fmt = (cls: string, from: number, to: number, extraSpace = false): void => {
+    let end = to
+    if (extraSpace && state.doc.sliceString(to, to + 1) === ' ') end = to + 1
+    if (isActive(from)) mark(`cm-formatting ${cls}`, from, to)
+    else if (end > from) decos.push(HIDE.range(from, end))
+  }
+
+  for (const l of active) line('cm-active cm-activeLine', state.doc.line(l).from)
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
@@ -70,41 +76,64 @@ function build(view: EditorView): DecorationSet {
       to,
       enter: (node) => {
         const n = node.name
+
         const h = /^ATXHeading([1-6])$/.exec(n)
         if (h) {
-          decos.push(Decoration.line({ class: `cm-h cm-h${h[1]}` }).range(state.doc.lineAt(node.from).from))
+          line(`HyperMD-header HyperMD-header-${h[1]}`, node.from)
+          mark(`cm-header cm-header-${h[1]}`, node.from, node.to)
+          return
+        }
+        if (n === 'FencedCode' || n === 'CodeBlock') {
+          const a = state.doc.lineAt(node.from).number
+          const b = state.doc.lineAt(node.to).number
+          for (let ln = a; ln <= b; ln++) {
+            let c = 'HyperMD-codeblock cm-line'
+            if (ln === a) c += ' HyperMD-codeblock-begin'
+            if (ln === b) c += ' HyperMD-codeblock-end'
+            line(c, state.doc.line(ln).from)
+          }
+          return
+        }
+        if (n === 'Blockquote') {
+          line('HyperMD-quote HyperMD-quote-1', node.from)
+          return
+        }
+        if (n === 'ListItem') {
+          line('HyperMD-list-line HyperMD-list-line-1', node.from)
           return
         }
         if (n === 'TaskMarker') {
           const checked = /[xX]/.test(state.doc.sliceString(node.from + 1, node.from + 2))
+          line(`HyperMD-task-line${checked ? ' is-checked' : ''}`, node.from)
           if (node.from - 2 >= 0 && /[-*+] /.test(state.doc.sliceString(node.from - 2, node.from)))
             decos.push(HIDE.range(node.from - 2, node.from))
           decos.push(Decoration.replace({ widget: new CheckWidget(checked, node.from) }).range(node.from, node.to))
           return
         }
-        if (n === 'StrongEmphasis') decos.push(Decoration.mark({ class: 'cm-strong' }).range(node.from, node.to))
-        else if (n === 'Emphasis') decos.push(Decoration.mark({ class: 'cm-em' }).range(node.from, node.to))
-        else if (n === 'InlineCode') decos.push(Decoration.mark({ class: 'cm-inline-code' }).range(node.from, node.to))
-        else if (n === 'Strikethrough') decos.push(Decoration.mark({ class: 'cm-strike' }).range(node.from, node.to))
-        else if (n === 'Link' || n === 'Image') decos.push(Decoration.mark({ class: 'cm-link' }).range(node.from, node.to))
-        else if (n === 'Blockquote') decos.push(Decoration.line({ class: 'cm-quote' }).range(state.doc.lineAt(node.from).from))
 
-        if (MARKS.has(n) && !isActive(node.from)) {
-          let end = node.to
-          if (n === 'HeaderMark' && state.doc.sliceString(node.to, node.to + 1) === ' ') end = node.to + 1
-          if (end > node.from) decos.push(HIDE.range(node.from, end))
-        }
+        if (n === 'StrongEmphasis') mark('cm-strong', node.from, node.to)
+        else if (n === 'Emphasis') mark('cm-em', node.from, node.to)
+        else if (n === 'InlineCode') mark('cm-inline-code', node.from, node.to)
+        else if (n === 'Strikethrough') mark('cm-strikethrough', node.from, node.to)
+        else if (n === 'Link') mark('cm-link cm-underline', node.from, node.to)
+        else if (n === 'URL' && !isActive(node.from)) decos.push(HIDE.range(node.from, node.to))
+        else if (n === 'HeaderMark') fmt('cm-formatting-header', node.from, node.to, true)
+        else if (n === 'EmphasisMark') fmt('cm-formatting-em', node.from, node.to)
+        else if (n === 'CodeMark') fmt('cm-formatting-code', node.from, node.to)
+        else if (n === 'StrikethroughMark') fmt('cm-formatting-strikethrough', node.from, node.to)
+        else if (n === 'LinkMark') fmt('cm-formatting-link', node.from, node.to)
+        else if (n === 'QuoteMark') fmt('cm-formatting-quote', node.from, node.to)
       }
     })
 
-    // Wikilinks [[name]] / [[name|alias]] — not in standard markdown grammar.
+    // Wikilinks [[name]] / [[name|alias]]
     const text = state.doc.sliceString(from, to)
     const re = /\[\[([^\]\n]+?)\]\]/g
     let m: RegExpExecArray | null
     while ((m = re.exec(text))) {
       const start = from + m.index
       const end = start + m[0].length
-      decos.push(Decoration.mark({ class: 'cm-wikilink' }).range(start, end))
+      mark('cm-hmd-internal-link cm-underline', start, end)
       if (!isActive(start)) {
         decos.push(HIDE.range(start, start + 2))
         const pipe = m[1].indexOf('|')
