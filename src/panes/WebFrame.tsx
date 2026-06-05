@@ -12,7 +12,20 @@ interface WebFrameProps {
   /** Fired with this view's webContents id on dom-ready and whenever it's focused. */
   onActivate?: (webContentsId: number) => void
   onTitle?: (title: string) => void
+  /** Fired with the page's Badging-API count (navigator.setAppBadge), e.g. unread. */
+  onBadge?: (count: number) => void
 }
+
+// Injected into comms webviews to bridge the Badging API back to the host via
+// console messages (no webview preload needed).
+const BADGE_HOOK = `(function(){
+  if(window.__hb)return; window.__hb=1;
+  var send=function(n){ try{console.log('__HB__'+(n>0?Math.floor(n):0))}catch(e){} };
+  var os=navigator.setAppBadge&&navigator.setAppBadge.bind(navigator);
+  navigator.setAppBadge=function(n){ send(typeof n==='number'?n:1); return os?os(n):Promise.resolve(); };
+  var oc=navigator.clearAppBadge&&navigator.clearAppBadge.bind(navigator);
+  navigator.clearAppBadge=function(){ send(0); return oc?oc():Promise.resolve(); };
+})();`
 
 export function WebFrame({
   src,
@@ -20,7 +33,8 @@ export function WebFrame({
   partition = 'persist:harness',
   leftSlot,
   onActivate,
-  onTitle
+  onTitle,
+  onBadge
 }: WebFrameProps) {
   const ref = useRef<WebviewElement | null>(null)
   const wcId = useRef<number | null>(null)
@@ -49,8 +63,13 @@ export function WebFrame({
     const onDomReady = (): void => {
       wcId.current = (wv as unknown as { getWebContentsId(): number }).getWebContentsId()
       activate()
+      if (onBadge) void (wv as unknown as { executeJavaScript(s: string): Promise<unknown> }).executeJavaScript(BADGE_HOOK).catch(() => undefined)
     }
     const onTitleUpdate = (e: Event): void => onTitle?.((e as unknown as { title: string }).title)
+    const onConsole = (e: Event): void => {
+      const m = String((e as unknown as { message?: string }).message ?? '').match(/__HB__(\d+)/)
+      if (m) onBadge?.(Number(m[1]))
+    }
     const onFocusIn = (): void => activate()
 
     wv.addEventListener('did-start-loading', onStart)
@@ -59,6 +78,7 @@ export function WebFrame({
     wv.addEventListener('did-navigate-in-page', syncNav)
     wv.addEventListener('dom-ready', onDomReady)
     wv.addEventListener('page-title-updated', onTitleUpdate)
+    wv.addEventListener('console-message', onConsole)
     wv.addEventListener('focus', onFocusIn)
 
     return () => {
@@ -68,6 +88,7 @@ export function WebFrame({
       wv.removeEventListener('did-navigate-in-page', syncNav)
       wv.removeEventListener('dom-ready', onDomReady)
       wv.removeEventListener('page-title-updated', onTitleUpdate)
+      wv.removeEventListener('console-message', onConsole)
       wv.removeEventListener('focus', onFocusIn)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
