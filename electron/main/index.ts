@@ -186,6 +186,9 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
   ipcMain.handle(IPC.system.checkSetup, () => checkSetup())
+  ipcMain.handle(IPC.system.setBadge, (_e, count: number) => {
+    if (app.dock) app.dock.setBadge(count > 0 ? String(count) : '')
+  })
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)

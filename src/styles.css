@@ -593,6 +593,19 @@ button {
   opacity: 0.9;
 }
 
+.tab-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
 .titlebar-gear {
   display: inline-flex;
   align-items: center;
