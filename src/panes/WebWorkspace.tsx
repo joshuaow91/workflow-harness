@@ -3,6 +3,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { AgentActivity } from '@shared/types'
 import { browserRouter } from '../lib/browserRouter'
 import { settingsStore, useSettings } from '../lib/settingsStore'
+import { useAgentInfo } from '../lib/useAgentInfo'
 import { DevToolsPane } from './DevToolsPane'
 import { SideTerminal } from './SideTerminal'
 import { WebFrame } from './WebFrame'
@@ -23,6 +24,7 @@ interface SidePane {
 
 export function WebWorkspace() {
   const settings = useSettings()
+  const agent = useAgentInfo()
   const defaultUrl = settings?.defaultBrowserUrl ?? FALLBACK_URL
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTab, setActiveTab] = useState(0)
@@ -208,15 +210,15 @@ export function WebWorkspace() {
               </button>
               <span className={`agent-pill${acting ? ' live' : ''}`} style={{ marginLeft: 'auto' }}>
                 <span className="agent-dot" />
-                {acting ? 'Claude acting' : 'agent idle'}
+                {acting ? `${agent.label} acting` : 'agent idle'}
               </span>
               <button
                 className={`tbtn${connected ? ' connected' : ''}`}
                 onClick={connect}
                 disabled={connecting}
-                title={connected ? 'MCP registered — Claude can drive any tab' : 'Register the agent-browser MCP with Claude'}
+                title={connected ? `MCP registered — ${agent.label} can drive any tab` : `Register the agent-browser MCP with ${agent.label}`}
               >
-                {connecting ? 'Connecting…' : connected ? '✓ Claude' : 'Connect Claude'}
+                {connecting ? 'Connecting…' : connected ? `✓ ${agent.label}` : `Connect ${agent.label}`}
               </button>
               <button
                 className={`ws-dt-toggle${bottom === 'activity' ? ' on' : ''}`}

@@ -128,7 +128,7 @@ const api = {
     checkConnected: (): Promise<boolean> => ipcRenderer.invoke(IPC.agent.checkConnected),
     info: (): Promise<AgentInfo> => ipcRenderer.invoke(IPC.agent.info),
     list: (): Promise<(AgentInfo & { installed: boolean })[]> => ipcRenderer.invoke(IPC.agent.list),
-    command: (opts: { resumeId?: string; mapFile?: string }): Promise<string> =>
+    command: (opts: { resumeId?: string; mapFile?: string; prompt?: string; plan?: boolean }): Promise<string> =>
       ipcRenderer.invoke(IPC.agent.command, opts),
     onActivity: (cb: (a: AgentActivity) => void) => on<AgentActivity>(IPC.agent.activity, cb)
   },

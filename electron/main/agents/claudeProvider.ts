@@ -30,9 +30,13 @@ export const claudeProvider: AgentProvider = {
   sessionLinks: (id) => getSessionLinks(id),
   sessionPlan: (id) => getSessionPlan(id),
 
-  buildCommand({ resumeId, mapFile }) {
-    const base = resumeId ? `claude --resume ${resumeId}` : 'claude'
-    return mapFile ? `${base} --append-system-prompt-file '${mapFile}'` : base
+  buildCommand({ resumeId, mapFile, prompt, plan }) {
+    let cmd = 'claude'
+    if (resumeId) cmd += ` --resume ${resumeId}`
+    if (plan) cmd += ' --permission-mode plan'
+    if (mapFile) cmd += ` --append-system-prompt-file '${mapFile}'`
+    if (prompt) cmd += ` '${prompt.replace(/'/g, `'\\''`)}'`
+    return cmd
   },
 
   async oneShot(prompt) {

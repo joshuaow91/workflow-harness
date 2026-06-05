@@ -298,7 +298,7 @@ export function IssuesTab() {
       return rem
     })
 
-  const sendToClaude = (repoName: string, number: number, title: string): void => {
+  const sendToClaude = async (repoName: string, number: number, title: string): Promise<void> => {
     const extras: string[] = []
     if (settings?.mongoUri)
       extras.push(
@@ -310,10 +310,10 @@ export function IssuesTab() {
       `Investigate GitHub issue #${number} in ${repoName}: "${title.replace(/"/g, '')}". ` +
       `Run \`gh issue view ${number} -R ${repoName}\` to read the full description and comments, ` +
       `explore the relevant code, then produce a concrete implementation plan. ${extras.join(' ')}`.trim()
-    const quoted = `'${prompt.replace(/'/g, `'\\''`)}'`
+    const command = await window.api.agent.command({ prompt, plan: true })
     terminalBus.open({
       cwd: localPathFor(repoName) ?? defaultDir,
-      initialCommand: `claude --permission-mode plan ${quoted}`,
+      initialCommand: command,
       label: `plan #${number}`
     })
   }

@@ -210,9 +210,11 @@ export const codexProvider: AgentProvider = {
     return [...refs.values()]
   },
 
-  buildCommand({ resumeId }) {
-    // Codex has no --append-system-prompt-file; the repo map is skipped for now.
-    return resumeId ? `codex resume ${resumeId}` : 'codex'
+  buildCommand({ resumeId, prompt }) {
+    // Codex has no --append-system-prompt-file / plan flag; map + plan are skipped.
+    let cmd = resumeId ? `codex resume ${resumeId}` : 'codex'
+    if (prompt) cmd += ` '${prompt.replace(/'/g, `'\\''`)}'`
+    return cmd
   },
 
   async oneShot(prompt) {

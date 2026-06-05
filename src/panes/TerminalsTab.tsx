@@ -3,6 +3,7 @@ import type { TerminalSpawnOptions } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
 import { useDefaultSessionDir } from '../lib/settingsStore'
 import { claudeCommand } from '../lib/launchClaude'
+import { useAgentInfo } from '../lib/useAgentInfo'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { Icon } from '../components/Icon'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
@@ -36,6 +37,7 @@ export function TerminalsTab() {
   const paneCounter = useRef(1)
   const defaultDir = useDefaultSessionDir()
   const sessions = useFlatSessions()
+  const agent = useAgentInfo()
 
   const active = tabs.find((t) => t.id === activeId) ?? null
 
@@ -107,7 +109,7 @@ export function TerminalsTab() {
     void openTab({
       cwd: defaultDir,
       initialCommand: await claudeCommand(),
-      label: `claude · ${basename(defaultDir)}`
+      label: `${agent.cli} · ${basename(defaultDir)}`
     })
 
   const splitWith = async (opts: TerminalSpawnOptions): Promise<void> => {
@@ -118,7 +120,7 @@ export function TerminalsTab() {
 
   const splitCwd = active?.panes[0]?.opts.cwd ?? defaultDir
   const splitOptions: DropdownOption[] = [
-    { value: '__claude', label: '＋ new claude', sublabel: basename(splitCwd) },
+    { value: '__claude', label: `＋ new ${agent.cli}`, sublabel: basename(splitCwd) },
     { value: '__shell', label: '＋ shell', sublabel: basename(splitCwd) },
     ...sessions.slice(0, 60).map((s) => ({
       value: s.sessionId,
@@ -129,7 +131,7 @@ export function TerminalsTab() {
   const onSplit = async (value: string): Promise<void> => {
     if (value === '__shell') void splitWith({ cwd: splitCwd, label: `shell · ${basename(splitCwd)}` })
     else if (value === '__claude')
-      void splitWith({ cwd: splitCwd, initialCommand: await claudeCommand(), label: `claude · ${basename(splitCwd)}` })
+      void splitWith({ cwd: splitCwd, initialCommand: await claudeCommand(), label: `${agent.cli} · ${basename(splitCwd)}` })
     else {
       const s = sessions.find((x) => x.sessionId === value)
       if (s) void splitWith({ cwd: s.cwd, initialCommand: await claudeCommand(s.sessionId), label: s.title })

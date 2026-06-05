@@ -18,8 +18,8 @@ export interface AgentProvider {
   sessionLinks(sessionId: string): Promise<SessionRef[]>
   sessionPlan(sessionId: string): Promise<string>
 
-  /** Terminal command to start or resume the agent (with optional repo-map injection). */
-  buildCommand(opts: { resumeId?: string; mapFile?: string }): string
+  /** Terminal command to start/resume the agent (optional repo-map, initial prompt, plan mode). */
+  buildCommand(opts: { resumeId?: string; mapFile?: string; prompt?: string; plan?: boolean }): string
   /** One-shot non-interactive prompt (used for Mermaid/AI helpers). */
   oneShot(prompt: string): Promise<string>
 

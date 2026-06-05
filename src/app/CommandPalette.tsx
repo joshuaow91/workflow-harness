@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useRepos } from '../sidebar/useRepos'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { launchClaude } from '../lib/launchClaude'
+import { useAgentInfo } from '../lib/useAgentInfo'
 import { terminalBus } from '../lib/terminalBus'
 import { diffBus } from '../lib/diffBus'
 
@@ -24,6 +25,7 @@ export function CommandPalette({
 }) {
   const { repos } = useRepos()
   const sessions = useFlatSessions()
+  const agent = useAgentInfo()
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -55,7 +57,7 @@ export function CommandPalette({
     for (const r of repos) {
       out.push({
         id: `claude:${r.path}`,
-        label: `claude in ${r.name}`,
+        label: `${agent.cli} in ${r.name}`,
         group: 'Repos',
         run: () => launchClaude({ cwd: r.path, label: r.name })
       })
@@ -70,7 +72,7 @@ export function CommandPalette({
       })
     }
     return out
-  }, [tabs, navigate, repos, sessions])
+  }, [tabs, navigate, repos, sessions, agent])
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase()
