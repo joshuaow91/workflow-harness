@@ -21,7 +21,10 @@ function defaults(): AppSettings {
     injectRepoMap: true,
     autoUpdateRepos: 'off',
     bookmarks: [],
-    useObsidianTheme: true
+    useObsidianTheme: true,
+    notifyPrReview: true,
+    notifyPrMerged: true,
+    notifySessionResponse: true
   }
 }
 

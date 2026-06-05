@@ -84,6 +84,29 @@ export function SettingsTab() {
         </p>
       </section>
 
+      <section className="settings-section">
+        <div className="settings-label">Notifications</div>
+        {(
+          [
+            ['notifyPrReview', 'A PR requests my review'],
+            ['notifyPrMerged', 'One of my PRs is merged'],
+            ['notifySessionResponse', 'A Claude session finishes and needs a response']
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="settings-toggle">
+            <input
+              type="checkbox"
+              checked={settings?.[key] !== false}
+              onChange={(e) => void settingsStore.update({ [key]: e.target.checked })}
+            />
+            {label}
+          </label>
+        ))}
+        <p className="settings-hint">
+          Native macOS notifications. Sessions that need a response also get a ring in the sidebar.
+        </p>
+      </section>
+
       <RateLimitMeter />
 
       <AutoUpdateSettings />

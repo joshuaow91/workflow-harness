@@ -102,6 +102,7 @@ export const IPC = {
     openInBrave: 'system:openInBrave',
     pickDirectory: 'system:pickDirectory',
     openTotpWindow: 'system:openTotpWindow',
-    checkSetup: 'system:checkSetup'
+    checkSetup: 'system:checkSetup',
+    notify: 'system:notify'
   }
 } as const

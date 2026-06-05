@@ -772,6 +772,25 @@ button {
   border-left-color: var(--accent);
 }
 
+/* Session finished a turn and is waiting on you. */
+.session-row.needs-response {
+  border-left-color: var(--accent);
+}
+
+.session-row.needs-response .session-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(137, 180, 250, 0.25);
+  animation: pulse 1.8s infinite;
+}
+
+.session-row.needs-response .session-title::after {
+  content: '●';
+  color: var(--accent);
+  font-size: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .session-dot {
   flex: 0 0 auto;
   width: 7px;

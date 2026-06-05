@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
 import { launchClaude } from '../lib/launchClaude'
@@ -22,6 +22,7 @@ function SessionRow({
   session,
   displayTitle,
   selected,
+  needsResponse,
   editing,
   draft,
   onDraft,
@@ -33,6 +34,7 @@ function SessionRow({
   session: ClaudeSession
   displayTitle: string
   selected: boolean
+  needsResponse: boolean
   editing: boolean
   draft: string
   onDraft: (v: string) => void
@@ -52,7 +54,7 @@ function SessionRow({
 
   return (
     <div
-      className={`session-row${selected ? ' selected' : ''}`}
+      className={`session-row${selected ? ' selected' : ''}${needsResponse ? ' needs-response' : ''}`}
       onClick={editing ? undefined : resume}
       onContextMenu={onContextMenu}
       title={`${displayTitle}\n${session.cwd}\nClick to resume · right-click to rename/delete`}
@@ -106,6 +108,38 @@ export function Sidebar() {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  // Detect when a session finishes a turn (busy -> idle) = needs a response.
+  const [needsResp, setNeedsResp] = useState<Set<string>>(new Set())
+  const prevStatus = useRef<Record<string, string>>({})
+  const working = (st?: string): boolean => st === 'busy' || st === 'running' || st === 'working'
+  useEffect(() => {
+    const added: { id: string; title: string }[] = []
+    for (const p of projects)
+      for (const s of p.sessions) {
+        const cur = s.live?.status ?? 'dormant'
+        if (working(prevStatus.current[s.sessionId]) && !working(cur))
+          added.push({ id: s.sessionId, title: titleOf(s) })
+        prevStatus.current[s.sessionId] = cur
+      }
+    if (added.length) {
+      setNeedsResp((set) => {
+        const n = new Set(set)
+        added.forEach((a) => n.add(a.id))
+        return n
+      })
+      if (settings?.notifySessionResponse !== false)
+        added.forEach((a) => void window.api.system.notify('Session needs a response', a.title))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects])
+  const clearAlert = (id: string): void =>
+    setNeedsResp((set) => {
+      if (!set.has(id)) return set
+      const n = new Set(set)
+      n.delete(id)
+      return n
+    })
 
   const toggleExpanded = (slug: string): void =>
     setExpanded((prev) => {
@@ -176,12 +210,16 @@ export function Sidebar() {
                 session={s}
                 displayTitle={titleOf(s)}
                 selected={selected === s.sessionId}
+                needsResponse={needsResp.has(s.sessionId)}
                 editing={editing === s.sessionId}
                 draft={draft}
                 onDraft={setDraft}
                 onSubmitRename={() => submitRename(s.sessionId)}
                 onCancelRename={() => setEditing(null)}
-                onSelect={() => setSelected(s.sessionId)}
+                onSelect={() => {
+                  setSelected(s.sessionId)
+                  clearAlert(s.sessionId)
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   setMenu({

@@ -14,6 +14,7 @@ import { registerAutoUpdate } from './autoupdate/registerAutoUpdate'
 import { checkSetup } from './system/setupCheck'
 import { recordVisit, suggest } from './browser/BrowserStore'
 import { gitChanges, gitFileDiff } from './git/DiffService'
+import { registerNotifications } from './notifications/registerNotifications'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -204,6 +205,7 @@ function registerIpc(): void {
   registerMongoIpc()
   registerKnowledgeIpc()
   registerAutoUpdate()
+  registerNotifications(() => mainWindow)
 
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)

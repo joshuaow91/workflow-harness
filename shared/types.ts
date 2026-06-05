@@ -32,6 +32,10 @@ export interface AppSettings {
   bookmarks: Bookmark[]
   /** Apply the vault's active Obsidian theme palette to the Notes editor. */
   useObsidianTheme: boolean
+  /** Native notifications. */
+  notifyPrReview: boolean
+  notifyPrMerged: boolean
+  notifySessionResponse: boolean
 }
 
 export interface UpdateResult {

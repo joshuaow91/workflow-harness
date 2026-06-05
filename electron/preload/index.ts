@@ -192,7 +192,9 @@ const api = {
     pickDirectory: (defaultPath?: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC.system.pickDirectory, defaultPath),
     openTotpWindow: (): Promise<void> => ipcRenderer.invoke(IPC.system.openTotpWindow),
-    checkSetup: (): Promise<SetupCheck[]> => ipcRenderer.invoke(IPC.system.checkSetup)
+    checkSetup: (): Promise<SetupCheck[]> => ipcRenderer.invoke(IPC.system.checkSetup),
+    notify: (title: string, body: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.system.notify, title, body)
   }
 }
 
