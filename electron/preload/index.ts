@@ -95,6 +95,13 @@ const api = {
       ipcRenderer.invoke(IPC.github.listProjects, owner),
     projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
       ipcRenderer.invoke(IPC.github.projectItems, owner, number),
+    setProjectField: (
+      projectId: string,
+      itemId: string,
+      fieldId: string,
+      optionId: string
+    ): Promise<void> =>
+      ipcRenderer.invoke(IPC.github.setProjectField, projectId, itemId, fieldId, optionId),
     enrichLinks: (refs: SessionRef[]): Promise<SessionRef[]> =>
       ipcRenderer.invoke(IPC.github.enrichLinks, refs)
   },

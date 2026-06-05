@@ -268,20 +268,35 @@ export interface GhProjectSummary {
   url: string
 }
 
+export interface GhProjectFieldOption {
+  id: string
+  name: string
+}
+
+export interface GhProjectField {
+  id: string
+  name: string
+  options: GhProjectFieldOption[]
+}
+
 export interface GhProjectItem {
+  /** ProjectV2 item node id (PVTI_…), used for field mutations. */
   id: string
   title: string
-  status: string | null
   type: 'Issue' | 'PullRequest' | 'DraftIssue'
   url: string | null
   repo: string | null
+  assignees: string[]
+  /** Single-select field values keyed by field display name (e.g. Status, Priority). */
+  fieldValues: Record<string, string>
 }
 
 export interface GhProjectBoard {
   title: string
   number: number
   url: string
-  columns: string[]
+  projectId: string
+  fields: GhProjectField[]
   items: GhProjectItem[]
 }
 

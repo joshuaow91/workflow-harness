@@ -451,41 +451,40 @@ function nameWithOwnerFromUrl(url: string | undefined): string | null {
 
 export async function projectItems(owner: string, number: number): Promise<GhProjectBoard> {
   type RawItem = {
+    id: string
     title?: string
-    status?: string
+    assignees?: string[]
     content?: { type?: string; url?: string; title?: string; repository?: string }
     [k: string]: unknown
   }
-  type Raw = { items: RawItem[]; totalCount?: number }
+  type RawField = { id: string; name: string; options?: { id: string; name: string }[] }
 
-  const [out, summaries] = await Promise.all([
-    ghJson<Raw>([
-      'project',
-      'item-list',
-      String(number),
-      '--owner',
-      owner,
-      '--format',
-      'json',
-      '--limit',
-      '200'
-    ]),
+  const [itemsOut, fieldsOut, viewOut, summaries] = await Promise.all([
+    ghJson<{ items: RawItem[] }>(['project', 'item-list', String(number), '--owner', owner, '--format', 'json', '--limit', '400']),
+    ghJson<{ fields: RawField[] }>(['project', 'field-list', String(number), '--owner', owner, '--format', 'json', '--limit', '50']),
+    ghJson<{ id: string }>(['project', 'view', String(number), '--owner', owner, '--format', 'json']),
     listProjects(owner)
   ])
 
   const summary = summaries.find((p) => p.number === number)
-  const columns: string[] = []
-  const items: GhProjectItem[] = (out.items ?? []).map((it, i) => {
-    const status = it.status ?? null
-    if (status && !columns.includes(status)) columns.push(status)
-    const type = (it.content?.type as GhProjectItem['type']) ?? 'DraftIssue'
+  const fields = (fieldsOut.fields ?? [])
+    .filter((f) => Array.isArray(f.options) && f.options.length > 0)
+    .map((f) => ({ id: f.id, name: f.name, options: (f.options ?? []).map((o) => ({ id: o.id, name: o.name })) }))
+
+  const items: GhProjectItem[] = (itemsOut.items ?? []).map((it) => {
+    const fieldValues: Record<string, string> = {}
+    for (const f of fields) {
+      const v = it[f.name.toLowerCase()]
+      if (typeof v === 'string') fieldValues[f.name] = v
+    }
     return {
-      id: `${number}:${i}`,
+      id: it.id,
       title: it.title ?? it.content?.title ?? '(untitled)',
-      status,
-      type,
+      type: (it.content?.type as GhProjectItem['type']) ?? 'DraftIssue',
       url: it.content?.url ?? null,
-      repo: nameWithOwnerFromUrl(it.content?.url) ?? nameWithOwnerFromUrl(it.content?.repository)
+      repo: it.content?.repository ?? nameWithOwnerFromUrl(it.content?.url),
+      assignees: it.assignees ?? [],
+      fieldValues
     }
   })
 
@@ -493,7 +492,19 @@ export async function projectItems(owner: string, number: number): Promise<GhPro
     title: summary?.title ?? `Project #${number}`,
     number,
     url: summary?.url ?? '',
-    columns,
+    projectId: viewOut.id,
+    fields,
     items
   }
+}
+
+export async function setProjectItemField(
+  projectId: string,
+  itemId: string,
+  fieldId: string,
+  optionId: string
+): Promise<void> {
+  const base = ['project', 'item-edit', '--id', itemId, '--project-id', projectId, '--field-id', fieldId]
+  // Empty optionId clears the field (drag back to "No status").
+  await gh(optionId ? [...base, '--single-select-option-id', optionId] : [...base, '--clear'])
 }

@@ -14,6 +14,7 @@ import {
   listProjects,
   listReviewPRs,
   projectItems,
+  setProjectItemField,
   repoAssignees,
   repoLabels,
   repoMilestones,
@@ -48,6 +49,11 @@ export function registerGithubIpc(): void {
   ipcMain.handle(IPC.github.listProjects, (_e, owner: string) => listProjects(owner))
   ipcMain.handle(IPC.github.projectItems, (_e, owner: string, number: number) =>
     projectItems(owner, number)
+  )
+  ipcMain.handle(
+    IPC.github.setProjectField,
+    (_e, projectId: string, itemId: string, fieldId: string, optionId: string) =>
+      setProjectItemField(projectId, itemId, fieldId, optionId)
   )
   ipcMain.handle(IPC.github.enrichLinks, (_e, refs: SessionRef[]) => enrichLinks(refs))
 }
