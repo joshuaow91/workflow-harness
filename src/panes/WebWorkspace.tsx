@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import type { AgentActivity } from '@shared/types'
 import { browserRouter } from '../lib/browserRouter'
 import { useSettings } from '../lib/settingsStore'
 import { DevToolsPane } from './DevToolsPane'
@@ -26,10 +27,42 @@ export function WebWorkspace() {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTab, setActiveTab] = useState(0)
   const [sidePanes, setSidePanes] = useState<SidePane[]>([])
-  const [showDevtools, setShowDevtools] = useState(true)
+  const [bottom, setBottom] = useState<'devtools' | 'activity' | null>('devtools')
   const tabCounter = useRef(1)
   const sideCounter = useRef(1)
   const didInit = useRef(false)
+
+  // Agent: the focused browser is what Claude drives. Every tab is agent-aware.
+  const [activity, setActivity] = useState<AgentActivity[]>([])
+  const [connected, setConnected] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [acting, setActing] = useState(false)
+  const actTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const logRef = useRef<HTMLDivElement>(null)
+
+  useEffect(
+    () =>
+      window.api.agent.onActivity((a) => {
+        setActivity((p) => [...p.slice(-250), a])
+        setActing(true)
+        if (actTimer.current) clearTimeout(actTimer.current)
+        actTimer.current = setTimeout(() => setActing(false), 4000)
+      }),
+    []
+  )
+  useEffect(() => {
+    void window.api.agent.checkConnected().then(setConnected)
+  }, [])
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+  }, [activity])
+
+  const connect = async (): Promise<void> => {
+    setConnecting(true)
+    const r = await window.api.agent.connectClaude()
+    setConnected(r.ok)
+    setConnecting(false)
+  }
 
   // Open the first tab at the configured default once settings load.
   useEffect(() => {
@@ -46,24 +79,27 @@ export function WebWorkspace() {
   const prevTarget = useRef<number | null>(null)
   const tabWc = useRef<Record<number, number>>({})
 
+  // The focused browser becomes the agent target Claude drives.
+  useEffect(() => {
+    if (activeWC != null) void window.api.agent.setTarget(activeWC)
+  }, [activeWC])
+
   // Wire the active browser's DevTools into the bottom pane.
   useEffect(() => {
-    if (!showDevtools || activeWC == null || devtoolsWC == null) return
+    if (bottom !== 'devtools' || activeWC == null || devtoolsWC == null) return
     if (prevTarget.current != null && prevTarget.current !== activeWC) {
       void window.api.devtools.detach(prevTarget.current)
     }
     void window.api.devtools.attach(activeWC, devtoolsWC)
     prevTarget.current = activeWC
-  }, [activeWC, devtoolsWC, showDevtools])
+  }, [activeWC, devtoolsWC, bottom])
 
-  const toggleDevtools = (): void => {
-    setShowDevtools((v) => {
-      if (v && prevTarget.current != null) {
-        void window.api.devtools.detach(prevTarget.current)
-        prevTarget.current = null
-      }
-      return !v
-    })
+  const setBottomView = (v: 'devtools' | 'activity' | null): void => {
+    if (bottom === 'devtools' && v !== 'devtools' && prevTarget.current != null) {
+      void window.api.devtools.detach(prevTarget.current)
+      prevTarget.current = null
+    }
+    setBottom(v)
   }
 
   // Select a tab and point DevTools at that tab's browser (if known yet).
@@ -134,9 +170,28 @@ export function WebWorkspace() {
               <button className="ws-tab-add" onClick={addTab} title="New tab">
                 ＋
               </button>
+              <span className={`agent-pill${acting ? ' live' : ''}`} style={{ marginLeft: 'auto' }}>
+                <span className="agent-dot" />
+                {acting ? 'Claude acting' : 'agent idle'}
+              </span>
               <button
-                className={`ws-dt-toggle${showDevtools ? ' on' : ''}`}
-                onClick={toggleDevtools}
+                className={`tbtn${connected ? ' connected' : ''}`}
+                onClick={connect}
+                disabled={connecting}
+                title={connected ? 'MCP registered — Claude can drive any tab' : 'Register the agent-browser MCP with Claude'}
+              >
+                {connecting ? 'Connecting…' : connected ? '✓ Claude' : 'Connect Claude'}
+              </button>
+              <button
+                className={`ws-dt-toggle${bottom === 'activity' ? ' on' : ''}`}
+                onClick={() => setBottomView(bottom === 'activity' ? null : 'activity')}
+                title="Agent activity log"
+              >
+                Activity
+              </button>
+              <button
+                className={`ws-dt-toggle${bottom === 'devtools' ? ' on' : ''}`}
+                onClick={() => setBottomView(bottom === 'devtools' ? null : 'devtools')}
                 title="Toggle DevTools"
               >
                 ⌥ DevTools
@@ -170,11 +225,32 @@ export function WebWorkspace() {
                   )}
                 </div>
               </Panel>
-              {showDevtools && (
+              {bottom && (
                 <>
                   <PanelResizeHandle className="resize-handle" />
                   <Panel defaultSize={32} minSize={10}>
-                    <DevToolsPane onReady={setDevtoolsWC} />
+                    {bottom === 'devtools' ? (
+                      <DevToolsPane onReady={setDevtoolsWC} />
+                    ) : (
+                      <div className="agent-log">
+                        <div className="agent-log-head">Agent activity</div>
+                        <div className="agent-log-body" ref={logRef}>
+                          {activity.length === 0 ? (
+                            <div className="side-term-hint">
+                              Connect Claude, then ask it to drive any browser tab. Its actions appear
+                              here.
+                            </div>
+                          ) : (
+                            activity.map((a, i) => (
+                              <div key={i} className={`agent-log-row${a.ok ? '' : ' err'}`}>
+                                <span className="agent-log-tool">{a.tool}</span>
+                                <span className="agent-log-detail">{a.detail}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </Panel>
                 </>
               )}

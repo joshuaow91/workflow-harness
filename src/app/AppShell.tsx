@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
-import { AgentTab } from '../panes/AgentTab'
 import { IssuesTab } from '../github/IssuesTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
@@ -23,7 +22,6 @@ import { browserRouter } from '../lib/browserRouter'
 type TabId =
   | 'terminals'
   | 'browser'
-  | 'agent'
   | 'issues'
   | 'myprs'
   | 'review'
@@ -43,7 +41,6 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: 'terminals', label: 'Terminals', icon: 'terminal' },
   { id: 'browser', label: 'Browser', icon: 'globe' },
-  { id: 'agent', label: 'Agent', icon: 'bot' },
   { id: 'issues', label: 'Issues', icon: 'issue' },
   { id: 'myprs', label: 'My PRs', icon: 'pr' },
   { id: 'review', label: 'Review', icon: 'check' },
@@ -54,7 +51,7 @@ const TABS: TabDef[] = [
   { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
 ]
 
-function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
+function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
   switch (tab) {
     case 'issues':
       return <IssuesTab />
@@ -149,12 +146,7 @@ export function AppShell() {
           <div className="tab-layer" style={{ display: activeTab === 'browser' ? 'block' : 'none' }}>
             <WebWorkspace />
           </div>
-          <div className="tab-layer" style={{ display: activeTab === 'agent' ? 'block' : 'none' }}>
-            <AgentTab />
-          </div>
-          {activeTab !== 'terminals' && activeTab !== 'browser' && activeTab !== 'agent' && (
-            <TabPanel tab={activeTab} />
-          )}
+          {activeTab !== 'terminals' && activeTab !== 'browser' && <TabPanel tab={activeTab} />}
         </div>
       </div>
     </div>
