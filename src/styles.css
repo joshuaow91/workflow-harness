@@ -2626,10 +2626,42 @@ button {
 .obs-reading {
   flex: 1;
   min-height: 0;
+  overflow: auto;
 }
 
 .obs-reading .obs-reading-host {
   height: 100%;
+}
+
+/* Milkdown Crepe — map to the harness palette */
+.milkdown-host {
+  height: 100%;
+  --crepe-color-background: var(--bg);
+  --crepe-color-on-background: var(--text);
+  --crepe-color-surface: var(--bg-alt);
+  --crepe-color-surface-low: var(--bg-elevated);
+  --crepe-color-on-surface: var(--text);
+  --crepe-color-on-surface-variant: var(--text-dim);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--accent);
+  --crepe-color-secondary: var(--surface);
+  --crepe-color-on-secondary: var(--text);
+  --crepe-color-inverse: var(--text);
+  --crepe-color-inline-code: var(--accent-dim);
+  --crepe-color-selected: var(--surface-hover);
+  --crepe-color-hover: var(--surface);
+  --crepe-color-error: var(--red);
+}
+
+.milkdown-host .milkdown {
+  height: 100%;
+  background: var(--bg);
+}
+
+.milkdown-host .milkdown .ProseMirror {
+  padding: 22px 36px;
+  max-width: 880px;
+  margin: 0 auto;
 }
 
 .obs-editor .cm-host,
