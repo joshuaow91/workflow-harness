@@ -216,6 +216,25 @@ export interface GhIssue {
   url: string
 }
 
+export interface GhIssueComment {
+  author: string
+  body: string
+  createdAt: string
+}
+
+export interface GhIssueDetail {
+  number: number
+  title: string
+  body: string
+  state: string
+  author: string
+  labels: GhLabel[]
+  assignees: string[]
+  url: string
+  createdAt: string
+  comments: GhIssueComment[]
+}
+
 export interface GhPullRequest {
   number: number
   title: string

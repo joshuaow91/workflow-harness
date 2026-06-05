@@ -3,6 +3,7 @@ import { promisify } from 'util'
 import {
   GH_MISSING_PROJECT_SCOPE,
   type GhIssue,
+  type GhIssueDetail,
   type GhProjectBoard,
   type GhProjectItem,
   type GhProjectSummary,
@@ -47,7 +48,7 @@ function rollupChecks(rollup: unknown): string | null {
 
 // ---- Issues ----
 
-export async function listIssues(repo: string): Promise<GhIssue[]> {
+export async function listIssues(repo: string, state = 'open'): Promise<GhIssue[]> {
   type Raw = {
     number: number
     title: string
@@ -63,9 +64,9 @@ export async function listIssues(repo: string): Promise<GhIssue[]> {
     '-R',
     repo,
     '--state',
-    'open',
+    state === 'closed' || state === 'all' ? state : 'open',
     '--limit',
-    '50',
+    '80',
     '--json',
     'number,title,state,labels,assignees,updatedAt,url'
   ])
@@ -78,6 +79,46 @@ export async function listIssues(repo: string): Promise<GhIssue[]> {
     updatedAt: r.updatedAt,
     url: r.url
   }))
+}
+
+export async function issueDetail(repo: string, number: number): Promise<GhIssueDetail> {
+  type Raw = {
+    number: number
+    title: string
+    body: string
+    state: string
+    author: { login: string }
+    labels: { name: string; color: string }[]
+    assignees: { login: string }[]
+    url: string
+    createdAt: string
+    comments: { author: { login: string }; body: string; createdAt: string }[]
+  }
+  const r = await ghJson<Raw>([
+    'issue',
+    'view',
+    String(number),
+    '-R',
+    repo,
+    '--json',
+    'number,title,body,state,author,labels,assignees,url,createdAt,comments'
+  ])
+  return {
+    number: r.number,
+    title: r.title,
+    body: r.body ?? '',
+    state: r.state,
+    author: r.author?.login ?? '',
+    labels: (r.labels ?? []).map((l) => ({ name: l.name, color: l.color })),
+    assignees: (r.assignees ?? []).map((a) => a.login),
+    url: r.url,
+    createdAt: r.createdAt,
+    comments: (r.comments ?? []).map((c) => ({
+      author: c.author?.login ?? '',
+      body: c.body ?? '',
+      createdAt: c.createdAt
+    }))
+  }
 }
 
 // ---- Pull requests ----

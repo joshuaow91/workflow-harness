@@ -8,6 +8,7 @@ import type {
   ClaudeProject,
   DatadogDashboard,
   GhIssue,
+  GhIssueDetail,
   MongoDatabase,
   ObsidianNote,
   RepoKnowledge,
@@ -69,7 +70,10 @@ const api = {
     onExit: (cb: (e: TerminalExitEvent) => void) => on<TerminalExitEvent>(IPC.terminal.exit, cb)
   },
   github: {
-    issues: (repo: string): Promise<GhIssue[]> => ipcRenderer.invoke(IPC.github.issues, repo),
+    issues: (repo: string, state?: string): Promise<GhIssue[]> =>
+      ipcRenderer.invoke(IPC.github.issues, repo, state),
+    issueDetail: (repo: string, number: number): Promise<GhIssueDetail> =>
+      ipcRenderer.invoke(IPC.github.issueDetail, repo, number),
     myPRs: (repo: string): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRs, repo),
     myPRsAll: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRsAll),
     reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),

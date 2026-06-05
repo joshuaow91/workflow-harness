@@ -3,6 +3,7 @@ import { IPC } from '@shared/ipc'
 import type { SessionRef } from '@shared/types'
 import {
   enrichLinks,
+  issueDetail,
   listIssues,
   listMyPRs,
   listMyPRsAll,
@@ -12,7 +13,10 @@ import {
 } from './GitHubService'
 
 export function registerGithubIpc(): void {
-  ipcMain.handle(IPC.github.issues, (_e, repo: string) => listIssues(repo))
+  ipcMain.handle(IPC.github.issues, (_e, repo: string, state?: string) => listIssues(repo, state))
+  ipcMain.handle(IPC.github.issueDetail, (_e, repo: string, number: number) =>
+    issueDetail(repo, number)
+  )
   ipcMain.handle(IPC.github.myPRs, (_e, repo: string) => listMyPRs(repo))
   ipcMain.handle(IPC.github.myPRsAll, () => listMyPRsAll())
   ipcMain.handle(IPC.github.reviewPRs, () => listReviewPRs())

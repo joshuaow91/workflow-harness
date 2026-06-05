@@ -897,6 +897,258 @@ button {
   min-height: 0;
 }
 
+/* ---- Native Issues tab (GitHub-styled) ---- */
+
+.gh-subtabs {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  padding: 5px 8px 0;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.gh-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  background: var(--surface);
+  border: none;
+  border-radius: 7px 7px 0 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.gh-subtab.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.gh-subtab-x {
+  font-size: 9px;
+  color: var(--text-faint);
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+
+.gh-subtab-x:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.seg {
+  display: flex;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.seg button {
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.seg button.on {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.tbtn.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.tbtn.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.issues-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.issue-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.issue-row:hover {
+  background: var(--bg-alt);
+}
+
+.issue-ico {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.issue-ico.open {
+  color: var(--green);
+}
+
+.issue-ico.closed {
+  color: var(--mauve);
+}
+
+.issue-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.issue-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.issue-row-titletext {
+  font-size: 13.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.issue-row:hover .issue-row-titletext {
+  color: var(--accent);
+}
+
+.issue-label {
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 9px;
+  padding: 1px 8px;
+  line-height: 1.5;
+}
+
+.issue-row-sub {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 3px;
+}
+
+.issue-detail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.issue-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-alt);
+}
+
+.issue-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  border-radius: 12px;
+  padding: 3px 10px;
+  color: #fff;
+}
+
+.issue-state.open {
+  background: #2da44e;
+}
+
+.issue-state.closed {
+  background: var(--mauve);
+  color: var(--bg);
+}
+
+.issue-detail-num {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-family: SFMono-Regular, Menlo, monospace;
+}
+
+.issue-detail-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.issue-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.issue-detail-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 6px;
+  line-height: 1.3;
+}
+
+.issue-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+.issue-detail-labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.issue-comment-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.issue-comment-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.issue-comment-head span {
+  color: var(--text-faint);
+}
+
+.issue-comment-card .obs-md {
+  padding: 12px 14px;
+}
+
 .gh-split .gh-list {
   height: 100%;
 }
