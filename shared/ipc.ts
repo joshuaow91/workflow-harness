@@ -89,6 +89,10 @@ export const IPC = {
     status: 'autoUpdate:status',
     runNow: 'autoUpdate:runNow'
   },
+  diff: {
+    changes: 'diff:changes',
+    fileDiff: 'diff:fileDiff'
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',

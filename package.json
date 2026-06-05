@@ -1,5 +1,5 @@
 {
-  "name": "workflow-harness",
+  "name": "blink workflow",
   "version": "0.1.0",
   "description": "A macOS cockpit for a multi-repo Claude Code workflow: projects/sessions/worktrees sidebar, split terminal panes running claude, an embedded browser, and gh-powered GitHub tabs.",
   "author": "joshuaow91",

@@ -13,6 +13,7 @@ import { registerKnowledgeIpc } from './knowledge/registerKnowledgeIpc'
 import { registerAutoUpdate } from './autoupdate/registerAutoUpdate'
 import { checkSetup } from './system/setupCheck'
 import { recordVisit, suggest } from './browser/BrowserStore'
+import { gitChanges, gitFileDiff } from './git/DiffService'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -189,6 +190,12 @@ function registerIpc(): void {
   ipcMain.handle(IPC.system.checkSetup, () => checkSetup())
   ipcMain.on(IPC.browser.recordVisit, (_e, url: string, title: string) => recordVisit(url, title))
   ipcMain.handle(IPC.browser.suggest, (_e, query: string) => suggest(query))
+  ipcMain.handle(IPC.diff.changes, (_e, path: string, branchMode: boolean) =>
+    gitChanges(path, branchMode)
+  )
+  ipcMain.handle(IPC.diff.fileDiff, (_e, path: string, file: string, branchMode: boolean) =>
+    gitFileDiff(path, file, branchMode)
+  )
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)

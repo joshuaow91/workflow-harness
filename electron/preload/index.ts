@@ -7,6 +7,7 @@ import type {
   AutoUpdateStatus,
   BrowserHistoryEntry,
   ClaudeProject,
+  GitChanges,
   DatadogDashboard,
   GhIssue,
   GhIssueDetail,
@@ -164,6 +165,12 @@ const api = {
   autoUpdate: {
     status: (): Promise<AutoUpdateStatus> => ipcRenderer.invoke(IPC.autoUpdate.status),
     runNow: (): Promise<unknown> => ipcRenderer.invoke(IPC.autoUpdate.runNow)
+  },
+  diff: {
+    changes: (path: string, branchMode: boolean): Promise<GitChanges> =>
+      ipcRenderer.invoke(IPC.diff.changes, path, branchMode),
+    fileDiff: (path: string, file: string, branchMode: boolean): Promise<string> =>
+      ipcRenderer.invoke(IPC.diff.fileDiff, path, file, branchMode)
   },
   knowledge: {
     get: (): Promise<RepoKnowledge[]> => ipcRenderer.invoke(IPC.knowledge.get),

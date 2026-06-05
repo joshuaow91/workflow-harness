@@ -107,6 +107,21 @@ export interface SessionTask {
   status: 'pending' | 'in_progress' | 'completed'
 }
 
+export interface FileChange {
+  path: string
+  /** M modified, A added, D deleted, R renamed, ? untracked. */
+  status: string
+  additions: number
+  deletions: number
+  binary: boolean
+}
+
+export interface GitChanges {
+  /** The base ref when in branch mode (e.g. origin/main), else null. */
+  base: string | null
+  files: FileChange[]
+}
+
 export interface BrowserHistoryEntry {
   url: string
   title: string

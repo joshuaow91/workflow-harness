@@ -5,6 +5,7 @@ import { WebWorkspace } from '../panes/WebWorkspace'
 import { IssuesTab } from '../github/IssuesTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
+import { DiffTab } from '../diff/DiffTab'
 import { DatadogTab } from '../datadog/DatadogTab'
 import { ObsidianTab } from '../obsidian/ObsidianTab'
 import { MermaidTab } from '../mermaid/MermaidTab'
@@ -25,6 +26,7 @@ type TabId =
   | 'issues'
   | 'myprs'
   | 'review'
+  | 'changes'
   | 'datadog'
   | 'notes'
   | 'mermaid'
@@ -44,6 +46,7 @@ const TABS: TabDef[] = [
   { id: 'issues', label: 'Issues', icon: 'issue' },
   { id: 'myprs', label: 'My PRs', icon: 'pr' },
   { id: 'review', label: 'Review', icon: 'check' },
+  { id: 'changes', label: 'Changes', icon: 'diff' },
   { id: 'datadog', label: 'Datadog', icon: 'chart' },
   { id: 'notes', label: 'Notes', icon: 'notebook' },
   { id: 'mermaid', label: 'Diagram', icon: 'diagram' },
@@ -59,6 +62,8 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
       return <MyPRsTab />
     case 'review':
       return <ReviewTab />
+    case 'changes':
+      return <DiffTab />
     case 'datadog':
       return <DatadogTab />
     case 'notes':
