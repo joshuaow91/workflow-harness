@@ -3,8 +3,6 @@ import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
 import { AgentTab } from '../panes/AgentTab'
-import { OutlookTab } from '../panes/OutlookTab'
-import { TeamsTab } from '../panes/TeamsTab'
 import { IssuesTab } from '../github/IssuesTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
@@ -34,8 +32,6 @@ type TabId =
   | 'mermaid'
   | 'mongo'
   | 'knowledge'
-  | 'outlook'
-  | 'teams'
   | 'settings'
 
 interface TabDef {
@@ -55,16 +51,10 @@ const TABS: TabDef[] = [
   { id: 'notes', label: 'Notes', icon: 'notebook' },
   { id: 'mermaid', label: 'Diagram', icon: 'diagram' },
   { id: 'mongo', label: 'Mongo', icon: 'database' },
-  { id: 'knowledge', label: 'Knowledge', icon: 'graph' },
-  { id: 'outlook', label: 'Outlook', icon: 'mail' },
-  { id: 'teams', label: 'Teams', icon: 'chat' }
+  { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
 ]
 
-function TabPanel({
-  tab
-}: {
-  tab: Exclude<TabId, 'terminals' | 'browser' | 'agent' | 'outlook' | 'teams'>
-}) {
+function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agent'> }) {
   switch (tab) {
     case 'issues':
       return <IssuesTab />
@@ -90,20 +80,7 @@ function TabPanel({
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
   const [setupOpen, setSetupOpen] = useState(false)
-  // Outlook/Teams mount on first visit, then stay mounted for background push.
-  const [mountedComms, setMountedComms] = useState({ outlook: false, teams: false })
-  const [unread, setUnread] = useState({ outlook: 0, teams: 0 })
   const settings = useSettings()
-
-  useEffect(() => {
-    if (activeTab === 'outlook' || activeTab === 'teams')
-      setMountedComms((m) => (m[activeTab] ? m : { ...m, [activeTab]: true }))
-  }, [activeTab])
-
-  // Mirror total unread onto the Dock badge.
-  useEffect(() => {
-    void window.api.system.setBadge(unread.outlook + unread.teams)
-  }, [unread])
 
   // Jump to the Terminals tab whenever something requests a new terminal.
   useEffect(() => terminalBus.subscribe(() => setActiveTab('terminals')), [])
@@ -151,22 +128,18 @@ export function AppShell() {
 
       <div className="main">
         <div className="tabbar">
-          {TABS.map((t) => {
-            const badge = t.id === 'outlook' ? unread.outlook : t.id === 'teams' ? unread.teams : 0
-            return (
-              <button
-                key={t.id}
-                className={`tab${t.id === activeTab ? ' active' : ''}`}
-                onClick={() => setActiveTab(t.id)}
-              >
-                <span className="tab-icon">
-                  <Icon name={t.icon} />
-                </span>
-                {t.label}
-                {badge > 0 && <span className="tab-badge">{badge > 99 ? '99+' : badge}</span>}
-              </button>
-            )
-          })}
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`tab${t.id === activeTab ? ' active' : ''}`}
+              onClick={() => setActiveTab(t.id)}
+            >
+              <span className="tab-icon">
+                <Icon name={t.icon} />
+              </span>
+              {t.label}
+            </button>
+          ))}
         </div>
         <div className="tab-content">
           {/* Terminals + browser stay mounted so PTYs and page state survive tab switches. */}
@@ -179,22 +152,9 @@ export function AppShell() {
           <div className="tab-layer" style={{ display: activeTab === 'agent' ? 'block' : 'none' }}>
             <AgentTab />
           </div>
-          {/* Outlook/Teams stay mounted so their service workers keep delivering push. */}
-          {mountedComms.outlook && (
-            <div className="tab-layer" style={{ display: activeTab === 'outlook' ? 'block' : 'none' }}>
-              <OutlookTab onUnread={(n) => setUnread((u) => (u.outlook === n ? u : { ...u, outlook: n }))} />
-            </div>
+          {activeTab !== 'terminals' && activeTab !== 'browser' && activeTab !== 'agent' && (
+            <TabPanel tab={activeTab} />
           )}
-          {mountedComms.teams && (
-            <div className="tab-layer" style={{ display: activeTab === 'teams' ? 'block' : 'none' }}>
-              <TeamsTab onUnread={(n) => setUnread((u) => (u.teams === n ? u : { ...u, teams: n }))} />
-            </div>
-          )}
-          {activeTab !== 'terminals' &&
-            activeTab !== 'browser' &&
-            activeTab !== 'agent' &&
-            activeTab !== 'outlook' &&
-            activeTab !== 'teams' && <TabPanel tab={activeTab} />}
         </div>
       </div>
     </div>

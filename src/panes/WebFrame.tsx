@@ -12,35 +12,7 @@ interface WebFrameProps {
   /** Fired with this view's webContents id on dom-ready and whenever it's focused. */
   onActivate?: (webContentsId: number) => void
   onTitle?: (title: string) => void
-  /** Fired with the page's Badging-API count (navigator.setAppBadge), e.g. unread. */
-  onBadge?: (count: number) => void
 }
-
-// Injected into comms webviews to report unread back to the host via console
-// messages (no webview preload needed). Combines every signal these PWAs use —
-// the Badging API, the page title, and a DOM scrape — and reports the max.
-const BADGE_HOOK = `(function(){
-  if(window.__hb)return; window.__hb=1;
-  var last=-1, badge=0;
-  function report(n){ n=n>0?Math.floor(n):0; if(n!==last){ last=n; try{console.log('__HB__'+n)}catch(e){} } }
-  function titleCount(){ var m=(document.title||'').match(/\\((\\d+)\\+?\\)/); return m?+m[1]:0; }
-  function scrape(){
-    var best=0, els=document.querySelectorAll('[aria-label],[title]');
-    for(var i=0;i<els.length;i++){
-      var s=els[i].getAttribute('aria-label')||els[i].getAttribute('title')||'';
-      var m=s.match(/(\\d+)\\s*(?:unread|new messages?|new notifications?)/i);
-      if(m){ var n=+m[1]; if(n>best) best=n; }
-    }
-    return best;
-  }
-  function tick(){ report(Math.max(badge, titleCount(), scrape())); }
-  var os=navigator.setAppBadge&&navigator.setAppBadge.bind(navigator);
-  if(navigator.setAppBadge) navigator.setAppBadge=function(n){ badge=typeof n==='number'?n:1; tick(); return os?os(n):Promise.resolve(); };
-  var oc=navigator.clearAppBadge&&navigator.clearAppBadge.bind(navigator);
-  if(navigator.clearAppBadge) navigator.clearAppBadge=function(){ badge=0; tick(); return oc?oc():Promise.resolve(); };
-  setInterval(tick, 5000);
-  tick();
-})();`
 
 export function WebFrame({
   src,
@@ -48,8 +20,7 @@ export function WebFrame({
   partition = 'persist:harness',
   leftSlot,
   onActivate,
-  onTitle,
-  onBadge
+  onTitle
 }: WebFrameProps) {
   const ref = useRef<WebviewElement | null>(null)
   const wcId = useRef<number | null>(null)
@@ -78,13 +49,8 @@ export function WebFrame({
     const onDomReady = (): void => {
       wcId.current = (wv as unknown as { getWebContentsId(): number }).getWebContentsId()
       activate()
-      if (onBadge) void (wv as unknown as { executeJavaScript(s: string): Promise<unknown> }).executeJavaScript(BADGE_HOOK).catch(() => undefined)
     }
     const onTitleUpdate = (e: Event): void => onTitle?.((e as unknown as { title: string }).title)
-    const onConsole = (e: Event): void => {
-      const m = String((e as unknown as { message?: string }).message ?? '').match(/__HB__(\d+)/)
-      if (m) onBadge?.(Number(m[1]))
-    }
     const onFocusIn = (): void => activate()
 
     wv.addEventListener('did-start-loading', onStart)
@@ -93,7 +59,6 @@ export function WebFrame({
     wv.addEventListener('did-navigate-in-page', syncNav)
     wv.addEventListener('dom-ready', onDomReady)
     wv.addEventListener('page-title-updated', onTitleUpdate)
-    wv.addEventListener('console-message', onConsole)
     wv.addEventListener('focus', onFocusIn)
 
     return () => {
@@ -103,7 +68,6 @@ export function WebFrame({
       wv.removeEventListener('did-navigate-in-page', syncNav)
       wv.removeEventListener('dom-ready', onDomReady)
       wv.removeEventListener('page-title-updated', onTitleUpdate)
-      wv.removeEventListener('console-message', onConsole)
       wv.removeEventListener('focus', onFocusIn)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,12 +129,7 @@ export function WebFrame({
       </div>
       <div className="browser-view">
         {/* eslint-disable-next-line react/no-unknown-property */}
-        <webview
-          ref={ref as never}
-          src={src}
-          partition={partition}
-          {...{ webpreferences: 'backgroundThrottling=no' }}
-        />
+        <webview ref={ref as never} src={src} partition={partition} />
       </div>
     </div>
   )

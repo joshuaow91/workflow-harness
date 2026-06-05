@@ -173,8 +173,7 @@ const api = {
     pickDirectory: (defaultPath?: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC.system.pickDirectory, defaultPath),
     openTotpWindow: (): Promise<void> => ipcRenderer.invoke(IPC.system.openTotpWindow),
-    checkSetup: (): Promise<SetupCheck[]> => ipcRenderer.invoke(IPC.system.checkSetup),
-    setBadge: (count: number): Promise<void> => ipcRenderer.invoke(IPC.system.setBadge, count)
+    checkSetup: (): Promise<SetupCheck[]> => ipcRenderer.invoke(IPC.system.checkSetup)
   }
 }
 

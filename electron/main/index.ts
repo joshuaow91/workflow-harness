@@ -186,9 +186,6 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
   ipcMain.handle(IPC.system.checkSetup, () => checkSetup())
-  ipcMain.handle(IPC.system.setBadge, (_e, count: number) => {
-    if (app.dock) app.dock.setBadge(count > 0 ? String(count) : '')
-  })
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)
@@ -218,14 +215,7 @@ const CHROME_UA =
 app.whenReady().then(() => {
   // Make embedded sites (Datadog, GitHub, …) report a dark color scheme.
   nativeTheme.themeSource = 'dark'
-  const harnessSession = session.fromPartition('persist:harness')
-  harnessSession.setUserAgent(CHROME_UA)
-  // Let embedded apps (Outlook/Teams) raise real notifications + use mic/cam, so
-  // their push notifications surface as native OS notifications.
-  harnessSession.setPermissionRequestHandler((_wc, _permission, cb) => cb(true))
-  harnessSession.setPermissionCheckHandler(
-    (_wc, permission) => permission === 'notifications' || permission === 'media' || permission === 'clipboard-read'
-  )
+  session.fromPartition('persist:harness').setUserAgent(CHROME_UA)
   registerIpc()
   createWindow()
 
