@@ -2,7 +2,20 @@ import { useEffect, useState } from 'react'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { PlanModal } from './PlanModal'
 
+// Map the team's Projects v2 board statuses to badge colors.
+function boardBadge(status: string): { label: string; cls: string } {
+  const s = status.toLowerCase()
+  if (s.includes('review')) return { label: status, cls: 'review' }
+  if (s.includes('progress')) return { label: status, cls: 'progress' }
+  if (s.includes('ready')) return { label: status, cls: 'ready' }
+  if (s.includes('release')) return { label: status, cls: 'release' }
+  if (s.includes('closed')) return { label: status, cls: 'closed' }
+  return { label: status, cls: 'muted' } // "No Status" and anything unmapped
+}
+
 function badge(r: SessionRef): { label: string; cls: string } | null {
+  // Prefer the project board status when present (open/closed/merged is coarse).
+  if (r.boardStatus) return boardBadge(r.boardStatus)
   const s = r.state?.toUpperCase()
   if (!s) return null
   if (s === 'MERGED') return { label: 'merged', cls: 'merged' }
@@ -116,7 +129,7 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
         )}
       </div>
 
-      {modal && <PlanModal sessionId={sessionId} tasks={tasks} onClose={() => setModal(false)} />}
+      {modal && <PlanModal sessionId={sessionId} onClose={() => setModal(false)} />}
     </div>
   )
 }

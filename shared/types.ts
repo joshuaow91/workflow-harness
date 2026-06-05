@@ -114,6 +114,8 @@ export interface SessionRef {
   state?: string
   isDraft?: boolean
   reviewDecision?: string
+  /** Project board Status single-select (e.g. "In Review"), if on a Projects v2 board. */
+  boardStatus?: string
 }
 
 // ---- Claude sidebar ----

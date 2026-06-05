@@ -2997,26 +2997,29 @@ button {
   background: rgba(243, 139, 168, 0.12);
 }
 
+.gh-badge.ready {
+  color: var(--accent);
+  background: rgba(137, 180, 250, 0.14);
+}
+
+.gh-badge.progress {
+  color: var(--yellow);
+  background: rgba(249, 226, 175, 0.12);
+}
+
+.gh-badge.review {
+  color: var(--mauve);
+  background: rgba(203, 166, 247, 0.14);
+}
+
+.gh-badge.release {
+  color: #94e2d5;
+  background: rgba(148, 226, 213, 0.12);
+}
+
 .plan-md {
   padding: 0;
   max-width: 100%;
-}
-
-.plan-tasklist {
-  border-top: 1px solid var(--border);
-  margin-top: 8px;
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.plan-tasklist-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-faint);
 }
 
 /* ---- Modal ---- */
