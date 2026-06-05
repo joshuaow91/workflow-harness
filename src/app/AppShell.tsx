@@ -15,6 +15,7 @@ import { MongoTab } from '../mongo/MongoTab'
 import { KnowledgeTab } from '../knowledge/KnowledgeTab'
 import { SettingsTab } from '../settings/SettingsTab'
 import { SetupModal } from './SetupModal'
+import { CommandPalette } from './CommandPalette'
 import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
 import { Icon } from '../components/Icon'
@@ -85,7 +86,20 @@ export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
   const [setupOpen, setSetupOpen] = useState(false)
   const [diffModal, setDiffModal] = useState<{ path: string; title: string } | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const settings = useSettings()
+
+  // ⌘K / Ctrl+K opens the command palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Sidebar diff shortcuts: focus the Changes tab, or pop a quick diff modal.
   useEffect(() => diffBus.onTab(() => setActiveTab('changes')), [])
@@ -134,6 +148,13 @@ export function AppShell() {
       {setupOpen && <SetupModal onClose={() => setSetupOpen(false)} />}
       {diffModal && (
         <DiffModal path={diffModal.path} title={diffModal.title} onClose={() => setDiffModal(null)} />
+      )}
+      {paletteOpen && (
+        <CommandPalette
+          tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+          navigate={(t) => setActiveTab(t as TabId)}
+          onClose={() => setPaletteOpen(false)}
+        />
       )}
 
       <Sidebar />
