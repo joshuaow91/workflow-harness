@@ -54,6 +54,48 @@ export function TerminalsTab() {
   }
   useEffect(() => terminalBus.subscribe((opts) => void openTab(opts)), [])
 
+  // Restore the saved tab/pane/layout on first mount (re-launches each pane's
+  // command, e.g. claude --resume <id> or a shell).
+  const hydrated = useRef(false)
+  useEffect(() => {
+    if (hydrated.current) return
+    hydrated.current = true
+    let saved: { activeIndex?: number; tabs?: { name: string; layout: Layout; panes: TerminalSpawnOptions[] }[] } | null
+    try {
+      saved = JSON.parse(localStorage.getItem('harness:terminals') || 'null')
+    } catch {
+      saved = null
+    }
+    if (!saved?.tabs?.length) return
+    void (async () => {
+      const rebuilt: Tab[] = []
+      for (const st of saved.tabs ?? []) {
+        const panes: Pane[] = []
+        for (const opts of st.panes) panes.push(await makePane(opts))
+        rebuilt.push({ id: tabCounter.current++, name: st.name, layout: st.layout, panes })
+      }
+      if (rebuilt.length) {
+        setTabs(rebuilt)
+        setActiveId(rebuilt[Math.min(saved!.activeIndex ?? 0, rebuilt.length - 1)].id)
+      }
+    })()
+  }, [])
+
+  // Persist the layout (without runtime ids).
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'harness:terminals',
+        JSON.stringify({
+          activeIndex: tabs.findIndex((t) => t.id === activeId),
+          tabs: tabs.map((t) => ({ name: t.name, layout: t.layout, panes: t.panes.map((p) => p.opts) }))
+        })
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [tabs, activeId])
+
   // Refit terminals when the active tab / its layout / pane count changes.
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 60)

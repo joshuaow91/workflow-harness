@@ -83,7 +83,12 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
 }
 
 export function AppShell() {
-  const [activeTab, setActiveTab] = useState<TabId>('terminals')
+  const [activeTab, setActiveTab] = useState<TabId>(
+    () => (localStorage.getItem('harness:activeTab') as TabId) || 'terminals'
+  )
+  useEffect(() => {
+    localStorage.setItem('harness:activeTab', activeTab)
+  }, [activeTab])
   const [setupOpen, setSetupOpen] = useState(false)
   const [diffModal, setDiffModal] = useState<{ path: string; title: string } | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
