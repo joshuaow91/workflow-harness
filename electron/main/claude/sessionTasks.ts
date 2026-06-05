@@ -1,8 +1,9 @@
-import { createReadStream, existsSync, readdirSync, statSync } from 'fs'
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import { createInterface } from 'readline'
-import type { SessionTask } from '@shared/types'
+import type { SessionRef, SessionTask } from '@shared/types'
+import { discoverRepos } from '../git/WorktreeService'
 
 const PROJECTS = join(homedir(), '.claude', 'projects')
 
@@ -64,6 +65,7 @@ export async function getSessionTasks(sessionId: string): Promise<SessionTask[]>
           const t: MutableTask = {
             id: tasks.length + 1,
             subject: String(input.subject ?? '(task)'),
+            description: input.description ? String(input.description) : undefined,
             status: 'pending'
           }
           tasks.push(t)
@@ -98,7 +100,69 @@ export async function getSessionTasks(sessionId: string): Promise<SessionTask[]>
     rl.close()
   }
 
-  const result = tasks.filter((t) => !t.deleted).map((t) => ({ id: t.id, subject: t.subject, status: t.status }))
+  const result = tasks
+    .filter((t) => !t.deleted)
+    .map((t) => ({ id: t.id, subject: t.subject, description: t.description, status: t.status }))
   cache.set(file, { mtimeMs: st.mtimeMs, size: st.size, tasks: result })
   return result
+}
+
+// Extract the PRs/issues a session worked on from its transcript: authoritative
+// `pr-link` entries plus github URLs (filtered to workspace owners to drop noise).
+const URL_RE = /github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)/g
+const linkCache = new Map<string, { mtimeMs: number; size: number; refs: SessionRef[] }>()
+
+export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> {
+  const file = findSessionFile(sessionId)
+  if (!file) return []
+  let st
+  try {
+    st = statSync(file)
+  } catch {
+    return []
+  }
+  const cached = linkCache.get(file)
+  if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) return cached.refs
+
+  const owners = new Set(
+    (await discoverRepos()).map((r) => r.nameWithOwner?.split('/')[0]).filter(Boolean) as string[]
+  )
+  const prs = new Map<string, SessionRef>()
+  const issues = new Map<string, SessionRef>()
+
+  let raw = ''
+  try {
+    raw = readFileSync(file, 'utf8')
+  } catch {
+    return []
+  }
+
+  // Authoritative PRs from pr-link entries.
+  for (const line of raw.split('\n')) {
+    if (!line.includes('"pr-link"')) continue
+    try {
+      const o = JSON.parse(line) as { type?: string; prNumber?: number; prUrl?: string; prRepository?: string }
+      if (o.type === 'pr-link' && o.prUrl && o.prRepository && o.prNumber) {
+        prs.set(o.prUrl, { kind: 'pr', repo: o.prRepository, number: o.prNumber, url: o.prUrl })
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // URLs in text (PRs + issues), filtered to workspace owners.
+  let m: RegExpExecArray | null
+  URL_RE.lastIndex = 0
+  while ((m = URL_RE.exec(raw))) {
+    const [, owner, repo, kind, num] = m
+    if (!owners.has(owner)) continue
+    const isPr = kind === 'pull'
+    const url = `https://github.com/${owner}/${repo}/${isPr ? 'pull' : 'issues'}/${num}`
+    const ref: SessionRef = { kind: isPr ? 'pr' : 'issue', repo: `${owner}/${repo}`, number: Number(num), url }
+    ;(isPr ? prs : issues).set(url, ref)
+  }
+
+  const refs = [...prs.values(), ...issues.values()]
+  linkCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, refs })
+  return refs
 }

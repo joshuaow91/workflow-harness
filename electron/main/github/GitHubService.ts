@@ -6,21 +6,10 @@ import {
   type GhProjectBoard,
   type GhProjectItem,
   type GhProjectSummary,
-  type GhPullRequest,
-  type SessionLink
+  type GhPullRequest
 } from '@shared/types'
-import { discoverRepos } from '../git/WorktreeService'
 
 const pexec = promisify(execFile)
-
-async function gitBranch(cwd: string): Promise<string | null> {
-  try {
-    const { stdout } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd })
-    return stdout.trim() || null
-  } catch {
-    return null
-  }
-}
 
 async function gh(args: string[]): Promise<string> {
   try {
@@ -207,42 +196,6 @@ export async function listReviewPRs(): Promise<GhPullRequest[]> {
     url: r.url,
     repo: r.repository?.nameWithOwner ?? ''
   }))
-}
-
-// ---- Session link: the PR/issue tied to a session's working dir ----
-
-export async function sessionLink(cwd: string): Promise<SessionLink> {
-  const repos = await discoverRepos()
-  const repo =
-    repos.find((r) => r.path === cwd || r.worktrees.some((w) => w.path === cwd)) ??
-    repos.find((r) => cwd.startsWith(r.path))
-  const branch = await gitBranch(cwd)
-  const issueMatch = branch?.match(/(\d{3,6})/)
-  const issueNumber = issueMatch ? Number(issueMatch[1]) : null
-
-  let pr: SessionLink['pr'] = null
-  if (repo?.nameWithOwner && branch) {
-    try {
-      const rows = await ghJson<{ number: number; title: string; url: string; state: string; isDraft: boolean }[]>([
-        'pr',
-        'list',
-        '-R',
-        repo.nameWithOwner,
-        '--head',
-        branch,
-        '--state',
-        'all',
-        '--limit',
-        '1',
-        '--json',
-        'number,title,url,state,isDraft'
-      ])
-      pr = rows[0] ?? null
-    } catch {
-      /* gh not available / no PR */
-    }
-  }
-  return { branch, repo: repo?.nameWithOwner ?? null, issueNumber, pr }
 }
 
 // ---- Projects v2 (needs read:project scope) ----

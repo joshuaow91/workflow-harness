@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { TerminalPane } from './TerminalPane'
+import { TermSidebar } from './TermSidebar'
 
 export type Layout = 'cols' | 'rows' | 'grid' | 'mainGrid'
 
@@ -8,6 +9,7 @@ export interface Pane {
   paneId: number
   terminalId: string
   opts: TerminalSpawnOptions
+  sessionId?: string
 }
 
 function basename(p: string): string {
@@ -19,12 +21,14 @@ function basename(p: string): string {
 export function PaneGrid({
   panes,
   layout,
+  showSidebar,
   onClose,
   onRestart,
   onReorder
 }: {
   panes: Pane[]
   layout: Layout
+  showSidebar: boolean
   onClose: (paneId: number) => void
   onRestart: (paneId: number) => void
   onReorder: (fromId: number, toId: number) => void
@@ -95,7 +99,10 @@ export function PaneGrid({
             </div>
           </div>
           <div className="term-panel-body">
-            <TerminalPane id={pane.terminalId} />
+            <div className="term-pane-term">
+              <TerminalPane id={pane.terminalId} />
+            </div>
+            {showSidebar && pane.sessionId && <TermSidebar sessionId={pane.sessionId} />}
           </div>
         </div>
       ))}

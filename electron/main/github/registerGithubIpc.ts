@@ -6,8 +6,7 @@ import {
   listMyPRsAll,
   listProjects,
   listReviewPRs,
-  projectItems,
-  sessionLink
+  projectItems
 } from './GitHubService'
 
 export function registerGithubIpc(): void {
@@ -19,5 +18,4 @@ export function registerGithubIpc(): void {
   ipcMain.handle(IPC.github.projectItems, (_e, owner: string, number: number) =>
     projectItems(owner, number)
   )
-  ipcMain.handle(IPC.github.sessionLink, (_e, cwd: string) => sessionLink(cwd))
 }

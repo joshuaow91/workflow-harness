@@ -5,14 +5,12 @@ import { useDefaultSessionDir } from '../lib/settingsStore'
 import { claudeCommand } from '../lib/launchClaude'
 import { Icon } from '../components/Icon'
 import { PaneGrid, type Layout, type Pane } from './PaneGrid'
-import { TermSidebar } from './TermSidebar'
 
 interface Tab {
   id: number
   name: string
   panes: Pane[]
   layout: Layout
-  sessionId?: string
 }
 
 function basename(p: string): string {
@@ -40,18 +38,15 @@ export function TerminalsTab() {
 
   const makePane = async (opts: TerminalSpawnOptions): Promise<Pane> => {
     const terminalId = await window.api.terminal.create(opts)
-    return { paneId: paneCounter.current++, terminalId, opts }
+    const m = opts.initialCommand?.match(/--resume\s+(\S+)/)
+    return { paneId: paneCounter.current++, terminalId, opts, sessionId: m?.[1] }
   }
 
   // Each opened session becomes its own tab.
   const openTab = async (opts: TerminalSpawnOptions): Promise<void> => {
     const pane = await makePane(opts)
-    const m = opts.initialCommand?.match(/--resume\s+(\S+)/)
     const id = tabCounter.current++
-    setTabs((t) => [
-      ...t,
-      { id, name: opts.label ?? basename(opts.cwd), panes: [pane], layout: 'cols', sessionId: m?.[1] }
-    ])
+    setTabs((t) => [...t, { id, name: opts.label ?? basename(opts.cwd), panes: [pane], layout: 'cols' }])
     setActiveId(id)
   }
   useEffect(() => terminalBus.subscribe((opts) => void openTab(opts)), [])
@@ -214,24 +209,14 @@ export function TerminalsTab() {
               ☰ Progress
             </button>
           </div>
-          <div className="term-body">
-            <div className="term-main">
-              <PaneGrid
-                panes={active.panes}
-                layout={active.layout}
-                onClose={(p) => closePane(active.id, p)}
-                onRestart={(p) => void restartPane(active.id, p)}
-                onReorder={(f, to) => reorder(active.id, f, to)}
-              />
-            </div>
-            {showSidebar && (
-              <TermSidebar
-                key={active.id}
-                sessionId={active.sessionId}
-                cwd={active.panes[0]?.opts.cwd}
-              />
-            )}
-          </div>
+          <PaneGrid
+            panes={active.panes}
+            layout={active.layout}
+            showSidebar={showSidebar}
+            onClose={(p) => closePane(active.id, p)}
+            onRestart={(p) => void restartPane(active.id, p)}
+            onReorder={(f, to) => reorder(active.id, f, to)}
+          />
         </>
       ) : (
         <div className="placeholder">

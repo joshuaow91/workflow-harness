@@ -101,14 +101,15 @@ export interface AgentActivity {
 export interface SessionTask {
   id: number
   subject: string
+  description?: string
   status: 'pending' | 'in_progress' | 'completed'
 }
 
-export interface SessionLink {
-  branch: string | null
-  repo: string | null
-  issueNumber: number | null
-  pr: { number: number; title: string; url: string; state: string; isDraft: boolean } | null
+export interface SessionRef {
+  kind: 'pr' | 'issue'
+  repo: string
+  number: number
+  url: string
 }
 
 // ---- Claude sidebar ----
