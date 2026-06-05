@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { activeProvider } from '../agents/registry'
 import { EJSON } from 'bson'
 import { MongoClient } from 'mongodb'
 import { ipcMain } from 'electron'
@@ -112,16 +112,11 @@ async function aiQuery(db: string, prompt: string): Promise<string> {
     `with a filter object for simple lookups. Never use $out or $merge. Use extended JSON for dates: {"$date":"ISO"}.\n\n` +
     `Request: ${prompt}`
 
-  return new Promise((resolve, reject) => {
-    execFile('claude', ['-p', full], { timeout: 120000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) return reject(new Error((stderr || err.message).trim()))
-      const cleaned = stdout
-        .replace(/^\s*```(?:json)?\s*/i, '')
-        .replace(/\s*```\s*$/i, '')
-        .trim()
-      resolve(cleaned)
-    })
-  })
+  const out = await activeProvider().oneShot(full)
+  return out
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim()
 }
 
 export function registerMongoIpc(): void {

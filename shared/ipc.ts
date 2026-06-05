@@ -55,6 +55,7 @@ export const IPC = {
     checkConnected: 'agent:checkConnected',
     command: 'agent:command',
     info: 'agent:info',
+    list: 'agent:list',
     activity: 'agent:activity' // main -> renderer push
   },
   devtools: {

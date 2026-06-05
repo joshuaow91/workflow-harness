@@ -6,6 +6,7 @@ import { DatadogSettings } from './DatadogSettings'
 import { MongoSettings } from './MongoSettings'
 import { AutoUpdateSettings } from './AutoUpdateSettings'
 import { RateLimitMeter } from './RateLimitMeter'
+import { AgentPicker } from './AgentPicker'
 
 export function SettingsTab() {
   const settings = useSettings()
@@ -32,8 +33,10 @@ export function SettingsTab() {
     <div className="settings">
       <h1 className="settings-title">Settings</h1>
 
+      <AgentPicker />
+
       <section className="settings-section">
-        <div className="settings-label">Default directory for new claude sessions</div>
+        <div className="settings-label">Default directory for new agent sessions</div>
         <div className="settings-row">
           <code className="settings-path">{dir || '…'}</code>
           <button className="tbtn" onClick={chooseDir}>

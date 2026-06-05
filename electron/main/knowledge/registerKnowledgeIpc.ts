@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { activeProvider } from '../agents/registry'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
@@ -98,18 +98,12 @@ async function gatherContext(path: string): Promise<string> {
   return `Top-level entries: ${entries.join(', ')}\n\n${manifest}\n\nREADME (excerpt):\n${readme}`
 }
 
-function runClaude(prompt: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile('claude', ['-p', prompt], { timeout: 120000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) return reject(new Error((stderr || err.message).trim()))
-      resolve(
-        stdout
-          .replace(/^\s*```(?:json)?\s*/i, '')
-          .replace(/\s*```\s*$/i, '')
-          .trim()
-      )
-    })
-  })
+async function runClaude(prompt: string): Promise<string> {
+  const out = await activeProvider().oneShot(prompt)
+  return out
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim()
 }
 
 async function generate(repoPath: string): Promise<RepoKnowledge> {

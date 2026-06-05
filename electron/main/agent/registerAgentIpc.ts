@@ -3,7 +3,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { setAgentTarget } from './BrowserController'
 import { CONTROL_PORT, setActivitySink, setMermaidSink, startControlServer } from './controlServer'
-import { activeProvider } from '../agents/registry'
+import { activeProvider, providers } from '../agents/registry'
 
 function mcpScriptPathExt(): string {
   return join(app.getAppPath(), 'mcp', 'agent-browser.mjs')
@@ -40,6 +40,12 @@ export function registerAgentIpc(getWindow: () => BrowserWindow | null): void {
     const p = activeProvider()
     return { id: p.id, label: p.label, cli: p.cli }
   })
+
+  ipcMain.handle(IPC.agent.list, async () =>
+    Promise.all(
+      providers.map(async (p) => ({ id: p.id, label: p.label, cli: p.cli, installed: (await p.isInstalled()).ok }))
+    )
+  )
 
   ipcMain.handle(IPC.agent.command, (_e, opts: { resumeId?: string; mapFile?: string }) =>
     activeProvider().buildCommand(opts)

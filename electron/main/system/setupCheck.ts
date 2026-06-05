@@ -2,6 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { SetupCheck } from '@shared/types'
 import { getSettings } from '../settings/SettingsStore'
+import { activeProvider } from '../agents/registry'
 
 const pexec = promisify(execFile)
 
@@ -62,24 +63,28 @@ export async function checkSetup(): Promise<SetupCheck[]> {
     })
   }
 
-  const claude = await run('claude', ['--version'])
+  const agent = activeProvider()
+  const inst = await agent.isInstalled()
+  const installFix: Record<string, string> = {
+    claude: 'npm install -g @anthropic-ai/claude-code  (see claude.com/claude-code)',
+    codex: 'npm install -g @openai/codex  (see the Codex CLI docs)'
+  }
   checks.push({
-    name: 'Claude Code CLI (claude)',
+    name: `${agent.label} CLI (${agent.cli})`,
     required: true,
-    ok: claude.ok,
-    detail: claude.ok ? claude.out.split('\n')[0] : 'Not found on PATH',
-    fix: claude.ok ? undefined : 'npm install -g @anthropic-ai/claude-code  (see claude.com/claude-code)'
+    ok: inst.ok,
+    detail: inst.ok ? inst.version : 'Not found on PATH',
+    fix: inst.ok ? undefined : (installFix[agent.id] ?? `Install the ${agent.cli} CLI`)
   })
 
-  if (claude.ok) {
-    const mcp = await run('claude', ['mcp', 'list'])
-    const has = /agent-browser/.test(mcp.out)
+  if (inst.ok) {
+    const has = await agent.checkMcp()
     checks.push({
       name: 'Harness MCP (agent-browser)',
       required: false,
       ok: has,
-      detail: has ? 'Registered — Claude can use repo_knowledge / browser tools' : 'Not registered',
-      fix: has ? undefined : 'Open the Agent tab → "Connect Claude"'
+      detail: has ? `Registered — ${agent.label} can use repo_knowledge / browser tools` : 'Not registered',
+      fix: has ? undefined : 'Open the Browser tab → "Connect Claude"'
     })
   }
 

@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react'
 import type { ClaudeProject } from '@shared/types'
+import { useSettings } from '../lib/settingsStore'
 
 interface State {
   projects: ClaudeProject[]
   loading: boolean
 }
 
-// Loads the Claude project/session tree and keeps it live: the main process
-// pushes a fresh snapshot over IPC whenever ~/.claude changes (chokidar).
+// Loads the active agent's project/session tree and keeps it live: the main
+// process pushes a fresh snapshot over IPC whenever the agent's data changes.
 export function useClaudeProjects(): State {
+  const settings = useSettings()
+  const agent = settings?.agent ?? 'claude'
   const [projects, setProjects] = useState<ClaudeProject[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
+    setLoading(true)
 
     window.api.claude
       .getProjects()
@@ -33,7 +37,7 @@ export function useClaudeProjects(): State {
       active = false
       unsubscribe()
     }
-  }, [])
+  }, [agent])
 
   return { projects, loading }
 }
