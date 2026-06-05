@@ -2622,9 +2622,14 @@ button {
   font-size: 10px;
 }
 
-.obs-editor {
+.obs-editor,
+.obs-reading {
   flex: 1;
   min-height: 0;
+}
+
+.obs-reading .obs-reading-host {
+  height: 100%;
 }
 
 .obs-editor .cm-host,

@@ -1,10 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { marked } from 'marked'
 import type { ObsidianTheme } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { LivePreviewEditor } from './LivePreviewEditor'
+import { ReadingView } from './ReadingView'
 import { applyThemeVars, clearThemeVars, extractThemeVars } from './obsidianTheme'
+
+function renderNote(md: string): string {
+  const pre = md.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_m, name: string, alias?: string) => {
+    const label = (alias ?? name).trim()
+    return `<a href="#" data-wikilink="${encodeURIComponent(name.trim())}">${label}</a>`
+  })
+  return marked.parse(pre, { gfm: true, async: false }) as string
+}
+
+function toggleNthTask(md: string, idx: number): string {
+  let i = 0
+  return md.replace(/^(\s*[-*+] )\[( |x|X)\]/gm, (m, pre: string, c: string) =>
+    i++ === idx ? `${pre}[${c === ' ' ? 'x' : ' '}]` : m
+  )
+}
 
 export function ObsidianTab() {
   const settings = useSettings()
@@ -18,8 +35,15 @@ export function ObsidianTab() {
   const [saved, setSaved] = useState(true)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [mode, setMode] = useState<'edit' | 'read'>('read')
   const [theme, setTheme] = useState<ObsidianTheme | null>(null)
   const useTheme = settings?.useObsidianTheme !== false
+  const themeVars = useMemo(
+    () => (theme?.css ? extractThemeVars(theme.css, theme.scheme) : {}),
+    [theme]
+  )
+  const html = useMemo(() => (mode === 'read' ? renderNote(content) : ''), [content, mode])
+  const toggleTask = (idx: number): void => onEdit(toggleNthTask(content, idx))
   useEffect(() => {
     if (vault) void window.api.obsidian.theme().then(setTheme)
   }, [vault])
@@ -142,6 +166,9 @@ export function ObsidianTab() {
           <div className="obs-view">
             <div className="obs-viewbar">
               <span className="obs-viewtitle">{sel ?? 'No note selected'}</span>
+              <button className="tbtn" onClick={() => setMode((m) => (m === 'read' ? 'edit' : 'read'))}>
+                {mode === 'read' ? '✎ Edit' : '📖 Read'}
+              </button>
               {theme?.css && (
                 <button
                   className={`tbtn${themed ? ' connected' : ''}`}
@@ -154,9 +181,21 @@ export function ObsidianTab() {
               <span className="obs-saved">{saved ? 'saved' : 'saving…'}</span>
             </div>
             {sel ? (
-              <div className={`obs-editor${themed ? ` obs-theme-scope theme-${theme!.scheme}` : ''}`}>
-                <LivePreviewEditor doc={content} onChange={onEdit} />
-              </div>
+              mode === 'read' ? (
+                <div className="obs-reading">
+                  <ReadingView
+                    html={html}
+                    themeCss={themed ? (theme?.css ?? '') : ''}
+                    scheme={theme?.scheme ?? 'dark'}
+                    vars={themed ? themeVars : {}}
+                    onToggleTask={toggleTask}
+                  />
+                </div>
+              ) : (
+                <div className={`obs-editor${themed ? ` obs-theme-scope theme-${theme!.scheme}` : ''}`}>
+                  <LivePreviewEditor doc={content} onChange={onEdit} />
+                </div>
+              )
             ) : (
               <div className="side-term-hint" style={{ padding: 24 }}>
                 Select a note, or press ＋ to create one.
