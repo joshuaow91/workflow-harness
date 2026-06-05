@@ -9,6 +9,7 @@ import { relativeTime } from '../lib/time'
 import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
 import { GhState } from './GhShared'
+import { IssuesBoard } from './IssuesBoard'
 
 const DEFAULT_REPO = 'blink-ai/blink_server'
 const PAGE = 50
@@ -68,6 +69,7 @@ function IssueRow({ issue, onOpen }: { issue: GhIssue; onOpen: (i: GhIssue) => v
         </div>
         <div className="issue-row-sub">
           #{issue.number} · updated {relativeTime(issue.updatedAt)}
+          {issue.milestone && ` · 🏁 ${issue.milestone}`}
           {issue.assignees.length > 0 && ` · ${issue.assignees.join(', ')}`}
         </div>
       </div>
@@ -253,6 +255,7 @@ export function IssuesTab() {
     [repos]
   )
   const [repo, setRepo] = useState<string | null>(null)
+  const [view, setView] = useState<'list' | 'board'>('list')
   const [stateFilter, setStateFilter] = useState<'open' | 'closed'>('open')
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
@@ -284,11 +287,13 @@ export function IssuesTab() {
   const localPathFor = (nwo: string): string | undefined =>
     repos.find((r) => r.nameWithOwner === nwo)?.path
 
-  const openIssue = (issue: GhIssue): void => {
-    if (!repo) return
-    const key = `${repo}#${issue.number}`
-    setOpenTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, repo, number: issue.number, title: issue.title }]))
+  const openRef = (r: string, number: number, title: string): void => {
+    const key = `${r}#${number}`
+    setOpenTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, repo: r, number, title }]))
     setActive(key)
+  }
+  const openIssue = (issue: GhIssue): void => {
+    if (repo) openRef(repo, issue.number, issue.title)
   }
 
   const closeTab = (key: string): void =>
@@ -355,39 +360,55 @@ export function IssuesTab() {
               options={ghRepos.map((r) => ({ value: r, label: r }))}
               onChange={setRepo}
               searchable
-              minWidth={220}
+              minWidth={200}
               placeholder="repo…"
             />
-            <input
-              className="issue-search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search issues (gh syntax: label:bug author:@me …)"
-            />
             <div className="seg">
-              <button className={stateFilter === 'open' ? 'on' : ''} onClick={() => setStateFilter('open')}>
-                Open
+              <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
+                List
               </button>
-              <button className={stateFilter === 'closed' ? 'on' : ''} onClick={() => setStateFilter('closed')}>
-                Closed
+              <button className={view === 'board' ? 'on' : ''} onClick={() => setView('board')}>
+                Board
               </button>
             </div>
-            <span className="gh-count">{issues.length}</span>
-            <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={reload}>
-              ↻ Refresh
-            </button>
-          </div>
-          <div className="issues-list">
-            <GhState loading={loading} error={error} empty={issues.length === 0} emptyText="No issues match." />
-            {issues.map((i) => (
-              <IssueRow key={i.number} issue={i} onOpen={openIssue} />
-            ))}
-            {issues.length >= limit && (
-              <button className="issue-loadmore" onClick={() => setLimit((l) => l + PAGE)}>
-                Load more
-              </button>
+            {view === 'list' && (
+              <>
+                <input
+                  className="issue-search"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search issues (label:bug author:@me …)"
+                />
+                <div className="seg">
+                  <button className={stateFilter === 'open' ? 'on' : ''} onClick={() => setStateFilter('open')}>
+                    Open
+                  </button>
+                  <button className={stateFilter === 'closed' ? 'on' : ''} onClick={() => setStateFilter('closed')}>
+                    Closed
+                  </button>
+                </div>
+                <span className="gh-count">{issues.length}</span>
+                <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={reload}>
+                  ↻ Refresh
+                </button>
+              </>
             )}
           </div>
+          {view === 'list' ? (
+            <div className="issues-list">
+              <GhState loading={loading} error={error} empty={issues.length === 0} emptyText="No issues match." />
+              {issues.map((i) => (
+                <IssueRow key={i.number} issue={i} onOpen={openIssue} />
+              ))}
+              {issues.length >= limit && (
+                <button className="issue-loadmore" onClick={() => setLimit((l) => l + PAGE)}>
+                  Load more
+                </button>
+              )}
+            </div>
+          ) : repo ? (
+            <IssuesBoard owner={repo.split('/')[0]} onOpenItem={openRef} />
+          ) : null}
         </>
       ) : activeTab ? (
         <IssueDetailView

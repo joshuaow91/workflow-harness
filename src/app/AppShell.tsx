@@ -4,7 +4,6 @@ import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
 import { AgentTab } from '../panes/AgentTab'
 import { IssuesTab } from '../github/IssuesTab'
-import { BoardTab } from '../github/BoardTab'
 import { MyPRsTab } from '../github/MyPRsTab'
 import { ReviewTab } from '../github/ReviewTab'
 import { DatadogTab } from '../datadog/DatadogTab'
@@ -26,7 +25,6 @@ type TabId =
   | 'browser'
   | 'agent'
   | 'issues'
-  | 'board'
   | 'myprs'
   | 'review'
   | 'datadog'
@@ -47,7 +45,6 @@ const TABS: TabDef[] = [
   { id: 'browser', label: 'Browser', icon: 'globe' },
   { id: 'agent', label: 'Agent', icon: 'bot' },
   { id: 'issues', label: 'Issues', icon: 'issue' },
-  { id: 'board', label: 'Board', icon: 'board' },
   { id: 'myprs', label: 'My PRs', icon: 'pr' },
   { id: 'review', label: 'Review', icon: 'check' },
   { id: 'datadog', label: 'Datadog', icon: 'chart' },
@@ -61,8 +58,6 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agen
   switch (tab) {
     case 'issues':
       return <IssuesTab />
-    case 'board':
-      return <BoardTab />
     case 'myprs':
       return <MyPRsTab />
     case 'review':

@@ -121,9 +121,10 @@ export async function listIssues(
     assignees: { login: string }[]
     updatedAt: string
     url: string
+    milestone: { title: string } | null
   }
   const st = state === 'closed' || state === 'all' ? state : 'open'
-  const args = ['issue', 'list', '-R', repo, '--limit', String(limit), '--json', 'number,title,state,labels,assignees,updatedAt,url']
+  const args = ['issue', 'list', '-R', repo, '--limit', String(limit), '--json', 'number,title,state,labels,assignees,updatedAt,url,milestone']
   if (search.trim()) args.push('--search', `${search.trim()} state:${st} sort:updated-desc`)
   else args.push('--state', st)
   const rows = await ghJson<Raw[]>(args)
@@ -134,7 +135,8 @@ export async function listIssues(
     labels: r.labels.map((l) => ({ name: l.name, color: l.color })),
     assignees: r.assignees.map((a) => a.login),
     updatedAt: r.updatedAt,
-    url: r.url
+    url: r.url,
+    milestone: r.milestone?.title ?? null
   }))
 }
 

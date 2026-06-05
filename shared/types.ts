@@ -214,6 +214,7 @@ export interface GhIssue {
   assignees: string[]
   updatedAt: string
   url: string
+  milestone: string | null
 }
 
 export interface GhIssueComment {

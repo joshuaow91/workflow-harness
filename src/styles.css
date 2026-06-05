@@ -1267,6 +1267,103 @@ button {
   background: var(--surface-hover);
 }
 
+/* ---- Issues board (native kanban) ---- */
+.kanban-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px;
+}
+
+.kanban-col {
+  flex: 0 0 260px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 100%;
+}
+
+.kanban-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban-col-body {
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kanban-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 9px 10px;
+}
+
+.kanban-card.clickable {
+  cursor: pointer;
+}
+
+.kanban-card.clickable:hover {
+  border-color: var(--accent);
+}
+
+.kanban-card-title {
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.kanban-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.kanban-card-type.issue {
+  color: var(--green);
+}
+
+.kanban-card-type.pullrequest {
+  color: var(--mauve);
+}
+
+.kanban-card-repo {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-family: SFMono-Regular, Menlo, monospace;
+}
+
 .gh-split .gh-list {
   height: 100%;
 }
