@@ -30,6 +30,8 @@ export interface AppSettings {
   autoUpdateRepos: 'off' | 'hourly' | 'daily'
   /** Browser bookmarks for quick opening. */
   bookmarks: Bookmark[]
+  /** Apply the vault's active Obsidian theme palette to the Notes editor. */
+  useObsidianTheme: boolean
 }
 
 export interface UpdateResult {

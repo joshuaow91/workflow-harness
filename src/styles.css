@@ -2694,6 +2694,59 @@ button {
   cursor: pointer;
 }
 
+/* When using the vault's Obsidian theme, drive styling off its CSS variables. */
+.obs-theme-scope {
+  background: var(--background-primary, var(--bg));
+}
+.obs-theme-scope .cm-editor {
+  background: transparent;
+  color: var(--text-normal, var(--text));
+}
+.obs-theme-scope .cm-content {
+  font-family: var(--font-text, inherit);
+}
+.obs-theme-scope .cm-cursor {
+  border-left-color: var(--text-accent, var(--accent));
+}
+.obs-theme-scope .cm-h1 {
+  color: var(--h1-color, var(--header-color, var(--text-normal, var(--text))));
+}
+.obs-theme-scope .cm-h2 {
+  color: var(--h2-color, var(--header-color, var(--text-normal, var(--text))));
+}
+.obs-theme-scope .cm-h3 {
+  color: var(--h3-color, var(--header-color, var(--text-normal, var(--text))));
+}
+.obs-theme-scope .cm-h4 {
+  color: var(--h4-color, var(--header-color, var(--text-normal, var(--text))));
+}
+.obs-theme-scope .cm-h5,
+.obs-theme-scope .cm-h6 {
+  color: var(--h5-color, var(--header-color, var(--text-muted, var(--text-dim))));
+}
+.obs-theme-scope .cm-strong,
+.obs-theme-scope .cm-em {
+  color: var(--text-normal, var(--text));
+}
+.obs-theme-scope .cm-link,
+.obs-theme-scope .cm-wikilink {
+  color: var(--text-accent, var(--accent));
+}
+.obs-theme-scope .cm-inline-code {
+  background: var(--code-background, var(--surface));
+  color: var(--code-normal, var(--text-accent, var(--accent-dim)));
+}
+.obs-theme-scope .cm-strike {
+  color: var(--text-faint);
+}
+.obs-theme-scope .cm-quote {
+  color: var(--text-muted, var(--text-dim));
+  border-left-color: var(--text-faint);
+}
+.obs-theme-scope .cm-task-check {
+  accent-color: var(--text-accent, var(--accent));
+}
+
 .obs-view {
   display: flex;
   flex-direction: column;

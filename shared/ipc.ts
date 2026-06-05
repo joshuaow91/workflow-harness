@@ -70,7 +70,8 @@ export const IPC = {
     readNote: 'obsidian:readNote',
     saveNote: 'obsidian:saveNote',
     createNote: 'obsidian:createNote',
-    deleteNote: 'obsidian:deleteNote'
+    deleteNote: 'obsidian:deleteNote',
+    theme: 'obsidian:theme'
   },
   mermaid: {
     render: 'mermaid:render', // main -> renderer push (code from Claude)

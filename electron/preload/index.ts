@@ -14,6 +14,7 @@ import type {
   GhIssueEdit,
   MongoDatabase,
   ObsidianNote,
+  ObsidianTheme,
   RepoKnowledge,
   SessionRef,
   SessionTask,
@@ -144,7 +145,8 @@ const api = {
     saveNote: (path: string, content: string): Promise<void> =>
       ipcRenderer.invoke(IPC.obsidian.saveNote, path, content),
     createNote: (name: string): Promise<string> => ipcRenderer.invoke(IPC.obsidian.createNote, name),
-    deleteNote: (path: string): Promise<void> => ipcRenderer.invoke(IPC.obsidian.deleteNote, path)
+    deleteNote: (path: string): Promise<void> => ipcRenderer.invoke(IPC.obsidian.deleteNote, path),
+    theme: (): Promise<ObsidianTheme> => ipcRenderer.invoke(IPC.obsidian.theme)
   },
   mermaid: {
     onRender: (cb: (code: string) => void) => on<string>(IPC.mermaid.render, cb),

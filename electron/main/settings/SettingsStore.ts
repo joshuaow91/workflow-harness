@@ -20,7 +20,8 @@ function defaults(): AppSettings {
     repoOrder: [],
     injectRepoMap: true,
     autoUpdateRepos: 'off',
-    bookmarks: []
+    bookmarks: [],
+    useObsidianTheme: true
   }
 }
 

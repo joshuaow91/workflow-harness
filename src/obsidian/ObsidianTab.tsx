@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import type { ObsidianTheme } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { LivePreviewEditor } from './LivePreviewEditor'
+import { applyThemeVars, clearThemeVars, extractThemeVars } from './obsidianTheme'
 
 export function ObsidianTab() {
   const settings = useSettings()
@@ -15,6 +17,18 @@ export function ObsidianTab() {
   const [q, setQ] = useState('')
   const [saved, setSaved] = useState(true)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [theme, setTheme] = useState<ObsidianTheme | null>(null)
+  const useTheme = settings?.useObsidianTheme !== false
+  useEffect(() => {
+    if (vault) void window.api.obsidian.theme().then(setTheme)
+  }, [vault])
+  useEffect(() => {
+    if (useTheme && theme?.css) applyThemeVars(extractThemeVars(theme.css, theme.scheme))
+    else clearThemeVars()
+    return () => clearThemeVars()
+  }, [useTheme, theme])
+  const themed = useTheme && !!theme?.css
 
   useEffect(() => {
     if (!sel && list.length) setSel(list[0].path)
@@ -128,10 +142,19 @@ export function ObsidianTab() {
           <div className="obs-view">
             <div className="obs-viewbar">
               <span className="obs-viewtitle">{sel ?? 'No note selected'}</span>
+              {theme?.css && (
+                <button
+                  className={`tbtn${themed ? ' connected' : ''}`}
+                  title={theme.name ?? 'Obsidian theme'}
+                  onClick={() => void settingsStore.update({ useObsidianTheme: !useTheme })}
+                >
+                  {themed ? `✓ ${theme.name}` : `Use ${theme.name}`}
+                </button>
+              )}
               <span className="obs-saved">{saved ? 'saved' : 'saving…'}</span>
             </div>
             {sel ? (
-              <div className="obs-editor">
+              <div className={`obs-editor${themed ? ` obs-theme-scope theme-${theme!.scheme}` : ''}`}>
                 <LivePreviewEditor doc={content} onChange={onEdit} />
               </div>
             ) : (

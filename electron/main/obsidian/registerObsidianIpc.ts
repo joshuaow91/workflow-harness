@@ -3,7 +3,7 @@ import { existsSync } from 'fs'
 import { basename, dirname, join, relative } from 'path'
 import { ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
-import type { ObsidianNote } from '@shared/types'
+import type { ObsidianNote, ObsidianTheme } from '@shared/types'
 import { getSettings } from '../settings/SettingsStore'
 
 const SKIP_DIRS = new Set(['.obsidian', '.trash', '.git', 'node_modules'])
@@ -83,5 +83,28 @@ export function registerObsidianIpc(): void {
 
   ipcMain.handle(IPC.obsidian.deleteNote, (_e, rel: string): Promise<void> => {
     return rm(safeJoin(vaultDir(), rel))
+  })
+
+  // The vault's active community theme (appearance.json + theme.css).
+  ipcMain.handle(IPC.obsidian.theme, async (): Promise<ObsidianTheme> => {
+    const root = vaultDir()
+    let name: string | null = null
+    let scheme: 'dark' | 'light' = 'dark'
+    try {
+      const app = JSON.parse(await readFile(join(root, '.obsidian', 'appearance.json'), 'utf8'))
+      name = app.cssTheme || null
+      if (app.baseColorScheme === 'light' || app.baseColorScheme === 'dark') scheme = app.baseColorScheme
+    } catch {
+      /* no appearance config */
+    }
+    let css = ''
+    if (name) {
+      try {
+        css = await readFile(join(root, '.obsidian', 'themes', name, 'theme.css'), 'utf8')
+      } catch {
+        /* theme file missing */
+      }
+    }
+    return { name, scheme, css }
   })
 }
