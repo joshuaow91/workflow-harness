@@ -3,14 +3,14 @@ import type { TerminalSpawnOptions } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
 import { useDefaultSessionDir } from '../lib/settingsStore'
 import { Icon } from '../components/Icon'
-import { TerminalPane } from './TerminalPane'
+import { PaneGrid, type Layout, type Pane } from './PaneGrid'
 
-type Layout = 'cols' | 'rows' | 'grid' | 'mainGrid'
-
-interface Pane {
-  paneId: number
-  terminalId: string
-  opts: TerminalSpawnOptions
+interface Tab {
+  id: number
+  name: string
+  panes: Pane[]
+  layout: Layout
+  sessionId?: string
 }
 
 function basename(p: string): string {
@@ -25,157 +25,195 @@ const LAYOUTS: { key: Layout; title: string }[] = [
 ]
 
 export function TerminalsTab() {
-  const [panes, setPanes] = useState<Pane[]>([])
-  const [layout, setLayout] = useState<Layout>('cols')
-  const nextId = useRef(1)
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [activeId, setActiveId] = useState<number | null>(null)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+  const tabCounter = useRef(1)
+  const paneCounter = useRef(1)
   const defaultDir = useDefaultSessionDir()
-  const [drag, setDrag] = useState<number | null>(null)
-  const [over, setOver] = useState<number | null>(null)
 
-  const addPane = async (opts: TerminalSpawnOptions): Promise<void> => {
+  const active = tabs.find((t) => t.id === activeId) ?? null
+
+  const makePane = async (opts: TerminalSpawnOptions): Promise<Pane> => {
     const terminalId = await window.api.terminal.create(opts)
-    setPanes((p) => [...p, { paneId: nextId.current++, terminalId, opts }])
+    return { paneId: paneCounter.current++, terminalId, opts }
   }
-  useEffect(() => terminalBus.subscribe((opts) => void addPane(opts)), [])
 
-  // Refit all terminals when the layout changes (panes don't remount).
+  // Each opened session becomes its own tab.
+  const openTab = async (opts: TerminalSpawnOptions): Promise<void> => {
+    const pane = await makePane(opts)
+    const m = opts.initialCommand?.match(/--resume\s+(\S+)/)
+    const id = tabCounter.current++
+    setTabs((t) => [
+      ...t,
+      { id, name: opts.label ?? basename(opts.cwd), panes: [pane], layout: 'cols', sessionId: m?.[1] }
+    ])
+    setActiveId(id)
+  }
+  useEffect(() => terminalBus.subscribe((opts) => void openTab(opts)), [])
+
+  // Refit terminals when the active tab / its layout / pane count changes.
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 60)
     return () => clearTimeout(t)
-  }, [layout, panes.length])
+  }, [activeId, active?.layout, active?.panes.length])
 
-  const closePane = (paneId: number): void =>
-    setPanes((p) => {
-      const pane = p.find((x) => x.paneId === paneId)
+  const newEmptyTab = (): void =>
+    void openTab({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
+
+  const splitPane = async (): Promise<void> => {
+    if (!active) return newEmptyTab()
+    const cwd = active.panes[0]?.opts.cwd ?? defaultDir
+    const pane = await makePane({ cwd, label: `shell · ${basename(cwd)}` })
+    setTabs((t) => t.map((x) => (x.id === active.id ? { ...x, panes: [...x.panes, pane] } : x)))
+  }
+
+  const closePane = (tabId: number, paneId: number): void =>
+    setTabs((t) => {
+      const tab = t.find((x) => x.id === tabId)
+      const pane = tab?.panes.find((p) => p.paneId === paneId)
       if (pane) window.api.terminal.kill(pane.terminalId)
-      return p.filter((x) => x.paneId !== paneId)
+      const panes = (tab?.panes ?? []).filter((p) => p.paneId !== paneId)
+      if (panes.length === 0) {
+        const remaining = t.filter((x) => x.id !== tabId)
+        if (tabId === activeId) setActiveId(remaining.length ? remaining[remaining.length - 1].id : null)
+        return remaining
+      }
+      return t.map((x) => (x.id === tabId ? { ...x, panes } : x))
     })
 
-  const restartPane = async (paneId: number): Promise<void> => {
-    const pane = panes.find((x) => x.paneId === paneId)
+  const restartPane = async (tabId: number, paneId: number): Promise<void> => {
+    const pane = tabs.find((x) => x.id === tabId)?.panes.find((p) => p.paneId === paneId)
     if (!pane) return
     window.api.terminal.kill(pane.terminalId)
     const terminalId = await window.api.terminal.create(pane.opts)
-    setPanes((p) => p.map((x) => (x.paneId === paneId ? { ...x, terminalId } : x)))
+    setTabs((t) =>
+      t.map((x) =>
+        x.id === tabId
+          ? { ...x, panes: x.panes.map((p) => (p.paneId === paneId ? { ...p, terminalId } : p)) }
+          : x
+      )
+    )
   }
 
-  const newShell = (): void => void addPane({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
+  const reorder = (tabId: number, fromId: number, toId: number): void =>
+    setTabs((t) =>
+      t.map((x) => {
+        if (x.id !== tabId) return x
+        const ids = x.panes.map((p) => p.paneId)
+        const from = ids.indexOf(fromId)
+        const to = ids.indexOf(toId)
+        if (from < 0 || to < 0) return x
+        const panes = [...x.panes]
+        const [moved] = panes.splice(from, 1)
+        panes.splice(to, 0, moved)
+        return { ...x, panes }
+      })
+    )
 
-  const drop = (targetPaneId: number): void => {
-    if (drag == null || drag === targetPaneId) return
-    setPanes((p) => {
-      const ids = p.map((x) => x.paneId)
-      const from = ids.indexOf(drag)
-      const to = ids.indexOf(targetPaneId)
-      if (from < 0 || to < 0) return p
-      const next = [...p]
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
-      return next
+  const closeTab = (tabId: number): void =>
+    setTabs((t) => {
+      t.find((x) => x.id === tabId)?.panes.forEach((p) => window.api.terminal.kill(p.terminalId))
+      const remaining = t.filter((x) => x.id !== tabId)
+      if (tabId === activeId) setActiveId(remaining.length ? remaining[remaining.length - 1].id : null)
+      return remaining
     })
-    setDrag(null)
-    setOver(null)
-  }
 
-  const gridStyle = (): React.CSSProperties => {
-    const n = panes.length
-    if (layout === 'cols') return { display: 'flex', flexDirection: 'row' }
-    if (layout === 'rows') return { display: 'flex', flexDirection: 'column' }
-    if (layout === 'grid') {
-      const cols = Math.ceil(Math.sqrt(n))
-      return { display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }
-    }
-    // mainGrid: first pane large on the left, the rest stacked on the right
-    return {
-      display: 'grid',
-      gridTemplateColumns: n > 1 ? '2fr 1fr' : '1fr',
-      gridTemplateRows: `repeat(${Math.max(1, n - 1)}, 1fr)`
-    }
-  }
+  const setLayout = (tabId: number, layout: Layout): void =>
+    setTabs((t) => t.map((x) => (x.id === tabId ? { ...x, layout } : x)))
 
-  const paneStyle = (i: number): React.CSSProperties => {
-    if (layout === 'cols' || layout === 'rows') return { flex: 1, minWidth: 0, minHeight: 0 }
-    if (layout === 'mainGrid' && i === 0) return { gridColumn: 1, gridRow: '1 / -1', minWidth: 0, minHeight: 0 }
-    return { minWidth: 0, minHeight: 0 }
+  const saveRename = (tabId: number): void => {
+    const n = draft.trim()
+    if (n) setTabs((t) => t.map((x) => (x.id === tabId ? { ...x, name: n } : x)))
+    setEditing(null)
   }
 
   return (
     <div className="terminals">
-      <div className="terminals-toolbar">
-        <button className="tbtn" onClick={newShell}>
-          ＋ New Terminal
-        </button>
-        <div className="term-layouts">
-          {LAYOUTS.map((l) => (
+      <div className="term-tabstrip">
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            className={`term-tab${tab.id === activeId ? ' active' : ''}`}
+            onClick={() => setActiveId(tab.id)}
+            onDoubleClick={() => {
+              setDraft(tab.name)
+              setEditing(tab.id)
+            }}
+            title="Double-click to rename"
+          >
+            {editing === tab.id ? (
+              <input
+                autoFocus
+                className="term-tab-rename"
+                value={draft}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => saveRename(tab.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveRename(tab.id)
+                  if (e.key === 'Escape') setEditing(null)
+                }}
+              />
+            ) : (
+              <span className="term-tab-name">{tab.name}</span>
+            )}
             <button
-              key={l.key}
-              className={`term-layout${layout === l.key ? ' active' : ''}`}
-              title={l.title}
-              onClick={() => setLayout(l.key)}
+              className="term-tab-x"
+              onClick={(e) => {
+                e.stopPropagation()
+                closeTab(tab.id)
+              }}
             >
-              <Icon name={l.key} size={15} />
+              ✕
             </button>
-          ))}
-        </div>
-        <span className="terminals-hint">
-          {panes.length === 0
-            ? 'Pick a session or repo in the sidebar to launch claude here.'
-            : `${panes.length} pane${panes.length > 1 ? 's' : ''} · drag headers to reorder`}
-        </span>
+          </div>
+        ))}
+        <button className="term-tab-add" onClick={newEmptyTab} title="New tab">
+          ＋
+        </button>
       </div>
 
-      {panes.length === 0 ? (
+      {active ? (
+        <>
+          <div className="terminals-toolbar">
+            <button className="tbtn" onClick={() => void splitPane()}>
+              ＋ Split pane
+            </button>
+            <div className="term-layouts">
+              {LAYOUTS.map((l) => (
+                <button
+                  key={l.key}
+                  className={`term-layout${active.layout === l.key ? ' active' : ''}`}
+                  title={l.title}
+                  onClick={() => setLayout(active.id, l.key)}
+                >
+                  <Icon name={l.key} size={15} />
+                </button>
+              ))}
+            </div>
+            <span className="terminals-hint">
+              {active.panes.length} pane{active.panes.length > 1 ? 's' : ''} · drag headers to
+              reorder
+            </span>
+          </div>
+          <PaneGrid
+            panes={active.panes}
+            layout={active.layout}
+            onClose={(p) => closePane(active.id, p)}
+            onRestart={(p) => void restartPane(active.id, p)}
+            onReorder={(f, to) => reorder(active.id, f, to)}
+          />
+        </>
+      ) : (
         <div className="placeholder">
           <div className="ph-emoji">⌨️</div>
           <div className="ph-title">No terminals open</div>
           <div className="ph-sub">
-            Click a session in the sidebar to resume it with <code>claude --resume</code>, or open a
-            fresh shell with “New Terminal”.
+            Click a session in the sidebar to open it as a tab, or press ＋ for a new shell. Split a
+            tab into panes with “Split pane”.
           </div>
-        </div>
-      ) : (
-        <div className="terminals-grid" style={gridStyle()}>
-          {panes.map((pane, i) => (
-            <div
-              key={pane.paneId}
-              className={`term-panel${over === pane.paneId && drag !== pane.paneId ? ' drag-over' : ''}${drag === pane.paneId ? ' dragging' : ''}`}
-              style={paneStyle(i)}
-              onDragOver={(e) => {
-                e.preventDefault()
-                if (over !== pane.paneId) setOver(pane.paneId)
-              }}
-              onDrop={(e) => {
-                e.preventDefault()
-                drop(pane.paneId)
-              }}
-            >
-              <div
-                className="term-panel-header"
-                draggable
-                onDragStart={() => setDrag(pane.paneId)}
-                onDragEnd={() => {
-                  setDrag(null)
-                  setOver(null)
-                }}
-              >
-                <span className="term-panel-title" title={pane.opts.cwd}>
-                  {pane.opts.initialCommand ? '◐ ' : '$ '}
-                  {pane.opts.label ?? basename(pane.opts.cwd)}
-                </span>
-                <div className="term-panel-actions">
-                  <button className="term-act" title="Restart pane" onClick={() => void restartPane(pane.paneId)}>
-                    ↻
-                  </button>
-                  <button className="term-act" title="Close pane" onClick={() => closePane(pane.paneId)}>
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <div className="term-panel-body">
-                <TerminalPane id={pane.terminalId} />
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>
