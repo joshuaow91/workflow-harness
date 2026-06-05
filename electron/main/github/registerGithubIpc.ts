@@ -14,6 +14,7 @@ import {
   listProjects,
   listReviewPRs,
   projectItems,
+  rateLimit,
   setProjectItemField,
   repoAssignees,
   repoLabels,
@@ -37,6 +38,7 @@ export function registerGithubIpc(): void {
       setIssueState(repo, number, action)
   )
   ipcMain.handle(IPC.github.fetchAsset, (_e, url: string) => fetchAsset(url))
+  ipcMain.handle(IPC.github.rateLimit, () => rateLimit())
   ipcMain.handle(IPC.github.repoLabels, (_e, repo: string) => repoLabels(repo))
   ipcMain.handle(IPC.github.repoAssignees, (_e, repo: string) => repoAssignees(repo))
   ipcMain.handle(IPC.github.repoMilestones, (_e, repo: string) => repoMilestones(repo))

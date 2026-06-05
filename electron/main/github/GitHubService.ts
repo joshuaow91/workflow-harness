@@ -224,6 +224,18 @@ async function cachedMeta<T>(key: string, fetch: () => Promise<T>): Promise<T> {
   return data
 }
 
+export async function rateLimit(): Promise<import('@shared/types').GhRateLimit> {
+  const out = await ghJson<{ resources: Record<string, { remaining: number; limit: number; reset: number }> }>([
+    'api',
+    'rate_limit'
+  ])
+  const pick = (k: string): { remaining: number; limit: number; reset: number } => {
+    const r = out.resources?.[k]
+    return { remaining: r?.remaining ?? 0, limit: r?.limit ?? 0, reset: r?.reset ?? 0 }
+  }
+  return { graphql: pick('graphql'), core: pick('core') }
+}
+
 export async function repoLabels(repo: string): Promise<{ name: string; color: string }[]> {
   return cachedMeta(`labels:${repo}`, () =>
     ghJson<{ name: string; color: string }[]>(['label', 'list', '-R', repo, '--limit', '200', '--json', 'name,color'])

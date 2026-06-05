@@ -5,6 +5,7 @@ import { TotpSection } from './TotpSection'
 import { DatadogSettings } from './DatadogSettings'
 import { MongoSettings } from './MongoSettings'
 import { AutoUpdateSettings } from './AutoUpdateSettings'
+import { RateLimitMeter } from './RateLimitMeter'
 
 export function SettingsTab() {
   const settings = useSettings()
@@ -82,6 +83,8 @@ export function SettingsTab() {
           touches without you naming them. Only applies once you’ve generated the map.
         </p>
       </section>
+
+      <RateLimitMeter />
 
       <AutoUpdateSettings />
 

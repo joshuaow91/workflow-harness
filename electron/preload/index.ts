@@ -12,6 +12,7 @@ import type {
   GhIssue,
   GhIssueDetail,
   GhIssueEdit,
+  GhRateLimit,
   MongoDatabase,
   ObsidianNote,
   ObsidianTheme,
@@ -83,6 +84,7 @@ const api = {
     setIssueState: (repo: string, number: number, action: 'close' | 'reopen'): Promise<void> =>
       ipcRenderer.invoke(IPC.github.setIssueState, repo, number, action),
     fetchAsset: (url: string): Promise<string> => ipcRenderer.invoke(IPC.github.fetchAsset, url),
+    rateLimit: (): Promise<GhRateLimit> => ipcRenderer.invoke(IPC.github.rateLimit),
     repoLabels: (repo: string): Promise<{ name: string; color: string }[]> =>
       ipcRenderer.invoke(IPC.github.repoLabels, repo),
     repoAssignees: (repo: string): Promise<string[]> =>

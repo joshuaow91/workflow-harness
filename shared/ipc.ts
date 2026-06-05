@@ -38,6 +38,7 @@ export const IPC = {
     addComment: 'github:addComment',
     setIssueState: 'github:setIssueState',
     fetchAsset: 'github:fetchAsset',
+    rateLimit: 'github:rateLimit',
     repoLabels: 'github:repoLabels',
     repoAssignees: 'github:repoAssignees',
     repoMilestones: 'github:repoMilestones',

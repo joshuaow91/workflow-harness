@@ -428,6 +428,49 @@ button {
   accent-color: var(--accent);
 }
 
+.rl-row {
+  margin-bottom: 10px;
+}
+
+.rl-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  margin-bottom: 4px;
+}
+
+.rl-label {
+  color: var(--text-dim);
+}
+
+.rl-nums {
+  color: var(--text-faint);
+  font-family: SFMono-Regular, Menlo, monospace;
+}
+
+.rl-track {
+  height: 7px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rl-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.rl-fill.ok {
+  background: var(--green);
+}
+.rl-fill.warn {
+  background: var(--yellow);
+}
+.rl-fill.danger {
+  background: var(--red);
+}
+
 .settings-input:focus {
   outline: none;
   border-color: var(--accent);

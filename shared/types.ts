@@ -339,5 +339,17 @@ export interface GhProjectBoard {
   items: GhProjectItem[]
 }
 
+export interface GhRateResource {
+  remaining: number
+  limit: number
+  /** Reset time, unix epoch seconds. */
+  reset: number
+}
+
+export interface GhRateLimit {
+  graphql: GhRateResource
+  core: GhRateResource
+}
+
 /** Thrown (as an Error message substring) when the gh token lacks read:project. */
 export const GH_MISSING_PROJECT_SCOPE = 'GH_MISSING_PROJECT_SCOPE'
