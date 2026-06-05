@@ -424,19 +424,16 @@ export async function enrichLinks(refs: SessionRefImport[]): Promise<SessionRefI
 
 // ---- Projects v2 (needs read:project scope) ----
 
+const projectsCache = new Map<string, { at: number; data: GhProjectSummary[] }>()
+
 export async function listProjects(owner: string): Promise<GhProjectSummary[]> {
+  const cached = projectsCache.get(owner)
+  if (cached && Date.now() - cached.at < 300000) return cached.data // 5 min
   type Raw = { projects: { number: number; title: string; url: string }[] }
-  const out = await ghJson<Raw>([
-    'project',
-    'list',
-    '--owner',
-    owner,
-    '--format',
-    'json',
-    '--limit',
-    '50'
-  ])
-  return (out.projects ?? []).map((p) => ({ number: p.number, title: p.title, url: p.url }))
+  const out = await ghJson<Raw>(['project', 'list', '--owner', owner, '--format', 'json', '--limit', '50'])
+  const data = (out.projects ?? []).map((p) => ({ number: p.number, title: p.title, url: p.url }))
+  projectsCache.set(owner, { at: Date.now(), data })
+  return data
 }
 
 function nameWithOwnerFromUrl(url: string | undefined): string | null {
@@ -445,7 +442,15 @@ function nameWithOwnerFromUrl(url: string | undefined): string | null {
   return m ? m[1] : null
 }
 
-export async function projectItems(owner: string, number: number): Promise<GhProjectBoard> {
+const boardCache = new Map<string, { at: number; data: GhProjectBoard }>()
+
+export async function projectItems(owner: string, number: number, force = false): Promise<GhProjectBoard> {
+  // The board fetch (item-list of all cards) is GraphQL-point-expensive; cache it
+  // so re-opening the tab / re-rendering doesn't re-query. Refresh forces.
+  const cacheKey = `${owner}/${number}`
+  const cached = boardCache.get(cacheKey)
+  if (!force && cached && Date.now() - cached.at < 120000) return cached.data
+
   type RawItem = {
     id: string
     title?: string
@@ -484,7 +489,7 @@ export async function projectItems(owner: string, number: number): Promise<GhPro
     }
   })
 
-  return {
+  const result: GhProjectBoard = {
     title: summary?.title ?? `Project #${number}`,
     number,
     url: summary?.url ?? '',
@@ -492,6 +497,8 @@ export async function projectItems(owner: string, number: number): Promise<GhPro
     fields,
     items
   }
+  boardCache.set(cacheKey, { at: Date.now(), data: result })
+  return result
 }
 
 export async function setProjectItemField(
@@ -503,4 +510,5 @@ export async function setProjectItemField(
   const base = ['project', 'item-edit', '--id', itemId, '--project-id', projectId, '--field-id', fieldId]
   // Empty optionId clears the field (drag back to "No status").
   await gh(optionId ? [...base, '--single-select-option-id', optionId] : [...base, '--clear'])
+  boardCache.clear() // next non-optimistic load should see the change
 }

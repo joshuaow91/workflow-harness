@@ -93,8 +93,8 @@ const api = {
     reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),
     listProjects: (owner: string): Promise<GhProjectSummary[]> =>
       ipcRenderer.invoke(IPC.github.listProjects, owner),
-    projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
-      ipcRenderer.invoke(IPC.github.projectItems, owner, number),
+    projectItems: (owner: string, number: number, force?: boolean): Promise<GhProjectBoard> =>
+      ipcRenderer.invoke(IPC.github.projectItems, owner, number, force),
     setProjectField: (
       projectId: string,
       itemId: string,

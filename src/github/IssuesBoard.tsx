@@ -61,9 +61,12 @@ export function IssuesBoard({
   }, [projects.data, proj])
 
   const board = useAsync(
-    () => (proj != null ? window.api.github.projectItems(owner, proj) : Promise.resolve(null)),
+    () => (proj != null ? window.api.github.projectItems(owner, proj, false) : Promise.resolve(null)),
     [owner, proj]
   )
+  const refreshBoard = (): void => {
+    if (proj != null) void window.api.github.projectItems(owner, proj, true).then((d) => setItems(d.items))
+  }
 
   const [items, setItems] = useState<GhProjectItem[]>([])
   useEffect(() => setItems(board.data?.items ?? []), [board.data])
@@ -154,10 +157,10 @@ export function IssuesBoard({
     if (!it || busy) return
     setBusy(true)
     try {
+      // Optimistic only — no board refetch (that re-queries all cards = costly).
       if (statusOf(it) !== statusKey) await applyField(it, 'Status', statusKey)
       if (priorityKey !== undefined && priorityOf(it) !== priorityKey)
         await applyField(it, 'Priority', priorityKey)
-      board.reload()
     } finally {
       setBusy(false)
     }
@@ -255,7 +258,7 @@ export function IssuesBoard({
           minWidth={150}
         />
         <input className="issue-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search cards…" />
-        <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={() => board.reload()}>
+        <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={refreshBoard}>
           ↻ Refresh
         </button>
       </div>

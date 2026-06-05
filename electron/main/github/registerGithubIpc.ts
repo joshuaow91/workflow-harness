@@ -47,8 +47,8 @@ export function registerGithubIpc(): void {
   ipcMain.handle(IPC.github.myPRsAll, () => listMyPRsAll())
   ipcMain.handle(IPC.github.reviewPRs, () => listReviewPRs())
   ipcMain.handle(IPC.github.listProjects, (_e, owner: string) => listProjects(owner))
-  ipcMain.handle(IPC.github.projectItems, (_e, owner: string, number: number) =>
-    projectItems(owner, number)
+  ipcMain.handle(IPC.github.projectItems, (_e, owner: string, number: number, force?: boolean) =>
+    projectItems(owner, number, force)
   )
   ipcMain.handle(
     IPC.github.setProjectField,
