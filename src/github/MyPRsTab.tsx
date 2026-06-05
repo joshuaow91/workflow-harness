@@ -55,12 +55,12 @@ export function MyPRsTab() {
         <span className="gh-heading">My open PRs — by repo</span>
       </GhHeader>
       {selected ? (
-        <PanelGroup direction="vertical" className="gh-split">
-          <Panel defaultSize={45} minSize={20}>
+        <PanelGroup direction="horizontal" className="gh-split">
+          <Panel defaultSize={30} minSize={18}>
             {list}
           </Panel>
           <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={55} minSize={20}>
+          <Panel defaultSize={70} minSize={30}>
             <div className="pr-preview">
               <div className="pr-preview-bar">
                 <span className="pr-preview-title" title={selected.title}>
