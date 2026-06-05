@@ -36,7 +36,11 @@ export const IPC = {
     issueDetail: 'github:issueDetail',
     addComment: 'github:addComment',
     setIssueState: 'github:setIssueState',
-    fetchAsset: 'github:fetchAsset'
+    fetchAsset: 'github:fetchAsset',
+    repoLabels: 'github:repoLabels',
+    repoAssignees: 'github:repoAssignees',
+    repoMilestones: 'github:repoMilestones',
+    editIssue: 'github:editIssue'
   },
   browser: {
     openTab: 'browser:openTab' // main -> renderer push (open url in web workspace)

@@ -9,6 +9,7 @@ import type {
   DatadogDashboard,
   GhIssue,
   GhIssueDetail,
+  GhIssueEdit,
   MongoDatabase,
   ObsidianNote,
   RepoKnowledge,
@@ -79,6 +80,14 @@ const api = {
     setIssueState: (repo: string, number: number, action: 'close' | 'reopen'): Promise<void> =>
       ipcRenderer.invoke(IPC.github.setIssueState, repo, number, action),
     fetchAsset: (url: string): Promise<string> => ipcRenderer.invoke(IPC.github.fetchAsset, url),
+    repoLabels: (repo: string): Promise<{ name: string; color: string }[]> =>
+      ipcRenderer.invoke(IPC.github.repoLabels, repo),
+    repoAssignees: (repo: string): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.github.repoAssignees, repo),
+    repoMilestones: (repo: string): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.github.repoMilestones, repo),
+    editIssue: (repo: string, number: number, patch: GhIssueEdit): Promise<void> =>
+      ipcRenderer.invoke(IPC.github.editIssue, repo, number, patch),
     myPRs: (repo: string): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRs, repo),
     myPRsAll: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRsAll),
     reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),

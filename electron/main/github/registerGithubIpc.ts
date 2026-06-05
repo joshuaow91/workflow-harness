@@ -1,8 +1,10 @@
 import { ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { SessionRef } from '@shared/types'
+import type { GhIssueEdit } from '@shared/types'
 import {
   addIssueComment,
+  editIssue,
   enrichLinks,
   fetchAsset,
   issueDetail,
@@ -12,6 +14,9 @@ import {
   listProjects,
   listReviewPRs,
   projectItems,
+  repoAssignees,
+  repoLabels,
+  repoMilestones,
   setIssueState
 } from './GitHubService'
 
@@ -31,6 +36,12 @@ export function registerGithubIpc(): void {
       setIssueState(repo, number, action)
   )
   ipcMain.handle(IPC.github.fetchAsset, (_e, url: string) => fetchAsset(url))
+  ipcMain.handle(IPC.github.repoLabels, (_e, repo: string) => repoLabels(repo))
+  ipcMain.handle(IPC.github.repoAssignees, (_e, repo: string) => repoAssignees(repo))
+  ipcMain.handle(IPC.github.repoMilestones, (_e, repo: string) => repoMilestones(repo))
+  ipcMain.handle(IPC.github.editIssue, (_e, repo: string, number: number, patch: GhIssueEdit) =>
+    editIssue(repo, number, patch)
+  )
   ipcMain.handle(IPC.github.myPRs, (_e, repo: string) => listMyPRs(repo))
   ipcMain.handle(IPC.github.myPRsAll, () => listMyPRsAll())
   ipcMain.handle(IPC.github.reviewPRs, () => listReviewPRs())

@@ -205,6 +205,32 @@ export async function addIssueComment(repo: string, number: number, body: string
   await gh(['issue', 'comment', String(number), '-R', repo, '--body', body])
 }
 
+export async function repoLabels(repo: string): Promise<{ name: string; color: string }[]> {
+  return ghJson<{ name: string; color: string }[]>(['label', 'list', '-R', repo, '--limit', '200', '--json', 'name,color'])
+}
+
+export async function repoAssignees(repo: string): Promise<string[]> {
+  const rows = await ghJson<{ login: string }[]>(['api', `repos/${repo}/assignees?per_page=100`])
+  return rows.map((a) => a.login)
+}
+
+export async function repoMilestones(repo: string): Promise<string[]> {
+  const rows = await ghJson<{ title: string }[]>(['api', `repos/${repo}/milestones?state=open&per_page=100`])
+  return rows.map((m) => m.title)
+}
+
+export async function editIssue(repo: string, number: number, patch: GhIssueEditImport): Promise<void> {
+  const args = ['issue', 'edit', String(number), '-R', repo]
+  for (const l of patch.addLabels ?? []) args.push('--add-label', l)
+  for (const l of patch.removeLabels ?? []) args.push('--remove-label', l)
+  for (const a of patch.addAssignees ?? []) args.push('--add-assignee', a)
+  for (const a of patch.removeAssignees ?? []) args.push('--remove-assignee', a)
+  if (patch.milestone === null) args.push('--remove-milestone')
+  else if (patch.milestone) args.push('--milestone', patch.milestone)
+  if (args.length > 5) await gh(args)
+}
+type GhIssueEditImport = import('@shared/types').GhIssueEdit
+
 export async function setIssueState(repo: string, number: number, action: 'close' | 'reopen'): Promise<void> {
   await gh(['issue', action, String(number), '-R', repo])
 }

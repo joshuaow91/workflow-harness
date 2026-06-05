@@ -10,6 +10,7 @@ import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
 import { GhState } from './GhShared'
 import { IssuesBoard } from './IssuesBoard'
+import { IssueSidebar } from './IssueSidebar'
 
 const DEFAULT_REPO = 'blink-ai/blink_server'
 const PAGE = 50
@@ -73,15 +74,6 @@ function IssueRow({ issue, onOpen }: { issue: GhIssue; onOpen: (i: GhIssue) => v
           {issue.assignees.length > 0 && ` · ${issue.assignees.join(', ')}`}
         </div>
       </div>
-    </div>
-  )
-}
-
-function SideSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="issue-side-sec">
-      <h4>{title}</h4>
-      {children}
     </div>
   )
 }
@@ -206,34 +198,7 @@ function IssueDetailView({
           </div>
         </div>
 
-        <aside className="issue-side">
-          <SideSection title="Assignees">
-            {data.assignees.length ? (
-              data.assignees.join(', ')
-            ) : (
-              <span className="issue-side-muted">No one assigned</span>
-            )}
-          </SideSection>
-          <SideSection title="Labels">
-            {data.labels.length ? (
-              <div className="issue-side-labels">
-                {data.labels.map((l) => (
-                  <span key={l.name} className="issue-label" style={labelStyle(l.color)}>
-                    {l.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="issue-side-muted">None yet</span>
-            )}
-          </SideSection>
-          <SideSection title="Milestone">
-            {data.milestone ?? <span className="issue-side-muted">No milestone</span>}
-          </SideSection>
-          <SideSection title="Project status">
-            {data.boardStatus ?? <span className="issue-side-muted">Not on a board</span>}
-          </SideSection>
-        </aside>
+        <IssueSidebar repo={repo} number={number} detail={data} onChanged={reload} />
       </div>
     </div>
   )

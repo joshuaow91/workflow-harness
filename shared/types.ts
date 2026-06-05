@@ -238,6 +238,15 @@ export interface GhIssueDetail {
   comments: GhIssueComment[]
 }
 
+export interface GhIssueEdit {
+  addLabels?: string[]
+  removeLabels?: string[]
+  addAssignees?: string[]
+  removeAssignees?: string[]
+  /** string = set milestone, null = remove, undefined = leave unchanged. */
+  milestone?: string | null
+}
+
 export interface GhPullRequest {
   number: number
   title: string
