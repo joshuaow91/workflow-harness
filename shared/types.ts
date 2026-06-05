@@ -28,6 +28,8 @@ export interface AppSettings {
   injectRepoMap: boolean
   /** Auto fast-forward repos/worktrees from their upstream on a schedule. */
   autoUpdateRepos: 'off' | 'hourly' | 'daily'
+  /** Browser bookmarks for quick opening. */
+  bookmarks: Bookmark[]
 }
 
 export interface UpdateResult {
@@ -103,6 +105,18 @@ export interface SessionTask {
   subject: string
   description?: string
   status: 'pending' | 'in_progress' | 'completed'
+}
+
+export interface BrowserHistoryEntry {
+  url: string
+  title: string
+  visits: number
+  last: number
+}
+
+export interface Bookmark {
+  url: string
+  title: string
 }
 
 export interface SessionRef {

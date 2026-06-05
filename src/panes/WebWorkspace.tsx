@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { AgentActivity } from '@shared/types'
 import { browserRouter } from '../lib/browserRouter'
-import { useSettings } from '../lib/settingsStore'
+import { settingsStore, useSettings } from '../lib/settingsStore'
 import { DevToolsPane } from './DevToolsPane'
 import { SideTerminal } from './SideTerminal'
 import { WebFrame } from './WebFrame'
@@ -138,6 +138,22 @@ export function WebWorkspace() {
   }
   const setTabTitle = (id: number, title: string): void =>
     setTabs((t) => t.map((x) => (x.id === id ? { ...x, title } : x)))
+  const setTabUrl = (id: number, url: string): void =>
+    setTabs((t) => t.map((x) => (x.id === id ? { ...x, url } : x)))
+
+  const openBookmark = (url: string, title: string): void => {
+    const id = tabCounter.current++
+    setTabs((t) => [...t, { id, url, title }])
+    setActiveTab(id)
+  }
+  const bookmarks = settings?.bookmarks ?? []
+  const addBookmark = (): void => {
+    const cur = tabs.find((t) => t.id === activeTab)
+    if (!cur || bookmarks.some((b) => b.url === cur.url)) return
+    void settingsStore.update({ bookmarks: [...bookmarks, { url: cur.url, title: cur.title || cur.url }] })
+  }
+  const removeBookmark = (url: string): void =>
+    void settingsStore.update({ bookmarks: bookmarks.filter((b) => b.url !== url) })
 
   const addSide = (kind: SidePane['kind']): void =>
     setSidePanes((p) => [...p, { id: sideCounter.current++, kind }])
@@ -148,6 +164,25 @@ export function WebWorkspace() {
       <PanelGroup direction="horizontal" className="ws-root" autoSaveId="ws-h">
         <Panel defaultSize={72} minSize={32}>
           <div className="ws-primary">
+            <div className="ws-bookmarks">
+              {bookmarks.map((b) => (
+                <button
+                  key={b.url}
+                  className="ws-bm"
+                  title={`${b.url}\n(right-click to remove)`}
+                  onClick={() => openBookmark(b.url, b.title)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    removeBookmark(b.url)
+                  }}
+                >
+                  {b.title || b.url}
+                </button>
+              ))}
+              <button className="ws-bm add" onClick={addBookmark} title="Bookmark current tab">
+                ★
+              </button>
+            </div>
             <div className="ws-tabstrip">
               {tabs.map((t) => (
                 <div
@@ -227,6 +262,7 @@ export function WebWorkspace() {
                             setActiveWC(wc)
                           }}
                           onTitle={(title) => setTabTitle(t.id, title)}
+                          onUrl={(url) => setTabUrl(t.id, url)}
                         />
                       </div>
                     ))

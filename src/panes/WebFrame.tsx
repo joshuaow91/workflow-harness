@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { BrowserHistoryEntry } from '@shared/types'
 import type { WebviewElement } from '../webview'
 import { normalizeInput } from '../lib/url'
 
@@ -12,6 +13,7 @@ interface WebFrameProps {
   /** Fired with this view's webContents id on dom-ready and whenever it's focused. */
   onActivate?: (webContentsId: number) => void
   onTitle?: (title: string) => void
+  onUrl?: (url: string) => void
 }
 
 export function WebFrame({
@@ -20,14 +22,24 @@ export function WebFrame({
   partition = 'persist:harness',
   leftSlot,
   onActivate,
-  onTitle
+  onTitle,
+  onUrl
 }: WebFrameProps) {
   const ref = useRef<WebviewElement | null>(null)
   const wcId = useRef<number | null>(null)
   const [address, setAddress] = useState(src)
   const [loading, setLoading] = useState(false)
   const [nav, setNav] = useState({ back: false, forward: false })
+  const [sugg, setSugg] = useState<BrowserHistoryEntry[]>([])
+  const [showSug, setShowSug] = useState(false)
+  const [sel, setSel] = useState(-1)
   const lastSrc = useRef(src)
+
+  const navTo = (url: string): void => {
+    setAddress(url)
+    setShowSug(false)
+    void ref.current?.loadURL(normalizeInput(url))
+  }
 
   const activate = (): void => {
     if (wcId.current != null) onActivate?.(wcId.current)
@@ -40,11 +52,17 @@ export function WebFrame({
     const syncNav = (): void => {
       setAddress(wv.getURL())
       setNav({ back: wv.canGoBack(), forward: wv.canGoForward() })
+      onUrl?.(wv.getURL())
     }
     const onStart = (): void => setLoading(true)
     const onStop = (): void => {
       setLoading(false)
       syncNav()
+      if (editableAddress) {
+        const u = wv.getURL()
+        const title = (wv as unknown as { getTitle(): string }).getTitle?.() ?? ''
+        window.api.browser.recordVisit(u, title)
+      }
     }
     const onDomReady = (): void => {
       wcId.current = (wv as unknown as { getWebContentsId(): number }).getWebContentsId()
@@ -117,15 +135,60 @@ export function WebFrame({
         >
           {loading ? '✕' : '↻'}
         </button>
-        <input
-          className="address"
-          value={address}
-          readOnly={!editableAddress}
-          onChange={(e) => setAddress(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && editableAddress && go()}
-          spellCheck={false}
-          placeholder="Search Brave or enter a URL…"
-        />
+        <div className="address-wrap">
+          <input
+            className="address"
+            value={address}
+            readOnly={!editableAddress}
+            onChange={(e) => {
+              const v = e.target.value
+              setAddress(v)
+              if (editableAddress)
+                void window.api.browser.suggest(v).then((s) => {
+                  setSugg(s)
+                  setShowSug(s.length > 0)
+                  setSel(-1)
+                })
+            }}
+            onKeyDown={(e) => {
+              if (!editableAddress) return
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setSel((i) => Math.min(i + 1, sugg.length - 1))
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setSel((i) => Math.max(i - 1, -1))
+              } else if (e.key === 'Enter') {
+                if (showSug && sel >= 0 && sugg[sel]) navTo(sugg[sel].url)
+                else go()
+                setShowSug(false)
+              } else if (e.key === 'Escape') {
+                setShowSug(false)
+              }
+            }}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={() => setTimeout(() => setShowSug(false), 150)}
+            spellCheck={false}
+            placeholder="Search or enter a URL…"
+          />
+          {showSug && editableAddress && (
+            <div className="address-suggest">
+              {sugg.map((s, i) => (
+                <div
+                  key={s.url}
+                  className={`address-sug${i === sel ? ' sel' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    navTo(s.url)
+                  }}
+                >
+                  <span className="address-sug-title">{s.title}</span>
+                  <span className="address-sug-url">{s.url}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           className="nav-btn"
           title="Open in Brave"

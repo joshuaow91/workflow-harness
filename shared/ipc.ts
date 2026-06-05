@@ -44,7 +44,9 @@ export const IPC = {
     editIssue: 'github:editIssue'
   },
   browser: {
-    openTab: 'browser:openTab' // main -> renderer push (open url in web workspace)
+    openTab: 'browser:openTab', // main -> renderer push (open url in web workspace)
+    recordVisit: 'browser:recordVisit',
+    suggest: 'browser:suggest'
   },
   agent: {
     setTarget: 'agent:setTarget',

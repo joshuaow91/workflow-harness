@@ -12,6 +12,7 @@ import { registerMongoIpc } from './mongo/registerMongoIpc'
 import { registerKnowledgeIpc } from './knowledge/registerKnowledgeIpc'
 import { registerAutoUpdate } from './autoupdate/registerAutoUpdate'
 import { checkSetup } from './system/setupCheck'
+import { recordVisit, suggest } from './browser/BrowserStore'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -186,6 +187,8 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
   ipcMain.handle(IPC.system.checkSetup, () => checkSetup())
+  ipcMain.on(IPC.browser.recordVisit, (_e, url: string, title: string) => recordVisit(url, title))
+  ipcMain.handle(IPC.browser.suggest, (_e, query: string) => suggest(query))
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)

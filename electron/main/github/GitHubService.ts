@@ -142,18 +142,25 @@ export async function listIssues(
 
 const BOARD_QUERY = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issueOrPullRequest(number:$number){... on Issue{projectItems(first:5){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}} ... on PullRequest{projectItems(first:5){nodes{st:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}`
 
+const boardStatusCache = new Map<string, { at: number; v: string | null }>()
 async function fetchBoardStatus(repo: string, number: number): Promise<string | null> {
   const [owner, name] = repo.split('/')
   if (!owner || !name) return null
+  const ck = `${repo}#${number}`
+  const c = boardStatusCache.get(ck)
+  if (c && Date.now() - c.at < 300000) return c.v // 5 min
   try {
     const out = await ghJson<{
       data?: { repository?: { issueOrPullRequest?: { projectItems?: { nodes?: { st?: { name?: string } }[] } } } }
     }>(['api', 'graphql', '-f', `query=${BOARD_QUERY}`, '-F', `owner=${owner}`, '-F', `name=${name}`, '-F', `number=${number}`])
     const nodes = out.data?.repository?.issueOrPullRequest?.projectItems?.nodes ?? []
-    for (const n of nodes) if (n?.st?.name) return n.st.name
+    const v = nodes.find((n) => n?.st?.name)?.st?.name ?? null
+    boardStatusCache.set(ck, { at: Date.now(), v })
+    return v
   } catch {
     /* no project scope */
   }
+  boardStatusCache.set(ck, { at: Date.now(), v: null })
   return null
 }
 
@@ -207,18 +214,34 @@ export async function addIssueComment(repo: string, number: number, body: string
   await gh(['issue', 'comment', String(number), '-R', repo, '--body', body])
 }
 
+// Repo metadata for the sidebar editors rarely changes — cache per repo 5 min.
+const metaCache = new Map<string, { at: number; data: unknown }>()
+async function cachedMeta<T>(key: string, fetch: () => Promise<T>): Promise<T> {
+  const c = metaCache.get(key)
+  if (c && Date.now() - c.at < 300000) return c.data as T
+  const data = await fetch()
+  metaCache.set(key, { at: Date.now(), data })
+  return data
+}
+
 export async function repoLabels(repo: string): Promise<{ name: string; color: string }[]> {
-  return ghJson<{ name: string; color: string }[]>(['label', 'list', '-R', repo, '--limit', '200', '--json', 'name,color'])
+  return cachedMeta(`labels:${repo}`, () =>
+    ghJson<{ name: string; color: string }[]>(['label', 'list', '-R', repo, '--limit', '200', '--json', 'name,color'])
+  )
 }
 
 export async function repoAssignees(repo: string): Promise<string[]> {
-  const rows = await ghJson<{ login: string }[]>(['api', `repos/${repo}/assignees?per_page=100`])
-  return rows.map((a) => a.login)
+  return cachedMeta(`assignees:${repo}`, async () => {
+    const rows = await ghJson<{ login: string }[]>(['api', `repos/${repo}/assignees?per_page=100`])
+    return rows.map((a) => a.login)
+  })
 }
 
 export async function repoMilestones(repo: string): Promise<string[]> {
-  const rows = await ghJson<{ title: string }[]>(['api', `repos/${repo}/milestones?state=open&per_page=100`])
-  return rows.map((m) => m.title)
+  return cachedMeta(`milestones:${repo}`, async () => {
+    const rows = await ghJson<{ title: string }[]>(['api', `repos/${repo}/milestones?state=open&per_page=100`])
+    return rows.map((m) => m.title)
+  })
 }
 
 export async function editIssue(repo: string, number: number, patch: GhIssueEditImport): Promise<void> {
@@ -449,7 +472,7 @@ export async function projectItems(owner: string, number: number, force = false)
   // so re-opening the tab / re-rendering doesn't re-query. Refresh forces.
   const cacheKey = `${owner}/${number}`
   const cached = boardCache.get(cacheKey)
-  if (!force && cached && Date.now() - cached.at < 120000) return cached.data
+  if (!force && cached && Date.now() - cached.at < 300000) return cached.data // 5 min
 
   type RawItem = {
     id: string

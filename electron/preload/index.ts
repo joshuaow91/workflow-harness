@@ -5,6 +5,7 @@ import type {
   AgentActivity,
   AppSettings,
   AutoUpdateStatus,
+  BrowserHistoryEntry,
   ClaudeProject,
   DatadogDashboard,
   GhIssue,
@@ -107,7 +108,12 @@ const api = {
   },
   browser: {
     onOpenTab: (cb: (payload: { url: string; sourceId: number }) => void) =>
-      on<{ url: string; sourceId: number }>(IPC.browser.openTab, cb)
+      on<{ url: string; sourceId: number }>(IPC.browser.openTab, cb),
+    recordVisit: (url: string, title: string): void => {
+      ipcRenderer.send(IPC.browser.recordVisit, url, title)
+    },
+    suggest: (query: string): Promise<BrowserHistoryEntry[]> =>
+      ipcRenderer.invoke(IPC.browser.suggest, query)
   },
   agent: {
     setTarget: (webContentsId: number | null): Promise<void> =>

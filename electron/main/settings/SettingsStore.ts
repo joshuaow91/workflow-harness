@@ -19,7 +19,8 @@ function defaults(): AppSettings {
     mongoUri: '',
     repoOrder: [],
     injectRepoMap: true,
-    autoUpdateRepos: 'off'
+    autoUpdateRepos: 'off',
+    bookmarks: []
   }
 }
 
