@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
 import { useDefaultSessionDir } from '../lib/settingsStore'
+import { claudeCommand } from '../lib/launchClaude'
 import { Icon } from '../components/Icon'
 import { PaneGrid, type Layout, type Pane } from './PaneGrid'
+import { TermSidebar } from './TermSidebar'
 
 interface Tab {
   id: number
@@ -29,6 +31,7 @@ export function TerminalsTab() {
   const [activeId, setActiveId] = useState<number | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
+  const [showSidebar, setShowSidebar] = useState(true)
   const tabCounter = useRef(1)
   const paneCounter = useRef(1)
   const defaultDir = useDefaultSessionDir()
@@ -59,8 +62,13 @@ export function TerminalsTab() {
     return () => clearTimeout(t)
   }, [activeId, active?.layout, active?.panes.length])
 
+  // A new tab starts a claude session in the configured default directory.
   const newEmptyTab = (): void =>
-    void openTab({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
+    void openTab({
+      cwd: defaultDir,
+      initialCommand: claudeCommand(),
+      label: `claude · ${basename(defaultDir)}`
+    })
 
   const splitPane = async (): Promise<void> => {
     if (!active) return newEmptyTab()
@@ -197,14 +205,33 @@ export function TerminalsTab() {
               {active.panes.length} pane{active.panes.length > 1 ? 's' : ''} · drag headers to
               reorder
             </span>
+            <button
+              className={`tbtn${showSidebar ? ' connected' : ''}`}
+              style={{ marginLeft: 'auto' }}
+              onClick={() => setShowSidebar((v) => !v)}
+              title="Toggle the session progress sidebar"
+            >
+              ☰ Progress
+            </button>
           </div>
-          <PaneGrid
-            panes={active.panes}
-            layout={active.layout}
-            onClose={(p) => closePane(active.id, p)}
-            onRestart={(p) => void restartPane(active.id, p)}
-            onReorder={(f, to) => reorder(active.id, f, to)}
-          />
+          <div className="term-body">
+            <div className="term-main">
+              <PaneGrid
+                panes={active.panes}
+                layout={active.layout}
+                onClose={(p) => closePane(active.id, p)}
+                onRestart={(p) => void restartPane(active.id, p)}
+                onReorder={(f, to) => reorder(active.id, f, to)}
+              />
+            </div>
+            {showSidebar && (
+              <TermSidebar
+                key={active.id}
+                sessionId={active.sessionId}
+                cwd={active.panes[0]?.opts.cwd}
+              />
+            )}
+          </div>
         </>
       ) : (
         <div className="placeholder">

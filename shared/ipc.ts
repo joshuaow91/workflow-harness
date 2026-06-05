@@ -6,6 +6,7 @@ export const IPC = {
   claude: {
     getProjects: 'claude:getProjects',
     deleteSession: 'claude:deleteSession',
+    sessionTasks: 'claude:sessionTasks',
     sidebarUpdate: 'claude:sidebarUpdate' // main -> renderer push
   },
   worktree: {
@@ -28,7 +29,8 @@ export const IPC = {
     myPRsAll: 'github:myPRsAll',
     reviewPRs: 'github:reviewPRs',
     listProjects: 'github:listProjects',
-    projectItems: 'github:projectItems'
+    projectItems: 'github:projectItems',
+    sessionLink: 'github:sessionLink'
   },
   browser: {
     openTab: 'browser:openTab' // main -> renderer push (open url in web workspace)

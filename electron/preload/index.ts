@@ -11,6 +11,8 @@ import type {
   MongoDatabase,
   ObsidianNote,
   RepoKnowledge,
+  SessionLink,
+  SessionTask,
   GhProjectBoard,
   GhProjectSummary,
   GhPullRequest,
@@ -33,6 +35,8 @@ const api = {
     getProjects: (): Promise<ClaudeProject[]> => ipcRenderer.invoke(IPC.claude.getProjects),
     deleteSession: (slug: string, sessionId: string): Promise<void> =>
       ipcRenderer.invoke(IPC.claude.deleteSession, slug, sessionId),
+    sessionTasks: (sessionId: string): Promise<SessionTask[]> =>
+      ipcRenderer.invoke(IPC.claude.sessionTasks, sessionId),
     onSidebarUpdate: (cb: (projects: ClaudeProject[]) => void) =>
       on<ClaudeProject[]>(IPC.claude.sidebarUpdate, cb)
   },
@@ -67,7 +71,9 @@ const api = {
     listProjects: (owner: string): Promise<GhProjectSummary[]> =>
       ipcRenderer.invoke(IPC.github.listProjects, owner),
     projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
-      ipcRenderer.invoke(IPC.github.projectItems, owner, number)
+      ipcRenderer.invoke(IPC.github.projectItems, owner, number),
+    sessionLink: (cwd: string): Promise<SessionLink> =>
+      ipcRenderer.invoke(IPC.github.sessionLink, cwd)
   },
   browser: {
     onOpenTab: (cb: (payload: { url: string; sourceId: number }) => void) =>

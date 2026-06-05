@@ -6,6 +6,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { ClaudeProject, ClaudeSession } from '@shared/types'
 import { parseSessionFile } from './jsonlSession'
+import { getSessionTasks } from './sessionTasks'
 import { displayNameFromPath, slugToPathFallback } from './slug'
 
 const CLAUDE_DIR = join(homedir(), '.claude')
@@ -144,6 +145,7 @@ export function registerClaudeIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.claude.deleteSession, (_e, slug: string, sessionId: string) =>
     deleteSession(slug, sessionId)
   )
+  ipcMain.handle(IPC.claude.sessionTasks, (_e, sessionId: string) => getSessionTasks(sessionId))
 
   let timer: NodeJS.Timeout | null = null
   const pushUpdate = (): void => {

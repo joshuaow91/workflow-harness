@@ -96,6 +96,21 @@ export interface AgentActivity {
   at: number
 }
 
+// ---- Per-session progress ----
+
+export interface SessionTask {
+  id: number
+  subject: string
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
+export interface SessionLink {
+  branch: string | null
+  repo: string | null
+  issueNumber: number | null
+  pr: { number: number; title: string; url: string; state: string; isDraft: boolean } | null
+}
+
 // ---- Claude sidebar ----
 
 export interface ClaudeSession {
