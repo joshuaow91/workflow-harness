@@ -1,4 +1,5 @@
 import { execFile } from 'child_process'
+import { get as httpsGet } from 'https'
 import { promisify } from 'util'
 import {
   GH_MISSING_PROJECT_SCOPE,
@@ -11,6 +12,64 @@ import {
 } from '@shared/types'
 
 const pexec = promisify(execFile)
+
+// ---- Authenticated asset fetch (GitHub-attached images in private repos) ----
+
+let tokenCache: string | null = null
+async function ghToken(): Promise<string> {
+  if (tokenCache) return tokenCache
+  const { stdout } = await pexec('gh', ['auth', 'token'])
+  tokenCache = stdout.trim()
+  return tokenCache
+}
+
+export async function fetchAsset(url: string): Promise<string> {
+  const token = await ghToken().catch(() => '')
+  return new Promise<string>((resolve, reject) => {
+    const go = (u: string, depth: number): void => {
+      if (depth > 5) return reject(new Error('too many redirects'))
+      let parsed: URL
+      try {
+        parsed = new URL(u)
+      } catch {
+        return reject(new Error('bad url'))
+      }
+      // Only send the GitHub token to GitHub hosts — never to redirected S3 URLs.
+      const isGitHub = /(^|\.)github(usercontent)?\.com$/.test(parsed.hostname)
+      const headers: Record<string, string> = { 'User-Agent': 'workflow-harness' }
+      if (isGitHub && token) headers.Authorization = `token ${token}`
+      httpsGet(
+        { hostname: parsed.hostname, path: parsed.pathname + parsed.search, headers },
+        (res) => {
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            res.resume()
+            return go(new URL(res.headers.location, u).toString(), depth + 1)
+          }
+          if (res.statusCode !== 200) {
+            res.resume()
+            return reject(new Error(`status ${res.statusCode}`))
+          }
+          const chunks: Buffer[] = []
+          let size = 0
+          res.on('data', (c: Buffer) => {
+            size += c.length
+            if (size > 12 * 1024 * 1024) {
+              res.destroy()
+              reject(new Error('asset too large'))
+              return
+            }
+            chunks.push(c)
+          })
+          res.on('end', () => {
+            const mime = (res.headers['content-type'] as string) || 'image/png'
+            resolve(`data:${mime};base64,${Buffer.concat(chunks).toString('base64')}`)
+          })
+        }
+      ).on('error', reject)
+    }
+    go(url, 0)
+  })
+}
 
 async function gh(args: string[]): Promise<string> {
   try {
@@ -48,7 +107,12 @@ function rollupChecks(rollup: unknown): string | null {
 
 // ---- Issues ----
 
-export async function listIssues(repo: string, state = 'open'): Promise<GhIssue[]> {
+export async function listIssues(
+  repo: string,
+  state = 'open',
+  search = '',
+  limit = 50
+): Promise<GhIssue[]> {
   type Raw = {
     number: number
     title: string
@@ -58,18 +122,11 @@ export async function listIssues(repo: string, state = 'open'): Promise<GhIssue[
     updatedAt: string
     url: string
   }
-  const rows = await ghJson<Raw[]>([
-    'issue',
-    'list',
-    '-R',
-    repo,
-    '--state',
-    state === 'closed' || state === 'all' ? state : 'open',
-    '--limit',
-    '80',
-    '--json',
-    'number,title,state,labels,assignees,updatedAt,url'
-  ])
+  const st = state === 'closed' || state === 'all' ? state : 'open'
+  const args = ['issue', 'list', '-R', repo, '--limit', String(limit), '--json', 'number,title,state,labels,assignees,updatedAt,url']
+  if (search.trim()) args.push('--search', `${search.trim()} state:${st} sort:updated-desc`)
+  else args.push('--state', st)
+  const rows = await ghJson<Raw[]>(args)
   return rows.map((r) => ({
     number: r.number,
     title: r.title,
@@ -79,6 +136,21 @@ export async function listIssues(repo: string, state = 'open'): Promise<GhIssue[
     updatedAt: r.updatedAt,
     url: r.url
   }))
+}
+
+async function fetchBoardStatus(repo: string, number: number): Promise<string | null> {
+  const [owner, name] = repo.split('/')
+  if (!owner || !name) return null
+  try {
+    const out = await ghJson<{
+      data?: { repository?: { issueOrPullRequest?: { projectItems?: { nodes?: { st?: { name?: string } }[] } } } }
+    }>(['api', 'graphql', '-f', `query=${BOARD_QUERY}`, '-F', `owner=${owner}`, '-F', `name=${name}`, '-F', `number=${number}`])
+    const nodes = out.data?.repository?.issueOrPullRequest?.projectItems?.nodes ?? []
+    for (const n of nodes) if (n?.st?.name) return n.st.name
+  } catch {
+    /* no project scope */
+  }
+  return null
 }
 
 export async function issueDetail(repo: string, number: number): Promise<GhIssueDetail> {
@@ -92,16 +164,20 @@ export async function issueDetail(repo: string, number: number): Promise<GhIssue
     assignees: { login: string }[]
     url: string
     createdAt: string
+    milestone: { title: string } | null
     comments: { author: { login: string }; body: string; createdAt: string }[]
   }
-  const r = await ghJson<Raw>([
-    'issue',
-    'view',
-    String(number),
-    '-R',
-    repo,
-    '--json',
-    'number,title,body,state,author,labels,assignees,url,createdAt,comments'
+  const [r, boardStatus] = await Promise.all([
+    ghJson<Raw>([
+      'issue',
+      'view',
+      String(number),
+      '-R',
+      repo,
+      '--json',
+      'number,title,body,state,author,labels,assignees,url,createdAt,milestone,comments'
+    ]),
+    fetchBoardStatus(repo, number)
   ])
   return {
     number: r.number,
@@ -113,12 +189,22 @@ export async function issueDetail(repo: string, number: number): Promise<GhIssue
     assignees: (r.assignees ?? []).map((a) => a.login),
     url: r.url,
     createdAt: r.createdAt,
+    milestone: r.milestone?.title ?? null,
+    boardStatus,
     comments: (r.comments ?? []).map((c) => ({
       author: c.author?.login ?? '',
       body: c.body ?? '',
       createdAt: c.createdAt
     }))
   }
+}
+
+export async function addIssueComment(repo: string, number: number, body: string): Promise<void> {
+  await gh(['issue', 'comment', String(number), '-R', repo, '--body', body])
+}
+
+export async function setIssueState(repo: string, number: number, action: 'close' | 'reopen'): Promise<void> {
+  await gh(['issue', action, String(number), '-R', repo])
 }
 
 // ---- Pull requests ----

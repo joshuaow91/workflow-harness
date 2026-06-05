@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { marked } from 'marked'
 import type { GhIssue } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
 import { useRepos } from '../sidebar/useRepos'
-import { useDefaultSessionDir } from '../lib/settingsStore'
+import { useDefaultSessionDir, useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
 import { relativeTime } from '../lib/time'
 import { Dropdown } from '../components/Dropdown'
@@ -11,6 +11,7 @@ import { Icon } from '../components/Icon'
 import { GhState } from './GhShared'
 
 const DEFAULT_REPO = 'blink-ai/blink_server'
+const PAGE = 50
 
 function labelStyle(hex: string): React.CSSProperties {
   const c = (hex || '888888').replace('#', '')
@@ -21,8 +22,33 @@ function labelStyle(hex: string): React.CSSProperties {
   return { backgroundColor: `#${c}`, color: lum > 0.6 ? '#1b1b1f' : '#ffffff' }
 }
 
-function md(src: string): string {
-  return marked.parse(src || '_No description provided._', { gfm: true, async: false }) as string
+// Renders issue/comment markdown, proxying images through the authenticated gh
+// token so GitHub-attached images in private repos load (and aren't broken).
+function IssueMarkdown({ src }: { src: string }) {
+  const html = useMemo(
+    () => marked.parse(src || '_No description provided._', { gfm: true, async: false }) as string,
+    [src]
+  )
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.querySelectorAll('img').forEach((img) => {
+      const s = img.getAttribute('src') || ''
+      if (!s || s.startsWith('data:')) return
+      img.style.opacity = '0.45'
+      void window.api.github
+        .fetchAsset(s)
+        .then((d) => {
+          img.src = d
+          img.style.opacity = '1'
+        })
+        .catch(() => {
+          img.style.opacity = '1'
+        })
+    })
+  }, [html])
+  return <div className="obs-md" ref={ref} dangerouslySetInnerHTML={{ __html: html }} />
 }
 
 function IssueRow({ issue, onOpen }: { issue: GhIssue; onOpen: (i: GhIssue) => void }) {
@@ -49,6 +75,15 @@ function IssueRow({ issue, onOpen }: { issue: GhIssue; onOpen: (i: GhIssue) => v
   )
 }
 
+function SideSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="issue-side-sec">
+      <h4>{title}</h4>
+      {children}
+    </div>
+  )
+}
+
 function IssueDetailView({
   repo,
   number,
@@ -62,9 +97,37 @@ function IssueDetailView({
     () => window.api.github.issueDetail(repo, number),
     [repo, number]
   )
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+
   if (loading) return <div className="gh-state">Loading issue…</div>
   if (error) return <div className="gh-state gh-error">{error}</div>
   if (!data) return null
+
+  const postComment = async (): Promise<void> => {
+    if (!draft.trim()) return
+    setBusy(true)
+    try {
+      await window.api.github.addComment(repo, number, draft.trim())
+      setDraft('')
+      reload()
+    } catch (e) {
+      window.alert(`Could not comment:\n${(e as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const toggleState = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      await window.api.github.setIssueState(repo, number, data.state === 'OPEN' ? 'close' : 'reopen')
+      reload()
+    } catch (e) {
+      window.alert(`Could not change state:\n${(e as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="issue-detail">
@@ -72,7 +135,9 @@ function IssueDetailView({
         <span className={`issue-state ${data.state.toLowerCase()}`}>
           <Icon name="issue" size={13} /> {data.state.toLowerCase()}
         </span>
-        <span className="issue-detail-num">{repo} #{data.number}</span>
+        <span className="issue-detail-num">
+          {repo} #{data.number}
+        </span>
         <div className="issue-detail-actions">
           <button className="tbtn primary" onClick={onSendClaude} title="Open a Claude plan-mode session on this issue">
             ✦ Investigate &amp; plan
@@ -86,43 +151,87 @@ function IssueDetailView({
         </div>
       </div>
 
-      <div className="issue-detail-scroll">
-        <h1 className="issue-detail-title">{data.title}</h1>
-        <div className="issue-detail-meta">
-          {data.author && (
-            <>
-              <b>{data.author}</b> opened ·{' '}
-            </>
-          )}
-          {relativeTime(data.createdAt)}
-          {data.labels.length > 0 && (
-            <span className="issue-detail-labels">
-              {data.labels.map((l) => (
-                <span key={l.name} className="issue-label" style={labelStyle(l.color)}>
-                  {l.name}
-                </span>
-              ))}
-            </span>
-          )}
-        </div>
-
-        <div className="issue-comment-card">
-          <div className="issue-comment-head">
-            <b>{data.author || 'author'}</b>
-            <span>commented · {relativeTime(data.createdAt)}</span>
+      <div className="issue-detail-cols">
+        <div className="issue-detail-scroll">
+          <h1 className="issue-detail-title">{data.title}</h1>
+          <div className="issue-detail-meta">
+            {data.author && (
+              <>
+                <b>{data.author}</b> opened ·{' '}
+              </>
+            )}
+            {relativeTime(data.createdAt)}
           </div>
-          <div className="obs-md" dangerouslySetInnerHTML={{ __html: md(data.body) }} />
-        </div>
 
-        {data.comments.map((c, i) => (
-          <div key={i} className="issue-comment-card">
+          <div className="issue-comment-card">
             <div className="issue-comment-head">
-              <b>{c.author}</b>
-              <span>commented · {relativeTime(c.createdAt)}</span>
+              <b>{data.author || 'author'}</b>
+              <span>commented · {relativeTime(data.createdAt)}</span>
             </div>
-            <div className="obs-md" dangerouslySetInnerHTML={{ __html: md(c.body) }} />
+            <div className="issue-comment-body">
+              <IssueMarkdown src={data.body} />
+            </div>
           </div>
-        ))}
+
+          {data.comments.map((c, i) => (
+            <div key={i} className="issue-comment-card">
+              <div className="issue-comment-head">
+                <b>{c.author}</b>
+                <span>commented · {relativeTime(c.createdAt)}</span>
+              </div>
+              <div className="issue-comment-body">
+                <IssueMarkdown src={c.body} />
+              </div>
+            </div>
+          ))}
+
+          <div className="issue-composer">
+            <textarea
+              className="issue-composer-input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Leave a comment (Markdown supported)…"
+              rows={4}
+            />
+            <div className="issue-composer-actions">
+              <button className="tbtn" disabled={busy} onClick={toggleState}>
+                {data.state === 'OPEN' ? 'Close issue' : 'Reopen issue'}
+              </button>
+              <button className="tbtn primary" disabled={busy || !draft.trim()} onClick={postComment}>
+                Comment
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside className="issue-side">
+          <SideSection title="Assignees">
+            {data.assignees.length ? (
+              data.assignees.join(', ')
+            ) : (
+              <span className="issue-side-muted">No one assigned</span>
+            )}
+          </SideSection>
+          <SideSection title="Labels">
+            {data.labels.length ? (
+              <div className="issue-side-labels">
+                {data.labels.map((l) => (
+                  <span key={l.name} className="issue-label" style={labelStyle(l.color)}>
+                    {l.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="issue-side-muted">None yet</span>
+            )}
+          </SideSection>
+          <SideSection title="Milestone">
+            {data.milestone ?? <span className="issue-side-muted">No milestone</span>}
+          </SideSection>
+          <SideSection title="Project status">
+            {data.boardStatus ?? <span className="issue-side-muted">Not on a board</span>}
+          </SideSection>
+        </aside>
       </div>
     </div>
   )
@@ -138,21 +247,34 @@ interface OpenTab {
 export function IssuesTab() {
   const { repos } = useRepos()
   const defaultDir = useDefaultSessionDir()
+  const settings = useSettings()
   const ghRepos = useMemo(
     () => repos.filter((r) => r.nameWithOwner).map((r) => r.nameWithOwner as string),
     [repos]
   )
   const [repo, setRepo] = useState<string | null>(null)
   const [stateFilter, setStateFilter] = useState<'open' | 'closed'>('open')
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [limit, setLimit] = useState(PAGE)
 
   useEffect(() => {
     if (!repo && ghRepos.length > 0)
       setRepo(ghRepos.includes(DEFAULT_REPO) ? DEFAULT_REPO : ghRepos[0])
   }, [repo, ghRepos])
 
+  // Debounce the search box.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput)
+      setLimit(PAGE)
+    }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   const { data, loading, error, reload } = useAsync(
-    () => (repo ? window.api.github.issues(repo, stateFilter) : Promise.resolve([])),
-    [repo, stateFilter]
+    () => (repo ? window.api.github.issues(repo, stateFilter, search, limit) : Promise.resolve([])),
+    [repo, stateFilter, search, limit]
   )
   const issues = data ?? []
 
@@ -177,10 +299,17 @@ export function IssuesTab() {
     })
 
   const sendToClaude = (repoName: string, number: number, title: string): void => {
+    const extras: string[] = []
+    if (settings?.mongoUri)
+      extras.push(
+        `A READ-ONLY MongoDB connection string is available for querying data — never write: ${settings.mongoUri}.`
+      )
+    if (settings?.ddApiKey)
+      extras.push('The datadog-mcp MCP tools are available for logs, metrics, traces and RUM.')
     const prompt =
       `Investigate GitHub issue #${number} in ${repoName}: "${title.replace(/"/g, '')}". ` +
       `Run \`gh issue view ${number} -R ${repoName}\` to read the full description and comments, ` +
-      `explore the relevant code, then produce a concrete implementation plan.`
+      `explore the relevant code, then produce a concrete implementation plan. ${extras.join(' ')}`.trim()
     const quoted = `'${prompt.replace(/'/g, `'\\''`)}'`
     terminalBus.open({
       cwd: localPathFor(repoName) ?? defaultDir,
@@ -226,8 +355,14 @@ export function IssuesTab() {
               options={ghRepos.map((r) => ({ value: r, label: r }))}
               onChange={setRepo}
               searchable
-              minWidth={240}
+              minWidth={220}
               placeholder="repo…"
+            />
+            <input
+              className="issue-search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search issues (gh syntax: label:bug author:@me …)"
             />
             <div className="seg">
               <button className={stateFilter === 'open' ? 'on' : ''} onClick={() => setStateFilter('open')}>
@@ -243,10 +378,15 @@ export function IssuesTab() {
             </button>
           </div>
           <div className="issues-list">
-            <GhState loading={loading} error={error} empty={issues.length === 0} emptyText="No issues." />
+            <GhState loading={loading} error={error} empty={issues.length === 0} emptyText="No issues match." />
             {issues.map((i) => (
               <IssueRow key={i.number} issue={i} onOpen={openIssue} />
             ))}
+            {issues.length >= limit && (
+              <button className="issue-loadmore" onClick={() => setLimit((l) => l + PAGE)}>
+                Load more
+              </button>
+            )}
           </div>
         </>
       ) : activeTab ? (

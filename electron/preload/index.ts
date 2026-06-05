@@ -70,10 +70,15 @@ const api = {
     onExit: (cb: (e: TerminalExitEvent) => void) => on<TerminalExitEvent>(IPC.terminal.exit, cb)
   },
   github: {
-    issues: (repo: string, state?: string): Promise<GhIssue[]> =>
-      ipcRenderer.invoke(IPC.github.issues, repo, state),
+    issues: (repo: string, state?: string, search?: string, limit?: number): Promise<GhIssue[]> =>
+      ipcRenderer.invoke(IPC.github.issues, repo, state, search, limit),
     issueDetail: (repo: string, number: number): Promise<GhIssueDetail> =>
       ipcRenderer.invoke(IPC.github.issueDetail, repo, number),
+    addComment: (repo: string, number: number, body: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.github.addComment, repo, number, body),
+    setIssueState: (repo: string, number: number, action: 'close' | 'reopen'): Promise<void> =>
+      ipcRenderer.invoke(IPC.github.setIssueState, repo, number, action),
+    fetchAsset: (url: string): Promise<string> => ipcRenderer.invoke(IPC.github.fetchAsset, url),
     myPRs: (repo: string): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRs, repo),
     myPRsAll: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.myPRsAll),
     reviewPRs: (): Promise<GhPullRequest[]> => ipcRenderer.invoke(IPC.github.reviewPRs),

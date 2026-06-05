@@ -232,6 +232,8 @@ export interface GhIssueDetail {
   assignees: string[]
   url: string
   createdAt: string
+  milestone: string | null
+  boardStatus: string | null
   comments: GhIssueComment[]
 }
 

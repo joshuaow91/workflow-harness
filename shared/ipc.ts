@@ -33,7 +33,10 @@ export const IPC = {
     listProjects: 'github:listProjects',
     projectItems: 'github:projectItems',
     enrichLinks: 'github:enrichLinks',
-    issueDetail: 'github:issueDetail'
+    issueDetail: 'github:issueDetail',
+    addComment: 'github:addComment',
+    setIssueState: 'github:setIssueState',
+    fetchAsset: 'github:fetchAsset'
   },
   browser: {
     openTab: 'browser:openTab' // main -> renderer push (open url in web workspace)
