@@ -1447,6 +1447,80 @@ button {
   color: var(--text-faint);
 }
 
+/* board body scroll container (used by swimlane/accordion views) */
+.board-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.kanban-flex {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: max-content;
+}
+
+.kanban-col.compact {
+  max-height: 340px;
+}
+
+.lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  position: sticky;
+  left: 0;
+}
+
+.accordion {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.accordion-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg-alt);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  position: sticky;
+  left: 0;
+}
+
+.accordion-head:hover {
+  background: var(--surface);
+}
+
+.accordion-caret {
+  color: var(--text-faint);
+}
+
+.accordion .kanban-flex {
+  padding: 10px;
+}
+
 .gh-split .gh-list {
   height: 100%;
 }
