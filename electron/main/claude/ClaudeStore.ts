@@ -6,8 +6,8 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { ClaudeProject, ClaudeSession } from '@shared/types'
 import { parseSessionFile } from './jsonlSession'
-import { getSessionLinks, getSessionPlan, getSessionTasks } from './sessionTasks'
 import { displayNameFromPath, slugToPathFallback } from './slug'
+import { activeProvider, providers } from '../agents/registry'
 
 const CLAUDE_DIR = join(homedir(), '.claude')
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects')
@@ -141,25 +141,27 @@ export async function deleteSession(slug: string, sessionId: string): Promise<vo
 let watcher: FSWatcher | null = null
 
 export function registerClaudeIpc(getWindow: () => BrowserWindow | null): void {
-  ipcMain.handle(IPC.claude.getProjects, () => buildProjects())
+  // Session/sidebar IPCs route to the active agent provider (Claude, Codex, …).
+  ipcMain.handle(IPC.claude.getProjects, () => activeProvider().getProjects())
   ipcMain.handle(IPC.claude.deleteSession, (_e, slug: string, sessionId: string) =>
-    deleteSession(slug, sessionId)
+    activeProvider().deleteSession(slug, sessionId)
   )
-  ipcMain.handle(IPC.claude.sessionTasks, (_e, sessionId: string) => getSessionTasks(sessionId))
-  ipcMain.handle(IPC.claude.sessionLinks, (_e, sessionId: string) => getSessionLinks(sessionId))
-  ipcMain.handle(IPC.claude.sessionPlan, (_e, sessionId: string) => getSessionPlan(sessionId))
+  ipcMain.handle(IPC.claude.sessionTasks, (_e, sessionId: string) => activeProvider().sessionTasks(sessionId))
+  ipcMain.handle(IPC.claude.sessionLinks, (_e, sessionId: string) => activeProvider().sessionLinks(sessionId))
+  ipcMain.handle(IPC.claude.sessionPlan, (_e, sessionId: string) => activeProvider().sessionPlan(sessionId))
 
   let timer: NodeJS.Timeout | null = null
   const pushUpdate = (): void => {
     if (timer) clearTimeout(timer)
     timer = setTimeout(async () => {
-      const projects = await buildProjects()
+      const projects = await activeProvider().getProjects()
       const win = getWindow()
       if (win && !win.isDestroyed()) win.webContents.send(IPC.claude.sidebarUpdate, projects)
     }, 300)
   }
 
-  watcher = chokidar.watch([PROJECTS_DIR, SESSIONS_DIR], {
+  const watchPaths = [...new Set(providers.flatMap((p) => p.watchPaths()))]
+  watcher = chokidar.watch(watchPaths, {
     ignoreInitial: true,
     depth: 2,
     awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 }

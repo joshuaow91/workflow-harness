@@ -1,13 +1,11 @@
-import { execFile } from 'child_process'
 import { join } from 'path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { setAgentTarget } from './BrowserController'
 import { CONTROL_PORT, setActivitySink, setMermaidSink, startControlServer } from './controlServer'
+import { activeProvider } from '../agents/registry'
 
-// Absolute path to the standalone MCP server script (resolves from the project
-// root in dev; bundled under resources when packaged).
-function mcpScriptPath(): string {
+function mcpScriptPathExt(): string {
   return join(app.getAppPath(), 'mcp', 'agent-browser.mjs')
 }
 
@@ -28,55 +26,30 @@ export function registerAgentIpc(getWindow: () => BrowserWindow | null): void {
     setAgentTarget(webContentsId)
   })
 
-  // Generate a Mermaid diagram by prompting the user's `claude` CLI.
-  ipcMain.handle(IPC.mermaid.generate, (_e, prompt: string): Promise<string> => {
+  // Generate a Mermaid diagram by prompting the active agent's CLI.
+  ipcMain.handle(IPC.mermaid.generate, async (_e, prompt: string): Promise<string> => {
     const full = `Create a Mermaid diagram for this request. Output ONLY valid Mermaid source — no explanation, no markdown code fences.\n\nRequest: ${prompt}`
-    return new Promise((resolve, reject) => {
-      execFile(
-        'claude',
-        ['-p', full],
-        { timeout: 120000, maxBuffer: 1024 * 1024 },
-        (err, stdout, stderr) => {
-          if (err) return reject(new Error((stderr || err.message).trim()))
-          const cleaned = stdout
-            .replace(/^\s*```(?:mermaid)?\s*/i, '')
-            .replace(/\s*```\s*$/i, '')
-            .trim()
-          resolve(cleaned)
-        }
-      )
-    })
+    const out = await activeProvider().oneShot(full)
+    return out
+      .replace(/^\s*```(?:mermaid)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim()
   })
 
-  // Is the agent-browser MCP already registered with Claude?
-  ipcMain.handle(IPC.agent.checkConnected, (): Promise<boolean> => {
-    return new Promise((resolve) => {
-      execFile('claude', ['mcp', 'get', 'agent-browser'], (err) => resolve(!err))
-    })
+  ipcMain.handle(IPC.agent.info, () => {
+    const p = activeProvider()
+    return { id: p.id, label: p.label, cli: p.cli }
   })
 
-  // Register the MCP server with Claude Code (user scope) so `claude` picks it up.
-  ipcMain.handle(IPC.agent.connectClaude, (): Promise<{ ok: boolean; message: string }> => {
-    return new Promise((resolve) => {
-      const args = [
-        'mcp',
-        'add',
-        'agent-browser',
-        '-s',
-        'user',
-        '-e',
-        `CONTROL_URL=http://127.0.0.1:${CONTROL_PORT}`,
-        '--',
-        'node',
-        mcpScriptPath()
-      ]
-      execFile('claude', args, (err, _stdout, stderr) => {
-        if (err && !/already exists/i.test(stderr)) {
-          resolve({ ok: false, message: (stderr || err.message).trim() })
-        } else {
-          resolve({ ok: true, message: 'Connected. Restart any running claude session to load it.' })
-        }
-      })
-    })
-  })
+  ipcMain.handle(IPC.agent.command, (_e, opts: { resumeId?: string; mapFile?: string }) =>
+    activeProvider().buildCommand(opts)
+  )
+
+  // Is the agent-browser MCP registered with the active agent?
+  ipcMain.handle(IPC.agent.checkConnected, () => activeProvider().checkMcp())
+
+  // Register the MCP server with the active agent.
+  ipcMain.handle(IPC.agent.connectClaude, () =>
+    activeProvider().registerMcp(mcpScriptPathExt(), `http://127.0.0.1:${CONTROL_PORT}`)
+  )
 }

@@ -11,20 +11,21 @@ export function refreshMapInfo(): void {
 }
 refreshMapInfo()
 
-/** Build the claude command, injecting the repo map when enabled + available. */
-export function claudeCommand(resumeId?: string): string {
-  const base = resumeId ? `claude --resume ${resumeId}` : 'claude'
+/** Build the active agent's launch command, injecting the repo map when enabled. */
+export function claudeCommand(resumeId?: string): Promise<string> {
   const inject = settingsStore.get()?.injectRepoMap !== false
-  if (inject && mapInfo.available && mapInfo.path) {
-    return `${base} --append-system-prompt-file '${mapInfo.path}'`
-  }
-  return base
+  const mapFile = inject && mapInfo.available && mapInfo.path ? mapInfo.path : undefined
+  return window.api.agent.command({ resumeId, mapFile })
 }
 
-export function launchClaude(opts: { cwd: string; label?: string; resumeId?: string }): void {
+export async function launchClaude(opts: {
+  cwd: string
+  label?: string
+  resumeId?: string
+}): Promise<void> {
   terminalBus.open({
     cwd: opts.cwd,
     label: opts.label,
-    initialCommand: claudeCommand(opts.resumeId)
+    initialCommand: await claudeCommand(opts.resumeId)
   })
 }

@@ -34,13 +34,13 @@ export function SideTerminal({ onClose }: { onClose?: () => void }) {
     setOpts(next)
   }
 
-  const onSelect = (value: string): void => {
+  const onSelect = async (value: string): Promise<void> => {
     if (value === '__shell') void launch({ cwd: defaultDir, label: `shell · ${basename(defaultDir)}` })
     else if (value === '__claude')
-      void launch({ cwd: defaultDir, initialCommand: claudeCommand(), label: `claude · ${basename(defaultDir)}` })
+      void launch({ cwd: defaultDir, initialCommand: await claudeCommand(), label: `claude · ${basename(defaultDir)}` })
     else {
       const s = sessions.find((x) => x.sessionId === value)
-      if (s) void launch({ cwd: s.cwd, initialCommand: claudeCommand(s.sessionId), label: s.title })
+      if (s) void launch({ cwd: s.cwd, initialCommand: await claudeCommand(s.sessionId), label: s.title })
     }
   }
 

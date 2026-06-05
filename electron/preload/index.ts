@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc'
 import type {
   AgentActivity,
+  AgentInfo,
   AppSettings,
   AutoUpdateStatus,
   BrowserHistoryEntry,
@@ -125,6 +126,9 @@ const api = {
     connectClaude: (): Promise<{ ok: boolean; message: string }> =>
       ipcRenderer.invoke(IPC.agent.connectClaude),
     checkConnected: (): Promise<boolean> => ipcRenderer.invoke(IPC.agent.checkConnected),
+    info: (): Promise<AgentInfo> => ipcRenderer.invoke(IPC.agent.info),
+    command: (opts: { resumeId?: string; mapFile?: string }): Promise<string> =>
+      ipcRenderer.invoke(IPC.agent.command, opts),
     onActivity: (cb: (a: AgentActivity) => void) => on<AgentActivity>(IPC.agent.activity, cb)
   },
   devtools: {

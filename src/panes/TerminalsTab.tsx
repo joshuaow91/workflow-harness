@@ -102,11 +102,11 @@ export function TerminalsTab() {
     return () => clearTimeout(t)
   }, [activeId, active?.layout, active?.panes.length])
 
-  // A new tab starts a claude session in the configured default directory.
-  const newEmptyTab = (): void =>
+  // A new tab starts an agent session in the configured default directory.
+  const newEmptyTab = async (): Promise<void> =>
     void openTab({
       cwd: defaultDir,
-      initialCommand: claudeCommand(),
+      initialCommand: await claudeCommand(),
       label: `claude · ${basename(defaultDir)}`
     })
 
@@ -126,13 +126,13 @@ export function TerminalsTab() {
       sublabel: s.projectName
     }))
   ]
-  const onSplit = (value: string): void => {
+  const onSplit = async (value: string): Promise<void> => {
     if (value === '__shell') void splitWith({ cwd: splitCwd, label: `shell · ${basename(splitCwd)}` })
     else if (value === '__claude')
-      void splitWith({ cwd: splitCwd, initialCommand: claudeCommand(), label: `claude · ${basename(splitCwd)}` })
+      void splitWith({ cwd: splitCwd, initialCommand: await claudeCommand(), label: `claude · ${basename(splitCwd)}` })
     else {
       const s = sessions.find((x) => x.sessionId === value)
-      if (s) void splitWith({ cwd: s.cwd, initialCommand: claudeCommand(s.sessionId), label: s.title })
+      if (s) void splitWith({ cwd: s.cwd, initialCommand: await claudeCommand(s.sessionId), label: s.title })
     }
   }
 

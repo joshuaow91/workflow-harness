@@ -3,7 +3,15 @@
 
 // ---- Settings ----
 
+export interface AgentInfo {
+  id: string
+  label: string
+  cli: string
+}
+
 export interface AppSettings {
+  /** Active coding agent id ('claude' | 'codex' | …). */
+  agent: string
   /** Directory used to launch new claude sessions / shells when no repo or session cwd is given. */
   defaultSessionDir: string
   /** Name of the active Ghostty theme. */
