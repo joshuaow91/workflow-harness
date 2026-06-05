@@ -2687,6 +2687,12 @@ button {
   color: var(--text-dim);
   font-style: italic;
 }
+.cm-task-check {
+  margin: 0 7px 0 0;
+  accent-color: var(--accent);
+  vertical-align: middle;
+  cursor: pointer;
+}
 
 .obs-view {
   display: flex;

@@ -1,8 +1,42 @@
-import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate,
+  WidgetType
+} from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import type { EditorState, Range } from '@codemirror/state'
 
 const HIDE = Decoration.replace({})
+
+// Clickable task checkbox that toggles [ ] <-> [x] in the document.
+class CheckWidget extends WidgetType {
+  constructor(
+    readonly checked: boolean,
+    readonly from: number
+  ) {
+    super()
+  }
+  eq(o: CheckWidget): boolean {
+    return o.checked === this.checked && o.from === this.from
+  }
+  toDOM(view: EditorView): HTMLElement {
+    const i = document.createElement('input')
+    i.type = 'checkbox'
+    i.checked = this.checked
+    i.className = 'cm-task-check'
+    i.addEventListener('mousedown', (e) => e.preventDefault())
+    i.addEventListener('click', () => {
+      view.dispatch({ changes: { from: this.from + 1, to: this.from + 2, insert: this.checked ? ' ' : 'x' } })
+    })
+    return i
+  }
+  ignoreEvent(): boolean {
+    return false
+  }
+}
 
 function activeLineSet(state: EditorState): Set<number> {
   const s = new Set<number>()
@@ -39,6 +73,13 @@ function build(view: EditorView): DecorationSet {
         const h = /^ATXHeading([1-6])$/.exec(n)
         if (h) {
           decos.push(Decoration.line({ class: `cm-h cm-h${h[1]}` }).range(state.doc.lineAt(node.from).from))
+          return
+        }
+        if (n === 'TaskMarker') {
+          const checked = /[xX]/.test(state.doc.sliceString(node.from + 1, node.from + 2))
+          if (node.from - 2 >= 0 && /[-*+] /.test(state.doc.sliceString(node.from - 2, node.from)))
+            decos.push(HIDE.range(node.from - 2, node.from))
+          decos.push(Decoration.replace({ widget: new CheckWidget(checked, node.from) }).range(node.from, node.to))
           return
         }
         if (n === 'StrongEmphasis') decos.push(Decoration.mark({ class: 'cm-strong' }).range(node.from, node.to))

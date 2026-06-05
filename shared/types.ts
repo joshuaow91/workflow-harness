@@ -66,6 +66,14 @@ export interface RepoKnowledge {
   updatedAt: number
 }
 
+export interface ObsidianTheme {
+  /** Active community theme name, or null if using the default. */
+  name: string | null
+  scheme: 'dark' | 'light'
+  /** Raw theme.css (empty if default theme). */
+  css: string
+}
+
 export interface ObsidianNote {
   /** Path relative to the vault root, e.g. "Work/Ideas.md". */
   path: string

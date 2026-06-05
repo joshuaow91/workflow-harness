@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Annotation, EditorState } from '@codemirror/state'
 import { EditorView, drawSelection, keymap } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { markdown } from '@codemirror/lang-markdown'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { livePreview } from './livePreview'
@@ -38,7 +38,7 @@ export function LivePreviewEditor({ doc, onChange }: { doc: string; onChange: (v
           keymap.of([...defaultKeymap, ...historyKeymap]),
           drawSelection(),
           EditorView.lineWrapping,
-          markdown({ codeLanguages: languages }),
+          markdown({ base: markdownLanguage, codeLanguages: languages }),
           syntaxHighlighting(defaultHighlightStyle),
           livePreview,
           theme,
