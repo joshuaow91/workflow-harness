@@ -75,6 +75,7 @@ export function IssuesBoard({
   const [employee, setEmployee] = useState(savedBoard.employee ?? '')
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [priCollapsed, setPriCollapsed] = useState<Set<string>>(new Set())
   const [dragId, setDragId] = useState<string | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -166,16 +167,17 @@ export function IssuesBoard({
   const Columns = (
     cellItems: (statusKey: string) => GhProjectItem[],
     keyPrefix: string,
-    onDrop: (statusKey: string) => void
+    onDrop: (statusKey: string) => void,
+    compact = false
   ) => (
-    <div className="kanban-flex">
+    <div className={compact ? 'kanban-flex' : 'kanban'}>
       {statusCols.map((col) => {
         const cellKey = `${keyPrefix}:${col.key}`
         const its = cellItems(col.key)
         return (
           <div
             key={col.key}
-            className={`kanban-col compact${over === cellKey ? ' over' : ''}`}
+            className={`kanban-col${compact ? ' compact' : ''}${over === cellKey ? ' over' : ''}`}
             onDragOver={(e) => {
               e.preventDefault()
               if (over !== cellKey) setOver(cellKey)
@@ -263,25 +265,40 @@ export function IssuesBoard({
       ) : board.error ? (
         <div className="gh-state gh-error">{board.error}</div>
       ) : mode === 'Status' ? (
-        <div className="board-body">
-          {Columns((s) => visible.filter((i) => statusOf(i) === s), 's', (s) => void dropInto(s))}
-        </div>
+        Columns((s) => visible.filter((i) => statusOf(i) === s), 's', (s) => void dropInto(s))
       ) : mode === 'Priority' ? (
         <div className="board-body">
           <div className="lanes">
-            {priorityRows.map((row) => (
-              <div key={row.key} className="lane">
-                <div className="lane-head">
-                  {row.label}
-                  <span className="gh-count">{visible.filter((i) => priorityOf(i) === row.key).length}</span>
+            {priorityRows.map((row) => {
+              const open = !priCollapsed.has(row.key)
+              const rowItems = visible.filter((i) => priorityOf(i) === row.key)
+              return (
+                <div key={row.key} className="accordion">
+                  <div
+                    className="accordion-head"
+                    onClick={() =>
+                      setPriCollapsed((s) => {
+                        const n = new Set(s)
+                        if (n.has(row.key)) n.delete(row.key)
+                        else n.add(row.key)
+                        return n
+                      })
+                    }
+                  >
+                    <span className="accordion-caret">{open ? '▾' : '▸'}</span>
+                    {row.label}
+                    <span className="gh-count">{rowItems.length}</span>
+                  </div>
+                  {open &&
+                    Columns(
+                      (s) => rowItems.filter((i) => statusOf(i) === s),
+                      `p:${row.key}`,
+                      (s) => void dropInto(s, row.key),
+                      true
+                    )}
                 </div>
-                {Columns(
-                  (s) => visible.filter((i) => priorityOf(i) === row.key && statusOf(i) === s),
-                  `p:${row.key}`,
-                  (s) => void dropInto(s, row.key)
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ) : (
@@ -304,7 +321,8 @@ export function IssuesBoard({
                     Columns(
                       (s) => mine.filter((i) => statusOf(i) === s),
                       `u:${user}`,
-                      (s) => void dropInto(s)
+                      (s) => void dropInto(s),
+                      true
                     )}
                 </div>
               )
