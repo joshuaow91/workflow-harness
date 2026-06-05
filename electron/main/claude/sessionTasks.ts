@@ -107,6 +107,52 @@ export async function getSessionTasks(sessionId: string): Promise<SessionTask[]>
   return result
 }
 
+// The latest plan markdown a session produced (from ExitPlanMode tool calls).
+const planCache = new Map<string, { mtimeMs: number; size: number; plan: string }>()
+
+export async function getSessionPlan(sessionId: string): Promise<string> {
+  const file = findSessionFile(sessionId)
+  if (!file) return ''
+  let st
+  try {
+    st = statSync(file)
+  } catch {
+    return ''
+  }
+  const cached = planCache.get(file)
+  if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) return cached.plan
+
+  let plan = ''
+  const rl = createInterface({
+    input: createReadStream(file, { encoding: 'utf8' }),
+    crlfDelay: Infinity
+  })
+  try {
+    for await (const raw of rl) {
+      const line = raw.trim()
+      if (!line || !line.includes('ExitPlanMode')) continue
+      let o: { message?: { content?: unknown } }
+      try {
+        o = JSON.parse(line)
+      } catch {
+        continue
+      }
+      const content = o.message?.content
+      if (!Array.isArray(content)) continue
+      for (const b of content as Array<Record<string, unknown>>) {
+        if (b?.type === 'tool_use' && b.name === 'ExitPlanMode') {
+          const p = (b.input as { plan?: string })?.plan
+          if (p) plan = p // keep the latest
+        }
+      }
+    }
+  } finally {
+    rl.close()
+  }
+  planCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, plan })
+  return plan
+}
+
 // Extract the PRs/issues a session worked on from its transcript: authoritative
 // `pr-link` entries plus github URLs (filtered to workspace owners to drop noise).
 const URL_RE = /github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)/g

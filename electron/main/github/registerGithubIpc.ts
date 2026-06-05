@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
+import type { SessionRef } from '@shared/types'
 import {
+  enrichLinks,
   listIssues,
   listMyPRs,
   listMyPRsAll,
@@ -18,4 +20,5 @@ export function registerGithubIpc(): void {
   ipcMain.handle(IPC.github.projectItems, (_e, owner: string, number: number) =>
     projectItems(owner, number)
   )
+  ipcMain.handle(IPC.github.enrichLinks, (_e, refs: SessionRef[]) => enrichLinks(refs))
 }

@@ -3,7 +3,9 @@ import type { TerminalSpawnOptions } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
 import { useDefaultSessionDir } from '../lib/settingsStore'
 import { claudeCommand } from '../lib/launchClaude'
+import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { Icon } from '../components/Icon'
+import { Dropdown, type DropdownOption } from '../components/Dropdown'
 import { PaneGrid, type Layout, type Pane } from './PaneGrid'
 
 interface Tab {
@@ -33,6 +35,7 @@ export function TerminalsTab() {
   const tabCounter = useRef(1)
   const paneCounter = useRef(1)
   const defaultDir = useDefaultSessionDir()
+  const sessions = useFlatSessions()
 
   const active = tabs.find((t) => t.id === activeId) ?? null
 
@@ -65,11 +68,30 @@ export function TerminalsTab() {
       label: `claude · ${basename(defaultDir)}`
     })
 
-  const splitPane = async (): Promise<void> => {
-    if (!active) return newEmptyTab()
-    const cwd = active.panes[0]?.opts.cwd ?? defaultDir
-    const pane = await makePane({ cwd, label: `shell · ${basename(cwd)}` })
+  const splitWith = async (opts: TerminalSpawnOptions): Promise<void> => {
+    if (!active) return openTab(opts)
+    const pane = await makePane(opts)
     setTabs((t) => t.map((x) => (x.id === active.id ? { ...x, panes: [...x.panes, pane] } : x)))
+  }
+
+  const splitCwd = active?.panes[0]?.opts.cwd ?? defaultDir
+  const splitOptions: DropdownOption[] = [
+    { value: '__claude', label: '＋ new claude', sublabel: basename(splitCwd) },
+    { value: '__shell', label: '＋ shell', sublabel: basename(splitCwd) },
+    ...sessions.slice(0, 60).map((s) => ({
+      value: s.sessionId,
+      label: `${s.live ? '● ' : ''}${s.title}`,
+      sublabel: s.projectName
+    }))
+  ]
+  const onSplit = (value: string): void => {
+    if (value === '__shell') void splitWith({ cwd: splitCwd, label: `shell · ${basename(splitCwd)}` })
+    else if (value === '__claude')
+      void splitWith({ cwd: splitCwd, initialCommand: claudeCommand(), label: `claude · ${basename(splitCwd)}` })
+    else {
+      const s = sessions.find((x) => x.sessionId === value)
+      if (s) void splitWith({ cwd: s.cwd, initialCommand: claudeCommand(s.sessionId), label: s.title })
+    }
   }
 
   const closePane = (tabId: number, paneId: number): void =>
@@ -181,9 +203,14 @@ export function TerminalsTab() {
       {active ? (
         <>
           <div className="terminals-toolbar">
-            <button className="tbtn" onClick={() => void splitPane()}>
-              ＋ Split pane
-            </button>
+            <Dropdown
+              value=""
+              triggerLabel="＋ Split pane"
+              options={splitOptions}
+              onChange={onSplit}
+              searchable
+              minWidth={240}
+            />
             <div className="term-layouts">
               {LAYOUTS.map((l) => (
                 <button

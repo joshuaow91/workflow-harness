@@ -39,6 +39,8 @@ const api = {
       ipcRenderer.invoke(IPC.claude.sessionTasks, sessionId),
     sessionLinks: (sessionId: string): Promise<SessionRef[]> =>
       ipcRenderer.invoke(IPC.claude.sessionLinks, sessionId),
+    sessionPlan: (sessionId: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.claude.sessionPlan, sessionId),
     onSidebarUpdate: (cb: (projects: ClaudeProject[]) => void) =>
       on<ClaudeProject[]>(IPC.claude.sidebarUpdate, cb)
   },
@@ -73,7 +75,9 @@ const api = {
     listProjects: (owner: string): Promise<GhProjectSummary[]> =>
       ipcRenderer.invoke(IPC.github.listProjects, owner),
     projectItems: (owner: string, number: number): Promise<GhProjectBoard> =>
-      ipcRenderer.invoke(IPC.github.projectItems, owner, number)
+      ipcRenderer.invoke(IPC.github.projectItems, owner, number),
+    enrichLinks: (refs: SessionRef[]): Promise<SessionRef[]> =>
+      ipcRenderer.invoke(IPC.github.enrichLinks, refs)
   },
   browser: {
     onOpenTab: (cb: (payload: { url: string; sourceId: number }) => void) =>

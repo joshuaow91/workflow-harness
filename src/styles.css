@@ -2947,8 +2947,16 @@ button {
   text-overflow: ellipsis;
 }
 
+.term-sb-reflist {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .term-sb-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   text-align: left;
   background: var(--surface);
@@ -2961,6 +2969,54 @@ button {
 
 .term-sb-link:hover {
   background: var(--surface-hover);
+}
+
+.term-sb-refnum {
+  flex: 0 0 auto;
+}
+
+.term-sb-link .term-sb-repo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.term-sb-link .gh-badge {
+  flex: 0 0 auto;
+}
+
+.gh-badge.merged {
+  color: var(--mauve);
+  background: rgba(203, 166, 247, 0.14);
+}
+
+.gh-badge.closed {
+  color: var(--red);
+  background: rgba(243, 139, 168, 0.12);
+}
+
+.plan-md {
+  padding: 0;
+  max-width: 100%;
+}
+
+.plan-tasklist {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.plan-tasklist-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 /* ---- Modal ---- */

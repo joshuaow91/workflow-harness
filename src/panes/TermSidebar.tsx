@@ -2,6 +2,33 @@ import { useEffect, useState } from 'react'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { PlanModal } from './PlanModal'
 
+function badge(r: SessionRef): { label: string; cls: string } | null {
+  const s = r.state?.toUpperCase()
+  if (!s) return null
+  if (s === 'MERGED') return { label: 'merged', cls: 'merged' }
+  if (s === 'CLOSED') return { label: 'closed', cls: 'closed' }
+  // OPEN
+  if (r.kind === 'issue') return { label: 'open', cls: 'ok' }
+  if (r.isDraft) return { label: 'draft', cls: 'muted' }
+  if (r.reviewDecision === 'APPROVED') return { label: 'approved', cls: 'ok' }
+  if (r.reviewDecision === 'CHANGES_REQUESTED') return { label: 'changes', cls: 'closed' }
+  if (r.reviewDecision === 'REVIEW_REQUIRED') return { label: 'review', cls: 'pending' }
+  return { label: 'open', cls: 'ok' }
+}
+
+function RefButton({ r }: { r: SessionRef }) {
+  const b = badge(r)
+  return (
+    <button className="term-sb-link" onClick={() => void window.api.system.openExternal(r.url)}>
+      <span className="term-sb-refnum">
+        {r.kind === 'pr' ? 'PR' : 'Issue'} #{r.number}
+      </span>
+      <span className="term-sb-repo">{r.repo.split('/')[1]}</span>
+      {b && <span className={`gh-badge ${b.cls}`}>{b.label}</span>}
+    </button>
+  )
+}
+
 // Per-session-pane progress sidebar: Claude's live task plan + the PRs/issues the
 // session worked on (parsed from the transcript, so multiple repos are covered).
 export function TermSidebar({ sessionId }: { sessionId?: string }) {
@@ -16,15 +43,24 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
       return
     }
     let active = true
-    const load = (): void => {
+    const loadTasks = (): void => {
       void window.api.claude.sessionTasks(sessionId).then((t) => active && setTasks(t))
-      void window.api.claude.sessionLinks(sessionId).then((r) => active && setRefs(r))
     }
-    load()
-    const iv = setInterval(load, 5000)
+    const loadLinks = (): void => {
+      void window.api.claude.sessionLinks(sessionId).then((parsed) => {
+        if (!active) return
+        setRefs(parsed)
+        if (parsed.length) void window.api.github.enrichLinks(parsed).then((e) => active && setRefs(e))
+      })
+    }
+    loadTasks()
+    loadLinks()
+    const t1 = setInterval(loadTasks, 5000)
+    const t2 = setInterval(loadLinks, 20000)
     return () => {
       active = false
-      clearInterval(iv)
+      clearInterval(t1)
+      clearInterval(t2)
     }
   }, [sessionId])
 
@@ -69,30 +105,18 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
         {refs.length === 0 ? (
           <div className="term-sb-empty">No linked PRs or issues found.</div>
         ) : (
-          <div className="term-sb-tasks">
+          <div className="term-sb-reflist">
             {prs.map((r) => (
-              <button
-                key={r.url}
-                className="term-sb-link"
-                onClick={() => void window.api.system.openExternal(r.url)}
-              >
-                PR #{r.number} <span className="term-sb-repo">{r.repo.split('/')[1]}</span>
-              </button>
+              <RefButton key={r.url} r={r} />
             ))}
             {issues.map((r) => (
-              <button
-                key={r.url}
-                className="term-sb-link issue"
-                onClick={() => void window.api.system.openExternal(r.url)}
-              >
-                Issue #{r.number} <span className="term-sb-repo">{r.repo.split('/')[1]}</span>
-              </button>
+              <RefButton key={r.url} r={r} />
             ))}
           </div>
         )}
       </div>
 
-      {modal && <PlanModal tasks={tasks} onClose={() => setModal(false)} />}
+      {modal && <PlanModal sessionId={sessionId} tasks={tasks} onClose={() => setModal(false)} />}
     </div>
   )
 }

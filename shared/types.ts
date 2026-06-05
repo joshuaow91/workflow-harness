@@ -110,6 +110,10 @@ export interface SessionRef {
   repo: string
   number: number
   url: string
+  /** Current state from gh: OPEN | CLOSED | MERGED (filled by enrichLinks). */
+  state?: string
+  isDraft?: boolean
+  reviewDecision?: string
 }
 
 // ---- Claude sidebar ----

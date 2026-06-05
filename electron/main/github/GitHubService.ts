@@ -198,6 +198,49 @@ export async function listReviewPRs(): Promise<GhPullRequest[]> {
   }))
 }
 
+// ---- Enrich session PR/issue refs with current state (cached, short TTL) ----
+
+const stateCache = new Map<string, { at: number; data: Partial<SessionRefImport> }>()
+type SessionRefImport = import('@shared/types').SessionRef
+
+async function refState(ref: SessionRefImport): Promise<Partial<SessionRefImport>> {
+  const cached = stateCache.get(ref.url)
+  if (cached && Date.now() - cached.at < 60000) return cached.data
+  let data: Partial<SessionRefImport> = {}
+  try {
+    if (ref.kind === 'pr') {
+      const o = await ghJson<{ state: string; isDraft: boolean; reviewDecision: string }>([
+        'pr',
+        'view',
+        String(ref.number),
+        '-R',
+        ref.repo,
+        '--json',
+        'state,isDraft,reviewDecision'
+      ])
+      data = { state: o.state, isDraft: o.isDraft, reviewDecision: o.reviewDecision || undefined }
+    } else {
+      const o = await ghJson<{ state: string }>(['issue', 'view', String(ref.number), '-R', ref.repo, '--json', 'state'])
+      data = { state: o.state }
+    }
+  } catch {
+    /* gh unavailable / not found */
+  }
+  stateCache.set(ref.url, { at: Date.now(), data })
+  return data
+}
+
+export async function enrichLinks(refs: SessionRefImport[]): Promise<SessionRefImport[]> {
+  const out: SessionRefImport[] = []
+  // Limit concurrency so we don't spawn a flood of gh processes.
+  for (let i = 0; i < refs.length; i += 5) {
+    const batch = refs.slice(i, i + 5)
+    const states = await Promise.all(batch.map((r) => refState(r)))
+    batch.forEach((r, j) => out.push({ ...r, ...states[j] }))
+  }
+  return out
+}
+
 // ---- Projects v2 (needs read:project scope) ----
 
 export async function listProjects(owner: string): Promise<GhProjectSummary[]> {
