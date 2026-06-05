@@ -13,6 +13,7 @@ import type {
   RepoKnowledge,
   SessionRef,
   SessionTask,
+  SetupCheck,
   GhProjectBoard,
   GhProjectSummary,
   GhPullRequest,
@@ -146,7 +147,8 @@ const api = {
     openInBrave: (url: string): Promise<void> => ipcRenderer.invoke(IPC.system.openInBrave, url),
     pickDirectory: (defaultPath?: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC.system.pickDirectory, defaultPath),
-    openTotpWindow: (): Promise<void> => ipcRenderer.invoke(IPC.system.openTotpWindow)
+    openTotpWindow: (): Promise<void> => ipcRenderer.invoke(IPC.system.openTotpWindow),
+    checkSetup: (): Promise<SetupCheck[]> => ipcRenderer.invoke(IPC.system.checkSetup)
   }
 }
 

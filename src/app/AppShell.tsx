@@ -13,6 +13,7 @@ import { MermaidTab } from '../mermaid/MermaidTab'
 import { MongoTab } from '../mongo/MongoTab'
 import { KnowledgeTab } from '../knowledge/KnowledgeTab'
 import { SettingsTab } from '../settings/SettingsTab'
+import { SetupModal } from './SetupModal'
 import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
 import { Icon } from '../components/Icon'
@@ -83,6 +84,7 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'agen
 
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('terminals')
+  const [setupOpen, setSetupOpen] = useState(false)
   const settings = useSettings()
 
   // Jump to the Terminals tab whenever something requests a new terminal.
@@ -110,6 +112,13 @@ export function AppShell() {
         <div className="titlebar-right">
           <ThemePicker />
           <button
+            className="titlebar-gear"
+            onClick={() => setSetupOpen(true)}
+            title="Setup & requirements"
+          >
+            <Icon name="help" size={15} />
+          </button>
+          <button
             className={`titlebar-gear${activeTab === 'settings' ? ' on' : ''}`}
             onClick={() => setActiveTab('settings')}
             title="Settings"
@@ -118,6 +127,7 @@ export function AppShell() {
           </button>
         </div>
       </div>
+      {setupOpen && <SetupModal onClose={() => setSetupOpen(false)} />}
 
       <Sidebar />
 

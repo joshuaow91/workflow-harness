@@ -28,7 +28,9 @@ const PATHS: Record<string, string> = {
   rows: '<rect x="4" y="3" width="16" height="7.5" rx="1"/><rect x="4" y="13.5" width="16" height="7.5" rx="1"/>',
   grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1"/>',
   mainGrid:
-    '<rect x="3" y="3" width="10" height="18" rx="1"/><rect x="15" y="3" width="6" height="8" rx="1"/><rect x="15" y="13" width="6" height="8" rx="1"/>'
+    '<rect x="3" y="3" width="10" height="18" rx="1"/><rect x="15" y="3" width="6" height="8" rx="1"/><rect x="15" y="13" width="6" height="8" rx="1"/>',
+  help:
+    '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.4"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>'
 }
 
 export function Icon({ name, size = 15 }: { name: string; size?: number }) {

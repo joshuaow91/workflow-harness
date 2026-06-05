@@ -118,6 +118,15 @@ export interface SessionRef {
   boardStatus?: string
 }
 
+export interface SetupCheck {
+  name: string
+  ok: boolean
+  required: boolean
+  detail: string
+  /** A shell command or instruction to satisfy this requirement. */
+  fix?: string
+}
+
 // ---- Claude sidebar ----
 
 export interface ClaudeSession {

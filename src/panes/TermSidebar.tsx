@@ -33,11 +33,15 @@ function RefButton({ r }: { r: SessionRef }) {
   const b = badge(r)
   return (
     <button className="term-sb-link" onClick={() => void window.api.system.openExternal(r.url)}>
-      <span className="term-sb-refnum">
-        {r.kind === 'pr' ? 'PR' : 'Issue'} #{r.number}
+      <div className="term-sb-link-row">
+        <span className="term-sb-refnum">
+          {r.kind === 'pr' ? 'PR' : 'Issue'} #{r.number}
+        </span>
+        {b && <span className={`gh-badge ${b.cls}`}>{b.label}</span>}
+      </div>
+      <span className="term-sb-repo" title={r.repo}>
+        {r.repo.split('/')[1] ?? r.repo}
       </span>
-      <span className="term-sb-repo">{r.repo.split('/')[1]}</span>
-      {b && <span className={`gh-badge ${b.cls}`}>{b.label}</span>}
     </button>
   )
 }

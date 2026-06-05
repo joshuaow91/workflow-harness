@@ -11,6 +11,7 @@ import { registerObsidianIpc } from './obsidian/registerObsidianIpc'
 import { registerMongoIpc } from './mongo/registerMongoIpc'
 import { registerKnowledgeIpc } from './knowledge/registerKnowledgeIpc'
 import { registerAutoUpdate } from './autoupdate/registerAutoUpdate'
+import { checkSetup } from './system/setupCheck'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
@@ -184,6 +185,7 @@ function registerIpc(): void {
     })
   })
   ipcMain.handle(IPC.system.openTotpWindow, () => createTotpWindow())
+  ipcMain.handle(IPC.system.checkSetup, () => checkSetup())
   registerDevtoolsIpc()
   registerSettingsIpc(() => mainWindow)
   registerAgentIpc(() => mainWindow)
