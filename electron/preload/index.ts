@@ -1,5 +1,5 @@
 import { homedir } from 'os'
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC } from '@shared/ipc'
 import type {
   AgentActivity,
@@ -211,7 +211,10 @@ const api = {
     openTotpWindow: (): Promise<void> => ipcRenderer.invoke(IPC.system.openTotpWindow),
     checkSetup: (): Promise<SetupCheck[]> => ipcRenderer.invoke(IPC.system.checkSetup),
     notify: (title: string, body: string): Promise<void> =>
-      ipcRenderer.invoke(IPC.system.notify, title, body)
+      ipcRenderer.invoke(IPC.system.notify, title, body),
+    // Electron 33 removed File.path; webUtils returns the on-disk path of a
+    // dropped file (empty for blobs with no backing file).
+    getDroppedPath: (file: File): string => webUtils.getPathForFile(file)
   }
 }
 

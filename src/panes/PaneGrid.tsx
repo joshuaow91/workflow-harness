@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
+import { focusTerminal } from '../lib/terminalFocus'
 import { TerminalPane } from './TerminalPane'
 import { TermSidebar } from './TermSidebar'
 
@@ -101,6 +102,19 @@ export function PaneGrid({
             onDragLeave={() => setOver((o) => (o === pane.paneId ? null : o))}
             onDrop={(e) => {
               e.preventDefault()
+              // Files dropped from Finder (e.g. a screenshot): insert their paths
+              // into this pane's terminal so the agent can read them.
+              const files = Array.from(e.dataTransfer.files)
+              if (files.length > 0) {
+                const paths = files.map((f) => window.api.system.getDroppedPath(f)).filter(Boolean)
+                if (paths.length) {
+                  window.api.terminal.write(pane.terminalId, paths.map((p) => `'${p}' `).join(''))
+                  focusTerminal(pane.terminalId)
+                }
+                setDrag(null)
+                setOver(null)
+                return
+              }
               if (drag != null && drag !== pane.paneId) onReorder(drag, pane.paneId)
               setDrag(null)
               setOver(null)
