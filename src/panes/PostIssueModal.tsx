@@ -25,32 +25,38 @@ export function PostIssueModal({
   repo,
   number,
   sessionId,
-  prs,
-  tasks,
   onClose
 }: {
   repo: string
   number: number
   sessionId: string
-  prs: SessionRef[]
-  tasks: SessionTask[]
   onClose: () => void
 }) {
   const [plan, setPlan] = useState('')
-  const [sections, setSections] = useState({ plan: true, prs: prs.length > 0, checklist: tasks.length > 0 })
+  const [prs, setPrs] = useState<SessionRef[]>([])
+  const [tasks, setTasks] = useState<SessionTask[]>([])
+  const [sections, setSections] = useState({ plan: true, prs: true, checklist: true })
   const [body, setBody] = useState('')
   const [edited, setEdited] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  // Fetch the latest plan / PRs / tasks when the modal opens, so a just-created
+  // PR (or new todos) shows up instead of TermSidebar's ~10-min-stale snapshot.
   useEffect(() => {
     void window.api.claude.sessionPlan(sessionId).then(setPlan)
+    void window.api.claude.sessionTasks(sessionId).then(setTasks)
+    void window.api.claude.sessionLinks(sessionId).then((refs) => {
+      const onlyPrs = refs.filter((r) => r.kind === 'pr')
+      setPrs(onlyPrs)
+      if (onlyPrs.length) void window.api.github.enrichLinks(onlyPrs).then(setPrs)
+    })
   }, [sessionId])
 
-  // Recompose when the section toggles / plan change, unless the user edited.
+  // Recompose when fetched content / toggles change, unless the user edited.
   useEffect(() => {
     if (!edited) setBody(compose(plan, prs, tasks, sections))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, sections])
+  }, [plan, prs, tasks, sections])
 
   const post = async (): Promise<void> => {
     if (!body.trim()) return

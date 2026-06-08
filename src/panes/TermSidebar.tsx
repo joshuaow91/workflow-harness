@@ -163,8 +163,6 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
           repo={issue.repo}
           number={issue.number}
           sessionId={sessionId}
-          prs={prs}
-          tasks={tasks}
           onClose={() => setPostOpen(false)}
         />
       )}
