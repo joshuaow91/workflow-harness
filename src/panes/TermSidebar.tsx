@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { SessionRef, SessionTask } from '@shared/types'
-import { diffBus } from '../lib/diffBus'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
+import { useRepos } from '../sidebar/useRepos'
 import { PlanModal } from './PlanModal'
 import { PostIssueModal } from './PostIssueModal'
 import { PrRow } from './PrRow'
+import { SessionDiffModal } from './SessionDiffModal'
 
 
 // Per-session-pane progress sidebar: Claude's live task plan + the PRs/issues the
@@ -15,10 +16,12 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   const [hasPlan, setHasPlan] = useState(false)
   const [modal, setModal] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
+  const [showSessionDiff, setShowSessionDiff] = useState(false)
 
   // Resolve the session's cwd/title (for "View diff") from the flat session list.
   const sessions = useFlatSessions()
   const session = sessions.find((s) => s.sessionId === sessionId)
+  const { repos } = useRepos()
 
   useEffect(() => {
     if (!sessionId) {
@@ -63,14 +66,33 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   const issues = refs.filter((r) => r.kind === 'issue')
   const issue = issues[0] // the issue this session is about (first referenced)
 
+  // Repos the session actually changed (cross-repo): the linked PR repos mapped
+  // to local checkouts; fall back to issue repos, then the session cwd.
+  const repoFor = (nwo: string): { name: string; path: string } | undefined => {
+    const r = repos.find((x) => x.nameWithOwner === nwo)
+    return r ? { name: r.name, path: r.path } : undefined
+  }
+  const candidateRefs = prs.length ? prs : issues
+  const mapped = Array.from(
+    new Map(
+      candidateRefs
+        .map((r) => repoFor(r.repo))
+        .filter((r): r is { name: string; path: string } => !!r)
+        .map((r) => [r.path, r])
+    ).values()
+  )
+  const diffRepos =
+    mapped.length > 0
+      ? mapped
+      : session?.cwd
+        ? [{ name: session.cwd.split('/').filter(Boolean).pop() ?? 'repo', path: session.cwd }]
+        : []
+
   return (
     <div className="term-sidebar">
-      {session?.cwd && (
-        <button
-          className="term-sb-diff"
-          onClick={() => diffBus.openModal(session.cwd, session.title || 'Session')}
-        >
-          ⧉ View diff
+      {diffRepos.length > 0 && (
+        <button className="term-sb-diff" onClick={() => setShowSessionDiff(true)}>
+          ⧉ View diff{diffRepos.length > 1 ? ` (${diffRepos.length} repos)` : ''}
         </button>
       )}
       <div className="term-sb-section">
@@ -131,6 +153,13 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
       </div>
 
       {modal && <PlanModal sessionId={sessionId} onClose={() => setModal(false)} />}
+      {showSessionDiff && (
+        <SessionDiffModal
+          repos={diffRepos}
+          title={session?.title || 'Session'}
+          onClose={() => setShowSessionDiff(false)}
+        />
+      )}
       {postOpen && issue && sessionId && (
         <PostIssueModal
           repo={issue.repo}

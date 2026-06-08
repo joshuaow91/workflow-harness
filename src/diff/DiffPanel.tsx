@@ -5,8 +5,16 @@ import { DiffView } from './DiffView'
 
 // Changes (file list + colored diff) for one repo/worktree path. Reused by the
 // Changes tab and the per-session diff modal.
-export function DiffPanel({ path, headerLeft }: { path: string; headerLeft?: ReactNode }) {
-  const [branchMode, setBranchMode] = useState(false)
+export function DiffPanel({
+  path,
+  headerLeft,
+  initialBranchMode = false
+}: {
+  path: string
+  headerLeft?: ReactNode
+  initialBranchMode?: boolean
+}) {
+  const [branchMode, setBranchMode] = useState(initialBranchMode)
   const [file, setFile] = useState<string | null>(null)
 
   const changes = useAsync(() => window.api.diff.changes(path, branchMode), [path, branchMode])
