@@ -604,42 +604,57 @@ export async function prDiff(repo: string, number: number): Promise<string> {
   return prAux(`diff:${repo}#${number}`, () => gh(['pr', 'diff', String(number), '-R', repo]).catch(() => ''))
 }
 
-// Greptile review THREADS on a PR (resolvable inline comments), filtered to the
-// greptile bot. GraphQL, cached 5 min.
-export async function prGreptileThreads(
+// Greptile review for a PR: the "Confidence Score: N/5" + summary from the PR
+// description, plus the resolvable inline review threads. One GraphQL query,
+// cached 60s so newly-posted Greptile feedback surfaces quickly.
+export async function prGreptileReview(
   repo: string,
   number: number
-): Promise<import('@shared/types').GreptileThread[]> {
-  return prAux(`greptile:${repo}#${number}`, async () => {
-    const [owner, name] = repo.split('/')
-    const q = `query{repository(owner:"${owner}",name:"${name}"){pullRequest(number:${number}){reviewThreads(first:100){nodes{id isResolved path line comments(first:30){nodes{databaseId author{login} body url}}}}}}}`
-    type Comment = { databaseId?: number; author?: { login?: string }; body?: string; url?: string }
-    type Thread = { id: string; isResolved: boolean; path?: string; line?: number; comments?: { nodes?: Comment[] } }
-    let out: { data?: { repository?: { pullRequest?: { reviewThreads?: { nodes?: Thread[] } } } } }
-    try {
-      out = await ghJson(['api', 'graphql', '-f', `query=${q}`])
-    } catch {
-      return []
-    }
-    const nodes = out.data?.repository?.pullRequest?.reviewThreads?.nodes ?? []
-    return nodes
-      .filter((t) => (t.comments?.nodes ?? []).some((c) => (c.author?.login ?? '').toLowerCase().includes('greptile')))
-      .map((t) => {
-        const comments = t.comments?.nodes ?? []
-        return {
-          id: t.id,
-          isResolved: t.isResolved,
-          replyToId: comments[0]?.databaseId ?? null,
-          comments: comments.map((c) => ({
-            author: c.author?.login ?? 'greptile',
-            body: c.body ?? '',
-            path: t.path,
-            line: t.line,
-            url: c.url ?? ''
-          }))
-        }
-      })
-  }, 60000) // 60s cache so newly-posted Greptile comments surface quickly
+): Promise<import('@shared/types').GreptileReview> {
+  return prAux(
+    `greptile:${repo}#${number}`,
+    async () => {
+      const [owner, name] = repo.split('/')
+      const q = `query{repository(owner:"${owner}",name:"${name}"){pullRequest(number:${number}){body reviewThreads(first:100){nodes{id isResolved path line comments(first:30){nodes{databaseId author{login} body url}}}}}}}`
+      type Comment = { databaseId?: number; author?: { login?: string }; body?: string; url?: string }
+      type Thread = { id: string; isResolved: boolean; path?: string; line?: number; comments?: { nodes?: Comment[] } }
+      let out: { data?: { repository?: { pullRequest?: { body?: string; reviewThreads?: { nodes?: Thread[] } } } } }
+      try {
+        out = await ghJson(['api', 'graphql', '-f', `query=${q}`])
+      } catch {
+        return { confidence: null, summary: '', threads: [] }
+      }
+      const pr = out.data?.repository?.pullRequest
+      const body = pr?.body ?? ''
+      const m = body.match(/Confidence Score:\s*(\d)\s*\/\s*5/i)
+      const confidence = m ? Number(m[1]) : null
+      let summary = ''
+      if (m) {
+        const after = body.slice(body.indexOf(m[0]) + m[0].length)
+        // up to the next markdown heading / "Important Files" section
+        summary = after.split(/\n#{1,6}\s|\n\s*\*?\*?Important Files/i)[0].trim().slice(0, 1000)
+      }
+      const threads = (pr?.reviewThreads?.nodes ?? [])
+        .filter((t) => (t.comments?.nodes ?? []).some((c) => (c.author?.login ?? '').toLowerCase().includes('greptile')))
+        .map((t) => {
+          const comments = t.comments?.nodes ?? []
+          return {
+            id: t.id,
+            isResolved: t.isResolved,
+            replyToId: comments[0]?.databaseId ?? null,
+            comments: comments.map((c) => ({
+              author: c.author?.login ?? 'greptile',
+              body: c.body ?? '',
+              path: t.path,
+              line: t.line,
+              url: c.url ?? ''
+            }))
+          }
+        })
+      return { confidence, summary, threads }
+    },
+    60000
+  )
 }
 
 async function resolveReviewThreadById(threadId: string): Promise<void> {

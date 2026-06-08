@@ -378,6 +378,14 @@ export interface GreptileThread {
   comments: GreptileComment[]
 }
 
+export interface GreptileReview {
+  /** Greptile's "Confidence Score: N/5" from the PR description, if present. */
+  confidence: number | null
+  /** The safe-to-merge summary following the score. */
+  summary: string
+  threads: GreptileThread[]
+}
+
 export interface GhRateResource {
   remaining: number
   limit: number

@@ -15,7 +15,7 @@ import {
   listReviewPRs,
   projectItems,
   prDiff,
-  prGreptileThreads,
+  prGreptileReview,
   prProjectStatus,
   rateLimit,
   resolveGreptileThread,
@@ -66,7 +66,7 @@ export function registerGithubIpc(): void {
     prProjectStatus(repo, number, kind)
   )
   ipcMain.handle(IPC.github.prGreptile, (_e, repo: string, number: number) =>
-    prGreptileThreads(repo, number)
+    prGreptileReview(repo, number)
   )
   ipcMain.handle(IPC.github.prDiff, (_e, repo: string, number: number) => prDiff(repo, number))
   ipcMain.handle(IPC.github.resolveThread, (_e, threadId: string) => resolveGreptileThread(threadId))

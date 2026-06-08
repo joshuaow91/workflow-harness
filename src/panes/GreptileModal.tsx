@@ -6,11 +6,15 @@ import type { GreptileThread } from '@shared/types'
 export function GreptileModal({
   repo,
   number,
+  confidence,
+  summary,
   threads: initial,
   onClose
 }: {
   repo: string
   number: number
+  confidence: number | null
+  summary: string
   threads: GreptileThread[]
   onClose: () => void
 }) {
@@ -54,6 +58,12 @@ export function GreptileModal({
           </button>
         </div>
         <div className="modal-body greptile-modal-body">
+          {confidence != null && (
+            <div className={`greptile-confidence s${confidence}`}>
+              <div className="greptile-confidence-score">Confidence {confidence}/5</div>
+              {summary && <div className="greptile-confidence-summary">{summary}</div>}
+            </div>
+          )}
           {threads.map((t) => {
             const c = t.comments[0]
             return (

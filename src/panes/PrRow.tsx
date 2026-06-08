@@ -11,6 +11,8 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
   const isPr = link.kind === 'pr'
   const [status, setStatus] = useState<PrProjectStatus | null>(null)
   const [greptile, setGreptile] = useState<GreptileThread[]>([])
+  const [confidence, setConfidence] = useState<number | null>(null)
+  const [summary, setSummary] = useState('')
   const [showGreptile, setShowGreptile] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
   const [sent, setSent] = useState(false)
@@ -20,7 +22,12 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
     const load = (): void => {
       void window.api.github.prStatus(link.repo, link.number, link.kind).then((s) => active && setStatus(s[0] ?? null))
       if (isPr)
-        void window.api.github.prGreptile(link.repo, link.number).then((g) => active && setGreptile(g))
+        void window.api.github.prGreptile(link.repo, link.number).then((r) => {
+          if (!active) return
+          setGreptile(r.threads)
+          setConfidence(r.confidence)
+          setSummary(r.summary)
+        })
     }
     load()
     // Poll so newly-posted Greptile comments / status changes surface (both are
@@ -98,10 +105,11 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
         </button>
       )}
 
-      {isPr && greptile.length > 0 && (
+      {isPr && (greptile.length > 0 || confidence != null) && (
         <div className="pr-greptile-bar">
-          <button className="pr-greptile-toggle" onClick={() => setShowGreptile(true)} title="Open Greptile comments">
+          <button className="pr-greptile-toggle" onClick={() => setShowGreptile(true)} title="Open Greptile review">
             Greptile
+            {confidence != null && <span className={`greptile-score s${confidence}`}>{confidence}/5</span>}
             {resolved > 0 && <span className="greptile-ct ok">✓ {resolved}</span>}
             {unresolved > 0 && <span className="greptile-ct warn">◆ {unresolved}</span>}
           </button>
@@ -117,6 +125,8 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
         <GreptileModal
           repo={link.repo}
           number={link.number}
+          confidence={confidence}
+          summary={summary}
           threads={greptile}
           onClose={() => setShowGreptile(false)}
         />
