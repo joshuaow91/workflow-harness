@@ -4285,6 +4285,23 @@ button {
   margin-top: 8px;
 }
 
+.term-sb-viewplan {
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.term-sb-viewplan:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
 .diff-modal {
   width: 92vw;
   height: 86vh;

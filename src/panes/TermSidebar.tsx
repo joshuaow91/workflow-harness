@@ -52,6 +52,7 @@ function RefButton({ r }: { r: SessionRef }) {
 export function TermSidebar({ sessionId }: { sessionId?: string }) {
   const [tasks, setTasks] = useState<SessionTask[]>([])
   const [refs, setRefs] = useState<SessionRef[]>([])
+  const [hasPlan, setHasPlan] = useState(false)
   const [modal, setModal] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
 
@@ -59,11 +60,15 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
     if (!sessionId) {
       setTasks([])
       setRefs([])
+      setHasPlan(false)
       return
     }
     let active = true
     const loadTasks = (): void => {
       void window.api.claude.sessionTasks(sessionId).then((t) => active && setTasks(t))
+    }
+    const loadPlan = (): void => {
+      void window.api.claude.sessionPlan(sessionId).then((p) => active && setHasPlan(!!p.trim()))
     }
     const loadLinks = (): void => {
       void window.api.claude.sessionLinks(sessionId).then((parsed) => {
@@ -73,15 +78,18 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
       })
     }
     loadTasks()
+    loadPlan()
     loadLinks()
     // Tasks come from the local transcript (cheap). Links/states hit the GitHub
     // API, so refresh them rarely to stay well under the rate limit.
     const t1 = setInterval(loadTasks, 5000)
     const t2 = setInterval(loadLinks, 600000)
+    const t3 = setInterval(loadPlan, 30000)
     return () => {
       active = false
       clearInterval(t1)
       clearInterval(t2)
+      clearInterval(t3)
     }
   }, [sessionId])
 
@@ -100,7 +108,7 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
               {done}/{tasks.length}
             </span>
           )}
-          {tasks.length > 0 && (
+          {(tasks.length > 0 || hasPlan) && (
             <button className="term-sb-expand" title="Open plan" onClick={() => setModal(true)}>
               ⤢
             </button>
@@ -109,7 +117,13 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
         {!sessionId ? (
           <div className="term-sb-empty">Not a resumed session — no linked plan.</div>
         ) : tasks.length === 0 ? (
-          <div className="term-sb-empty">No tasks yet.</div>
+          hasPlan ? (
+            <button className="term-sb-viewplan" onClick={() => setModal(true)}>
+              No task list — view the full plan ⤢
+            </button>
+          ) : (
+            <div className="term-sb-empty">No tasks or plan yet.</div>
+          )
         ) : (
           <div className="term-sb-tasks">
             {tasks.map((t) => (
