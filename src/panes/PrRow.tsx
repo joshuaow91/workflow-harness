@@ -17,11 +17,18 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
 
   useEffect(() => {
     let active = true
-    void window.api.github.prStatus(link.repo, link.number, link.kind).then((s) => active && setStatus(s[0] ?? null))
-    if (isPr)
-      void window.api.github.prGreptile(link.repo, link.number).then((g) => active && setGreptile(g))
+    const load = (): void => {
+      void window.api.github.prStatus(link.repo, link.number, link.kind).then((s) => active && setStatus(s[0] ?? null))
+      if (isPr)
+        void window.api.github.prGreptile(link.repo, link.number).then((g) => active && setGreptile(g))
+    }
+    load()
+    // Poll so newly-posted Greptile comments / status changes surface (both are
+    // cached ~5 min in main, so this is cheap on the API).
+    const iv = setInterval(load, 60000)
     return () => {
       active = false
+      clearInterval(iv)
     }
   }, [link.repo, link.number, link.kind, isPr])
 

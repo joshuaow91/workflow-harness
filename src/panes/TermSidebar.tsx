@@ -44,10 +44,11 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
     loadTasks()
     loadPlan()
     loadLinks()
-    // Tasks come from the local transcript (cheap). Links/states hit the GitHub
-    // API, so refresh them rarely to stay well under the rate limit.
+    // Tasks/plan are local-transcript reads (cheap). Links re-parse the
+    // transcript (local) + enrichLinks (API, but cached ~10 min in main), so a
+    // 60s poll surfaces a newly-created PR quickly without real extra API cost.
     const t1 = setInterval(loadTasks, 5000)
-    const t2 = setInterval(loadLinks, 600000)
+    const t2 = setInterval(loadLinks, 60000)
     const t3 = setInterval(loadPlan, 30000)
     return () => {
       active = false
