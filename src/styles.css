@@ -4199,6 +4199,57 @@ button {
   max-width: 90vw;
 }
 
+.post-modal {
+  width: 620px;
+  max-width: 92vw;
+}
+
+.post-modal-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.post-sections {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.post-textarea {
+  width: 100%;
+  min-height: 280px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: SFMono-Regular, Menlo, monospace;
+  resize: vertical;
+}
+
+.post-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.post-actions .settings-hint {
+  flex: 1;
+}
+
+.post-update-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .diff-modal {
   width: 92vw;
   height: 86vh;

@@ -279,9 +279,6 @@ export function IssuesTab() {
     }
   }, [repo, view, stateFilter, searchInput, openTabs, active])
 
-  const localPathFor = (nwo: string): string | undefined =>
-    repos.find((r) => r.nameWithOwner === nwo)?.path
-
   const openRef = (r: string, number: number, title: string): void => {
     const key = `${r}#${number}`
     setOpenTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, repo: r, number, title }]))
@@ -312,7 +309,7 @@ export function IssuesTab() {
       `explore the relevant code, then produce a concrete implementation plan. ${extras.join(' ')}`.trim()
     const command = await window.api.agent.command({ prompt, plan: true })
     terminalBus.open({
-      cwd: localPathFor(repoName) ?? defaultDir,
+      cwd: defaultDir,
       initialCommand: command,
       label: `plan #${number}`
     })

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { PlanModal } from './PlanModal'
+import { PostIssueModal } from './PostIssueModal'
 
 // Map the team's Projects v2 board statuses to badge colors.
 function boardBadge(status: string): { label: string; cls: string } {
@@ -52,6 +53,7 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
   const [tasks, setTasks] = useState<SessionTask[]>([])
   const [refs, setRefs] = useState<SessionRef[]>([])
   const [modal, setModal] = useState(false)
+  const [postOpen, setPostOpen] = useState(false)
 
   useEffect(() => {
     if (!sessionId) {
@@ -86,6 +88,7 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
   const done = tasks.filter((t) => t.status === 'completed').length
   const prs = refs.filter((r) => r.kind === 'pr')
   const issues = refs.filter((r) => r.kind === 'issue')
+  const issue = issues[0] // the issue this session is about (first referenced)
 
   return (
     <div className="term-sidebar">
@@ -133,9 +136,24 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
             ))}
           </div>
         )}
+        {issue && sessionId && (
+          <button className="tbtn post-update-btn" onClick={() => setPostOpen(true)}>
+            ✎ Post update to #{issue.number}
+          </button>
+        )}
       </div>
 
       {modal && <PlanModal sessionId={sessionId} onClose={() => setModal(false)} />}
+      {postOpen && issue && sessionId && (
+        <PostIssueModal
+          repo={issue.repo}
+          number={issue.number}
+          sessionId={sessionId}
+          prs={prs}
+          tasks={tasks}
+          onClose={() => setPostOpen(false)}
+        />
+      )}
     </div>
   )
 }
