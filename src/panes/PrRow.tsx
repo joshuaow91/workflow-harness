@@ -49,7 +49,8 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
   }
 
   const reviewInSession = (): void => {
-    const comments = greptile.flatMap((t) => t.comments)
+    // Only the still-unresolved comments — resolved ones are already handled.
+    const comments = greptile.filter((t) => !t.isResolved).flatMap((t) => t.comments)
     if (!terminalId || !comments.length) return
     const lines = comments.map(
       (c, i) =>
@@ -64,6 +65,9 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
     setSent(true)
     setTimeout(() => setSent(false), 2500)
   }
+
+  const resolved = greptile.filter((t) => t.isResolved).length
+  const unresolved = greptile.filter((t) => !t.isResolved).length
 
   return (
     <div className="pr-row">
@@ -89,17 +93,20 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
       ) : null}
 
       {isPr && (
+        <button className="pr-diff-btn" onClick={() => setShowDiff(true)}>
+          ⧉ View diff
+        </button>
+      )}
+
+      {isPr && greptile.length > 0 && (
         <div className="pr-greptile-bar">
-          <button className="pr-greptile-toggle" onClick={() => setShowDiff(true)}>
-            ⧉ Diff
+          <button className="pr-greptile-toggle" onClick={() => setShowGreptile(true)} title="Open Greptile comments">
+            Greptile
+            {resolved > 0 && <span className="greptile-ct ok">✓ {resolved}</span>}
+            {unresolved > 0 && <span className="greptile-ct warn">◆ {unresolved}</span>}
           </button>
-          {greptile.length > 0 && (
-            <button className="pr-greptile-toggle" onClick={() => setShowGreptile(true)}>
-              ⊕ Greptile · {greptile.length}
-            </button>
-          )}
-          {greptile.length > 0 && terminalId && (
-            <button className="pr-review-btn" onClick={reviewInSession} title="Stage a review prompt in this session">
+          {unresolved > 0 && terminalId && (
+            <button className="pr-review-btn" onClick={reviewInSession} title="Stage the unresolved comments in this session">
               {sent ? '✓ staged' : '⌲ Review in session'}
             </button>
           )}
