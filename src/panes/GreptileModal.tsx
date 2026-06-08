@@ -53,7 +53,7 @@ export function GreptileModal({
             ✕
           </button>
         </div>
-        <div className="greptile-modal-body">
+        <div className="modal-body greptile-modal-body">
           {threads.map((t) => {
             const c = t.comments[0]
             return (

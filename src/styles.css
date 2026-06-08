@@ -4398,19 +4398,10 @@ button {
 .greptile-modal {
   width: 720px;
   max-width: 92vw;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
+/* Scroll behaviour comes from the shared .modal-body; this only tweaks spacing. */
 .greptile-modal-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
