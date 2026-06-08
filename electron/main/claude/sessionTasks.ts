@@ -123,6 +123,7 @@ export async function getSessionPlan(sessionId: string): Promise<string> {
   if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) return cached.plan
 
   let plan = ''
+  let writtenPlan = '' // fallback: plan saved to a ~/.claude/plans/*.md via Write
   const rl = createInterface({
     input: createReadStream(file, { encoding: 'utf8' }),
     crlfDelay: Infinity
@@ -130,7 +131,7 @@ export async function getSessionPlan(sessionId: string): Promise<string> {
   try {
     for await (const raw of rl) {
       const line = raw.trim()
-      if (!line || !line.includes('ExitPlanMode')) continue
+      if (!line || (!line.includes('ExitPlanMode') && !line.includes('"Write"'))) continue
       let o: { message?: { content?: unknown } }
       try {
         o = JSON.parse(line)
@@ -143,14 +144,22 @@ export async function getSessionPlan(sessionId: string): Promise<string> {
         if (b?.type === 'tool_use' && b.name === 'ExitPlanMode') {
           const p = (b.input as { plan?: string })?.plan
           if (p) plan = p // keep the latest
+        } else if (b?.type === 'tool_use' && b.name === 'Write') {
+          // Some plan-mode sessions Write the plan to ~/.claude/plans/<name>.md
+          // instead of calling ExitPlanMode.
+          const inp = b.input as { file_path?: string; content?: string }
+          if (inp?.file_path && inp.content && /\/plans\/[^/]+\.md$/.test(inp.file_path)) {
+            writtenPlan = inp.content // keep the latest plan-file write
+          }
         }
       }
     }
   } finally {
     rl.close()
   }
-  planCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, plan })
-  return plan
+  const result = plan || writtenPlan
+  planCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, plan: result })
+  return result
 }
 
 // Extract the PRs/issues a session worked on from its transcript: authoritative
