@@ -157,7 +157,12 @@ export function TerminalsTab() {
       const rebuilt: Tab[] = []
       for (const st of saved.tabs ?? []) {
         const panes: Pane[] = []
-        for (const opts of st.panes) panes.push(await makePane(opts))
+        for (const opts of st.panes) {
+          // A saved `--session-id <id>` is a session that now EXISTS — re-running
+          // it errors "already in use"; resume it instead.
+          const initialCommand = opts.initialCommand?.replace(/--session-id\s+(\S+)/, '--resume $1')
+          panes.push(await makePane({ ...opts, initialCommand }))
+        }
         rebuilt.push({ id: tabCounter.current++, name: st.name, layout: st.layout, panes })
       }
       if (rebuilt.length) {
