@@ -4378,7 +4378,9 @@ button {
 }
 
 .term-sb-diff {
-  width: 100%;
+  display: block;
+  width: auto;
+  margin: 2px 12px 4px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
