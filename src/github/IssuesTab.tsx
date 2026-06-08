@@ -304,7 +304,8 @@ export function IssuesTab() {
     if (settings?.ddApiKey)
       extras.push('The datadog-mcp MCP tools are available for logs, metrics, traces and RUM.')
     const prompt =
-      `Investigate GitHub issue #${number} in ${repoName}: "${title.replace(/"/g, '')}". ` +
+      `Investigate GitHub issue #${number} in ${repoName} (https://github.com/${repoName}/issues/${number}): ` +
+      `"${title.replace(/"/g, '')}". ` +
       `Run \`gh issue view ${number} -R ${repoName}\` to read the full description and comments, ` +
       `explore the relevant code, then produce a concrete implementation plan. ${extras.join(' ')}`.trim()
     const command = await window.api.agent.command({ prompt, plan: true })

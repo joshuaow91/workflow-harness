@@ -154,8 +154,10 @@ export async function getSessionPlan(sessionId: string): Promise<string> {
 }
 
 // Extract the PRs/issues a session worked on from its transcript: authoritative
-// `pr-link` entries plus github URLs (filtered to workspace owners to drop noise).
+// `pr-link` entries, github URLs, and `gh issue|pr view N -R owner/repo` commands
+// (how the Investigate flow references the issue) — filtered to workspace owners.
 const URL_RE = /github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)/g
+const GH_CMD_RE = /gh\s+(issue|pr)\s+view\s+(\d+)\s+(?:-R|--repo)\s+([\w.-]+)\/([\w.-]+)/g
 const linkCache = new Map<string, { mtimeMs: number; size: number; refs: SessionRef[] }>()
 
 export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> {
@@ -206,6 +208,18 @@ export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> 
     const url = `https://github.com/${owner}/${repo}/${isPr ? 'pull' : 'issues'}/${num}`
     const ref: SessionRef = { kind: isPr ? 'pr' : 'issue', repo: `${owner}/${repo}`, number: Number(num), url }
     ;(isPr ? prs : issues).set(url, ref)
+  }
+
+  // `gh issue|pr view N -R owner/repo` commands (the Investigate flow's reference).
+  GH_CMD_RE.lastIndex = 0
+  while ((m = GH_CMD_RE.exec(raw))) {
+    const [, kind, num, owner, repo] = m
+    if (!owners.has(owner)) continue
+    const isPr = kind === 'pr'
+    const url = `https://github.com/${owner}/${repo}/${isPr ? 'pull' : 'issues'}/${num}`
+    const ref: SessionRef = { kind: isPr ? 'pr' : 'issue', repo: `${owner}/${repo}`, number: Number(num), url }
+    const bucket = isPr ? prs : issues
+    if (!bucket.has(url)) bucket.set(url, ref)
   }
 
   const refs = [...prs.values(), ...issues.values()]
