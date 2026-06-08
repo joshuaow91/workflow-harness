@@ -369,6 +369,15 @@ export interface GreptileComment {
   url: string
 }
 
+export interface GreptileThread {
+  /** GraphQL review-thread id (for resolve). */
+  id: string
+  isResolved: boolean
+  /** databaseId of the first comment, for posting a reply (defer note). */
+  replyToId: number | null
+  comments: GreptileComment[]
+}
+
 export interface GhRateResource {
   remaining: number
   limit: number

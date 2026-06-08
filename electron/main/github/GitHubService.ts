@@ -599,27 +599,73 @@ export async function prProjectStatus(
   })
 }
 
-// Greptile review comments on a PR (inline + issue comments), filtered to the
-// greptile bot. REST (generous budget), cached 5 min.
-export async function prGreptileComments(
+// The full PR diff (checkout-independent), via gh. Cached 5 min.
+export async function prDiff(repo: string, number: number): Promise<string> {
+  return prAux(`diff:${repo}#${number}`, () => gh(['pr', 'diff', String(number), '-R', repo]).catch(() => ''))
+}
+
+// Greptile review THREADS on a PR (resolvable inline comments), filtered to the
+// greptile bot. GraphQL, cached 5 min.
+export async function prGreptileThreads(
   repo: string,
   number: number
-): Promise<import('@shared/types').GreptileComment[]> {
+): Promise<import('@shared/types').GreptileThread[]> {
   return prAux(`greptile:${repo}#${number}`, async () => {
-    type Raw = { user?: { login?: string }; body?: string; path?: string; line?: number; html_url?: string }
-    const isGreptile = (c: Raw): boolean => (c.user?.login ?? '').toLowerCase().includes('greptile')
-    const [review, issue] = await Promise.all([
-      ghJson<Raw[]>(['api', `repos/${repo}/pulls/${number}/comments`, '--paginate']).catch(() => [] as Raw[]),
-      ghJson<Raw[]>(['api', `repos/${repo}/issues/${number}/comments`, '--paginate']).catch(() => [] as Raw[])
-    ])
-    return [...review, ...issue]
-      .filter(isGreptile)
-      .map((c) => ({
-        author: c.user?.login ?? 'greptile',
-        body: c.body ?? '',
-        path: c.path,
-        line: c.line,
-        url: c.html_url ?? ''
-      }))
+    const [owner, name] = repo.split('/')
+    const q = `query{repository(owner:"${owner}",name:"${name}"){pullRequest(number:${number}){reviewThreads(first:100){nodes{id isResolved path line comments(first:30){nodes{databaseId author{login} body url}}}}}}}`
+    type Comment = { databaseId?: number; author?: { login?: string }; body?: string; url?: string }
+    type Thread = { id: string; isResolved: boolean; path?: string; line?: number; comments?: { nodes?: Comment[] } }
+    let out: { data?: { repository?: { pullRequest?: { reviewThreads?: { nodes?: Thread[] } } } } }
+    try {
+      out = await ghJson(['api', 'graphql', '-f', `query=${q}`])
+    } catch {
+      return []
+    }
+    const nodes = out.data?.repository?.pullRequest?.reviewThreads?.nodes ?? []
+    return nodes
+      .filter((t) => (t.comments?.nodes ?? []).some((c) => (c.author?.login ?? '').toLowerCase().includes('greptile')))
+      .map((t) => {
+        const comments = t.comments?.nodes ?? []
+        return {
+          id: t.id,
+          isResolved: t.isResolved,
+          replyToId: comments[0]?.databaseId ?? null,
+          comments: comments.map((c) => ({
+            author: c.author?.login ?? 'greptile',
+            body: c.body ?? '',
+            path: t.path,
+            line: t.line,
+            url: c.url ?? ''
+          }))
+        }
+      })
   })
+}
+
+async function resolveReviewThreadById(threadId: string): Promise<void> {
+  const q = `mutation{resolveReviewThread(input:{threadId:"${threadId}"}){thread{id}}}`
+  await ghJson(['api', 'graphql', '-f', `query=${q}`])
+  prAuxCache.clear()
+}
+
+export async function resolveGreptileThread(threadId: string): Promise<void> {
+  await resolveReviewThreadById(threadId)
+}
+
+// Defer: post a "deferred" reply, then resolve the thread.
+export async function deferGreptileThread(
+  repo: string,
+  prNumber: number,
+  threadId: string,
+  replyToId: number | null
+): Promise<void> {
+  if (replyToId) {
+    await gh([
+      'api',
+      `repos/${repo}/pulls/${prNumber}/comments/${replyToId}/replies`,
+      '-f',
+      'body=Deferred — will address in a follow-up.'
+    ]).catch(() => '')
+  }
+  await resolveReviewThreadById(threadId)
 }

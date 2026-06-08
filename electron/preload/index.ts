@@ -14,7 +14,7 @@ import type {
   GhIssueDetail,
   GhIssueEdit,
   GhRateLimit,
-  GreptileComment,
+  GreptileThread,
   PrProjectStatus,
   MongoDatabase,
   ObsidianNote,
@@ -114,8 +114,14 @@ const api = {
       ipcRenderer.invoke(IPC.github.enrichLinks, refs),
     prStatus: (repo: string, number: number, kind: 'issue' | 'pr'): Promise<PrProjectStatus[]> =>
       ipcRenderer.invoke(IPC.github.prStatus, repo, number, kind),
-    prGreptile: (repo: string, number: number): Promise<GreptileComment[]> =>
-      ipcRenderer.invoke(IPC.github.prGreptile, repo, number)
+    prGreptile: (repo: string, number: number): Promise<GreptileThread[]> =>
+      ipcRenderer.invoke(IPC.github.prGreptile, repo, number),
+    prDiff: (repo: string, number: number): Promise<string> =>
+      ipcRenderer.invoke(IPC.github.prDiff, repo, number),
+    resolveThread: (threadId: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.github.resolveThread, threadId),
+    deferThread: (repo: string, prNumber: number, threadId: string, replyToId: number | null): Promise<void> =>
+      ipcRenderer.invoke(IPC.github.deferThread, repo, prNumber, threadId, replyToId)
   },
   browser: {
     onOpenTab: (cb: (payload: { url: string; sourceId: number }) => void) =>

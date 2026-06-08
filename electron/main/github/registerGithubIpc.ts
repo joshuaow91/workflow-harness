@@ -14,9 +14,12 @@ import {
   listProjects,
   listReviewPRs,
   projectItems,
-  prGreptileComments,
+  prDiff,
+  prGreptileThreads,
   prProjectStatus,
   rateLimit,
+  resolveGreptileThread,
+  deferGreptileThread,
   setProjectItemField,
   repoAssignees,
   repoLabels,
@@ -63,7 +66,14 @@ export function registerGithubIpc(): void {
     prProjectStatus(repo, number, kind)
   )
   ipcMain.handle(IPC.github.prGreptile, (_e, repo: string, number: number) =>
-    prGreptileComments(repo, number)
+    prGreptileThreads(repo, number)
+  )
+  ipcMain.handle(IPC.github.prDiff, (_e, repo: string, number: number) => prDiff(repo, number))
+  ipcMain.handle(IPC.github.resolveThread, (_e, threadId: string) => resolveGreptileThread(threadId))
+  ipcMain.handle(
+    IPC.github.deferThread,
+    (_e, repo: string, prNumber: number, threadId: string, replyToId: number | null) =>
+      deferGreptileThread(repo, prNumber, threadId, replyToId)
   )
   ipcMain.handle(IPC.github.enrichLinks, (_e, refs: SessionRef[]) => enrichLinks(refs))
 }

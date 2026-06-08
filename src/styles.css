@@ -4465,6 +4465,31 @@ button {
   overflow-x: auto;
 }
 
+.greptile-card.resolved {
+  opacity: 0.55;
+}
+
+.greptile-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.greptile-card-open {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.greptile-resolved-tag {
+  font-size: 11.5px;
+  color: var(--green);
+}
+
 .diff-modal {
   width: 92vw;
   height: 86vh;
