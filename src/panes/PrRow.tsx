@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GreptileComment, PrProjectStatus, SessionRef } from '@shared/types'
 import { Dropdown } from '../components/Dropdown'
+import { GreptileModal } from './GreptileModal'
 
 // A linked issue/PR in the session sidebar: open-link, a project Status dropdown
 // (whichever is on the board — usually the issue), and for PRs the Greptile
@@ -9,7 +10,7 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
   const isPr = link.kind === 'pr'
   const [status, setStatus] = useState<PrProjectStatus | null>(null)
   const [greptile, setGreptile] = useState<GreptileComment[]>([])
-  const [open, setOpen] = useState(false)
+  const [showGreptile, setShowGreptile] = useState(false)
   const [sent, setSent] = useState(false)
 
   useEffect(() => {
@@ -78,36 +79,25 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
       ) : null}
 
       {isPr && greptile.length > 0 && (
-        <div className="pr-greptile">
-          <div className="pr-greptile-bar">
-            <button className="pr-greptile-toggle" onClick={() => setOpen((o) => !o)}>
-              {open ? '▾' : '▸'} Greptile · {greptile.length}
+        <div className="pr-greptile-bar">
+          <button className="pr-greptile-toggle" onClick={() => setShowGreptile(true)}>
+            ⊕ Greptile · {greptile.length}
+          </button>
+          {terminalId && (
+            <button className="pr-review-btn" onClick={reviewInSession} title="Stage a review prompt in this session">
+              {sent ? '✓ staged' : '⌲ Review in session'}
             </button>
-            {terminalId && (
-              <button className="pr-review-btn" onClick={reviewInSession} title="Stage a review prompt in this session">
-                {sent ? '✓ staged' : '⌲ Review in session'}
-              </button>
-            )}
-          </div>
-          {open && (
-            <div className="pr-greptile-list">
-              {greptile.map((c, i) => (
-                <button
-                  key={i}
-                  className="pr-greptile-item"
-                  onClick={() => void window.api.system.openExternal(c.url)}
-                >
-                  {c.path && (
-                    <span className="pr-greptile-loc">
-                      {c.path}:{c.line ?? '?'}
-                    </span>
-                  )}
-                  <span className="pr-greptile-body">{c.body.slice(0, 240)}</span>
-                </button>
-              ))}
-            </div>
           )}
         </div>
+      )}
+
+      {showGreptile && (
+        <GreptileModal
+          repo={link.repo}
+          number={link.number}
+          comments={greptile}
+          onClose={() => setShowGreptile(false)}
+        />
       )}
     </div>
   )

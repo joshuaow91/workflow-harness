@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SessionRef, SessionTask } from '@shared/types'
+import { diffBus } from '../lib/diffBus'
+import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { PlanModal } from './PlanModal'
 import { PostIssueModal } from './PostIssueModal'
 import { PrRow } from './PrRow'
@@ -13,6 +15,10 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   const [hasPlan, setHasPlan] = useState(false)
   const [modal, setModal] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
+
+  // Resolve the session's cwd/title (for "View diff") from the flat session list.
+  const sessions = useFlatSessions()
+  const session = sessions.find((s) => s.sessionId === sessionId)
 
   useEffect(() => {
     if (!sessionId) {
@@ -58,6 +64,14 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
 
   return (
     <div className="term-sidebar">
+      {session?.cwd && (
+        <button
+          className="term-sb-diff"
+          onClick={() => diffBus.openModal(session.cwd, session.title || 'Session')}
+        >
+          ⧉ View diff
+        </button>
+      )}
       <div className="term-sb-section">
         <div className="term-sb-title">
           Plan
