@@ -4437,6 +4437,7 @@ button {
 }
 
 .greptile-card {
+  flex-shrink: 0; /* don't shrink in the flex body — let the body scroll instead */
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
