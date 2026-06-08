@@ -33,6 +33,8 @@ export function TerminalsTab() {
   const [editing, setEditing] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [showSidebar, setShowSidebar] = useState(true)
+  const [tabDrag, setTabDrag] = useState<number | null>(null)
+  const [tabOver, setTabOver] = useState<number | null>(null)
   const tabCounter = useRef(1)
   const paneCounter = useRef(1)
   const defaultDir = useDefaultSessionDir()
@@ -192,6 +194,31 @@ export function TerminalsTab() {
   const setLayout = (tabId: number, layout: Layout): void =>
     setTabs((t) => t.map((x) => (x.id === tabId ? { ...x, layout } : x)))
 
+  // Merge one tab's panes into another (drop tab A on tab B).
+  const mergeTabs = (fromId: number, toId: number): void => {
+    if (fromId === toId) return
+    setTabs((t) => {
+      const from = t.find((x) => x.id === fromId)
+      if (!from) return t
+      return t
+        .map((x) => {
+          if (x.id !== toId) return x
+          const panes = [...x.panes, ...from.panes]
+          return { ...x, panes, layout: panes.length > 1 ? 'grid' : x.layout }
+        })
+        .filter((x) => x.id !== fromId)
+    })
+    setActiveId(toId)
+  }
+
+  // Collapse every tab's panes into one grid tab.
+  const mergeAll = (): void => {
+    if (tabs.length <= 1) return
+    const firstId = tabs[0].id
+    setTabs((t) => (t.length <= 1 ? t : [{ ...t[0], panes: t.flatMap((x) => x.panes), layout: 'grid' }]))
+    setActiveId(firstId)
+  }
+
   const saveRename = (tabId: number): void => {
     const n = draft.trim()
     if (n) setTabs((t) => t.map((x) => (x.id === tabId ? { ...x, name: n } : x)))
@@ -204,13 +231,29 @@ export function TerminalsTab() {
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={`term-tab${tab.id === activeId ? ' active' : ''}`}
+            className={`term-tab${tab.id === activeId ? ' active' : ''}${tabOver === tab.id && tabDrag !== tab.id ? ' merge-target' : ''}${tabDrag === tab.id ? ' dragging' : ''}`}
+            draggable={editing !== tab.id}
+            onDragStart={() => setTabDrag(tab.id)}
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (tabOver !== tab.id) setTabOver(tab.id)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              if (tabDrag != null) mergeTabs(tabDrag, tab.id)
+              setTabDrag(null)
+              setTabOver(null)
+            }}
+            onDragEnd={() => {
+              setTabDrag(null)
+              setTabOver(null)
+            }}
             onClick={() => setActiveId(tab.id)}
             onDoubleClick={() => {
               setDraft(tab.name)
               setEditing(tab.id)
             }}
-            title="Double-click to rename"
+            title="Double-click to rename · drag onto another tab to merge"
           >
             {editing === tab.id ? (
               <input
@@ -239,6 +282,11 @@ export function TerminalsTab() {
             </button>
           </div>
         ))}
+        {tabs.length > 1 && (
+          <button className="term-tab-add" onClick={mergeAll} title="Merge all tabs into one grid">
+            ⊞
+          </button>
+        )}
         <button className="term-tab-add" onClick={newEmptyTab} title="New tab">
           ＋
         </button>
