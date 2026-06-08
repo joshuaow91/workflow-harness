@@ -110,16 +110,16 @@ export function Sidebar() {
         // busy -> idle = finished a turn.
         const needs = cur === 'waiting' || (working(prev) && cur === 'idle')
         if (needs) {
-          if (!sessionAlerts.has(s.sessionId)) added.push({ id: s.sessionId, title: titleOf(s) })
+          // tryAdd respects acknowledgement: once you click into a waiting pane,
+          // it won't re-blink for the same episode (until the session works again).
+          if (sessionAlerts.tryAdd(s.sessionId)) added.push({ id: s.sessionId, title: titleOf(s) })
         } else if (working(cur)) {
-          sessionAlerts.clear(s.sessionId) // responded / processing again
+          sessionAlerts.reset(s.sessionId) // back to working → forget the episode
         }
         prevStatus.current[s.sessionId] = cur
       }
-    if (added.length) {
-      added.forEach((a) => sessionAlerts.add(a.id))
-      if (settings?.notifySessionResponse !== false)
-        added.forEach((a) => void window.api.system.notify('Session needs a response', a.title))
+    if (added.length && settings?.notifySessionResponse !== false) {
+      added.forEach((a) => void window.api.system.notify('Session needs a response', a.title))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects])
