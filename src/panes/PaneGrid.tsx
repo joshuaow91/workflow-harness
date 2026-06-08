@@ -88,13 +88,17 @@ export function PaneGrid({
         return (
           <div
             key={pane.paneId}
+            data-pane-id={pane.paneId}
             className={`term-panel${over === pane.paneId && drag !== pane.paneId ? ' drag-over' : ''}${drag === pane.paneId ? ' dragging' : ''}${focusedId === pane.paneId ? ' focused' : ''}${alerted ? ' needs-response' : ''}`}
             style={paneStyle(i)}
-            onMouseDown={() => focusPane(pane)}
+            // Capture phase: xterm swallows mousedown in the terminal body, so a
+            // bubble-phase handler wouldn't fire when you click into a pane.
+            onMouseDownCapture={() => focusPane(pane)}
             onDragOver={(e) => {
               e.preventDefault()
               if (over !== pane.paneId) setOver(pane.paneId)
             }}
+            onDragLeave={() => setOver((o) => (o === pane.paneId ? null : o))}
             onDrop={(e) => {
               e.preventDefault()
               if (drag != null && drag !== pane.paneId) onReorder(drag, pane.paneId)

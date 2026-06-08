@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { themeStore, xtermTheme } from '../themes/themeStore'
+import { registerTerminalFocus } from '../lib/terminalFocus'
 
 // Attaches to an already-running PTY (created by TerminalsTab) by id. Replays the
 // session's recent output so re-mounting (layout change / restart) is seamless.
@@ -88,10 +89,12 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
 
     const focus = (): void => term.focus()
     container.addEventListener('mousedown', focus)
+    const unregisterFocus = registerTerminalFocus(id, focus)
     term.focus()
 
     return () => {
       cancelled = true
+      unregisterFocus()
       container.removeEventListener('mousedown', focus)
       window.removeEventListener('resize', doFit)
       ro.disconnect()

@@ -4,6 +4,8 @@ import { terminalBus } from '../lib/terminalBus'
 import { settingsStore, useDefaultSessionDir } from '../lib/settingsStore'
 import { claudeCommand } from '../lib/launchClaude'
 import { useAgentInfo } from '../lib/useAgentInfo'
+import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
+import { focusTerminal } from '../lib/terminalFocus'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { Icon } from '../components/Icon'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
@@ -60,8 +62,68 @@ export function TerminalsTab() {
   const defaultDir = useDefaultSessionDir()
   const sessions = useFlatSessions()
   const agent = useAgentInfo()
+  const alerts = useSessionAlerts()
 
   const active = tabs.find((t) => t.id === activeId) ?? null
+
+  // Move focus to the adjacent pane in a direction (Cmd+Option+Arrow), picking the
+  // nearest pane that way by its on-screen rectangle.
+  const movePaneFocus = (dir: 'left' | 'right' | 'up' | 'down'): void => {
+    if (!active || active.panes.length < 2) return
+    const els = Array.from(
+      document.querySelectorAll<HTMLElement>('.terminals-grid > .term-panel[data-pane-id]')
+    )
+    const rects = els.map((el) => ({ id: Number(el.dataset.paneId), r: el.getBoundingClientRect() }))
+    const curId = focusedPaneId ?? active.panes[0].paneId
+    const cur = rects.find((x) => x.id === curId)
+    if (!cur) return
+    const cx = cur.r.left + cur.r.width / 2
+    const cy = cur.r.top + cur.r.height / 2
+    let best: number | null = null
+    let bestScore = Infinity
+    for (const cand of rects) {
+      if (cand.id === curId) continue
+      const dx = cand.r.left + cand.r.width / 2 - cx
+      const dy = cand.r.top + cand.r.height / 2 - cy
+      let inDir = false
+      let primary = 0
+      let secondary = 0
+      if (dir === 'left') (inDir = dx < -5), (primary = -dx), (secondary = Math.abs(dy))
+      if (dir === 'right') (inDir = dx > 5), (primary = dx), (secondary = Math.abs(dy))
+      if (dir === 'up') (inDir = dy < -5), (primary = -dy), (secondary = Math.abs(dx))
+      if (dir === 'down') (inDir = dy > 5), (primary = dy), (secondary = Math.abs(dx))
+      if (!inDir) continue
+      const score = primary + secondary * 2 // favor panes aligned on the axis
+      if (score < bestScore) {
+        bestScore = score
+        best = cand.id
+      }
+    }
+    if (best == null) return
+    setFocusedPaneId(best)
+    const pane = active.panes.find((p) => p.paneId === best)
+    if (pane) {
+      focusTerminal(pane.terminalId)
+      if (pane.sessionId) sessionAlerts.clear(pane.sessionId)
+    }
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey && e.altKey) || e.ctrlKey) return
+      const dir = (
+        { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' } as const
+      )[e.key]
+      if (!dir) return
+      e.preventDefault()
+      e.stopPropagation()
+      movePaneFocus(dir)
+    }
+    // Capture phase so xterm doesn't consume the combo first.
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, focusedPaneId])
 
   const makePane = async (opts: TerminalSpawnOptions): Promise<Pane> => {
     const terminalId = await window.api.terminal.create(opts)
@@ -275,6 +337,10 @@ export function TerminalsTab() {
             }}
             title="Double-click to rename · drag onto another tab to merge"
           >
+            {tab.id !== activeId &&
+              tab.panes.some((p) => p.sessionId && alerts.has(p.sessionId)) && (
+                <span className="term-tab-alert" title="A session in this tab needs a response" />
+              )}
             {editing === tab.id ? (
               <input
                 autoFocus
