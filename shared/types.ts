@@ -351,6 +351,24 @@ export interface GhProjectBoard {
   items: GhProjectItem[]
 }
 
+export interface PrProjectStatus {
+  projectId: string
+  projectTitle: string
+  itemId: string
+  fieldId: string
+  current: string | null
+  currentOptionId: string | null
+  options: { id: string; name: string }[]
+}
+
+export interface GreptileComment {
+  author: string
+  body: string
+  path?: string
+  line?: number
+  url: string
+}
+
 export interface GhRateResource {
   remaining: number
   limit: number

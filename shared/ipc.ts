@@ -33,6 +33,8 @@ export const IPC = {
     listProjects: 'github:listProjects',
     projectItems: 'github:projectItems',
     setProjectField: 'github:setProjectField',
+    prStatus: 'github:prStatus',
+    prGreptile: 'github:prGreptile',
     enrichLinks: 'github:enrichLinks',
     issueDetail: 'github:issueDetail',
     addComment: 'github:addComment',

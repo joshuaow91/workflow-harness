@@ -14,6 +14,8 @@ import {
   listProjects,
   listReviewPRs,
   projectItems,
+  prGreptileComments,
+  prProjectStatus,
   rateLimit,
   setProjectItemField,
   repoAssignees,
@@ -56,6 +58,12 @@ export function registerGithubIpc(): void {
     IPC.github.setProjectField,
     (_e, projectId: string, itemId: string, fieldId: string, optionId: string) =>
       setProjectItemField(projectId, itemId, fieldId, optionId)
+  )
+  ipcMain.handle(IPC.github.prStatus, (_e, repo: string, number: number, kind: 'issue' | 'pr') =>
+    prProjectStatus(repo, number, kind)
+  )
+  ipcMain.handle(IPC.github.prGreptile, (_e, repo: string, number: number) =>
+    prGreptileComments(repo, number)
   )
   ipcMain.handle(IPC.github.enrichLinks, (_e, refs: SessionRef[]) => enrichLinks(refs))
 }

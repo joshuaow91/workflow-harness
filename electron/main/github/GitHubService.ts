@@ -547,3 +547,79 @@ export async function setProjectItemField(
   await gh(optionId ? [...base, '--single-select-option-id', optionId] : [...base, '--clear'])
   boardCache.clear() // next non-optimistic load should see the change
 }
+
+// Small 5-min cache for the per-PR auxiliary lookups (status + greptile), keyed
+// by type+repo#number, so re-renders don't re-query.
+const prAuxCache = new Map<string, { at: number; data: unknown }>()
+async function prAux<T>(key: string, fetch: () => Promise<T>): Promise<T> {
+  const hit = prAuxCache.get(key)
+  if (hit && Date.now() - hit.at < 300000) return hit.data as T
+  const data = await fetch()
+  prAuxCache.set(key, { at: Date.now(), data })
+  return data
+}
+
+// Targeted query for just this issue/PR's project item(s) + Status field — ~1
+// GraphQL point, vs. the whole-board fetch. One entry per project it's on.
+export async function prProjectStatus(
+  repo: string,
+  number: number,
+  kind: 'issue' | 'pr'
+): Promise<import('@shared/types').PrProjectStatus[]> {
+  return prAux(`status:${kind}:${repo}#${number}`, async () => {
+    const [owner, name] = repo.split('/')
+    const root = kind === 'pr' ? 'pullRequest' : 'issue'
+    const q = `query{repository(owner:"${owner}",name:"${name}"){${root}(number:${number}){projectItems(first:10){nodes{id project{id title field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{optionId name}}}}}}}`
+    type Node = {
+      id: string
+      project?: { id: string; title: string; field?: { id: string; options?: { id: string; name: string }[] } }
+      fieldValueByName?: { optionId?: string; name?: string } | null
+    }
+    let out: { data?: { repository?: Record<string, { projectItems?: { nodes?: Node[] } } | null> } }
+    try {
+      out = await ghJson(['api', 'graphql', '-f', `query=${q}`])
+    } catch {
+      return []
+    }
+    const nodes = out.data?.repository?.[root]?.projectItems?.nodes ?? []
+    const res: import('@shared/types').PrProjectStatus[] = []
+    for (const n of nodes) {
+      if (!n.project?.field?.id) continue
+      res.push({
+        projectId: n.project.id,
+        projectTitle: n.project.title,
+        itemId: n.id,
+        fieldId: n.project.field.id,
+        current: n.fieldValueByName?.name ?? null,
+        currentOptionId: n.fieldValueByName?.optionId ?? null,
+        options: n.project.field.options ?? []
+      })
+    }
+    return res
+  })
+}
+
+// Greptile review comments on a PR (inline + issue comments), filtered to the
+// greptile bot. REST (generous budget), cached 5 min.
+export async function prGreptileComments(
+  repo: string,
+  number: number
+): Promise<import('@shared/types').GreptileComment[]> {
+  return prAux(`greptile:${repo}#${number}`, async () => {
+    type Raw = { user?: { login?: string }; body?: string; path?: string; line?: number; html_url?: string }
+    const isGreptile = (c: Raw): boolean => (c.user?.login ?? '').toLowerCase().includes('greptile')
+    const [review, issue] = await Promise.all([
+      ghJson<Raw[]>(['api', `repos/${repo}/pulls/${number}/comments`, '--paginate']).catch(() => [] as Raw[]),
+      ghJson<Raw[]>(['api', `repos/${repo}/issues/${number}/comments`, '--paginate']).catch(() => [] as Raw[])
+    ])
+    return [...review, ...issue]
+      .filter(isGreptile)
+      .map((c) => ({
+        author: c.user?.login ?? 'greptile',
+        body: c.body ?? '',
+        path: c.path,
+        line: c.line,
+        url: c.html_url ?? ''
+      }))
+  })
+}

@@ -4302,6 +4302,89 @@ button {
   color: var(--text);
 }
 
+.pr-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt);
+}
+
+.pr-greptile {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pr-greptile-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pr-greptile-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pr-review-btn {
+  margin-left: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 10.5px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.pr-review-btn:hover {
+  background: var(--surface-hover);
+}
+
+.pr-greptile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pr-greptile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.pr-greptile-item:hover {
+  border-color: var(--surface-hover);
+}
+
+.pr-greptile-loc {
+  font-family: SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.pr-greptile-body {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.35;
+  max-height: 60px;
+  overflow: hidden;
+}
+
 .diff-modal {
   width: 92vw;
   height: 86vh;

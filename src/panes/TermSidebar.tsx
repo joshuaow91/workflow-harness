@@ -2,54 +2,12 @@ import { useEffect, useState } from 'react'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { PlanModal } from './PlanModal'
 import { PostIssueModal } from './PostIssueModal'
+import { PrRow } from './PrRow'
 
-// Map the team's Projects v2 board statuses to badge colors.
-function boardBadge(status: string): { label: string; cls: string } {
-  const s = status.toLowerCase()
-  if (s.includes('review')) return { label: status, cls: 'review' }
-  if (s.includes('progress')) return { label: status, cls: 'progress' }
-  if (s.includes('ready')) return { label: status, cls: 'ready' }
-  if (s.includes('release')) return { label: status, cls: 'release' }
-  if (s.includes('closed')) return { label: status, cls: 'closed' }
-  return { label: status, cls: 'muted' } // "No Status" and anything unmapped
-}
-
-function badge(r: SessionRef): { label: string; cls: string } | null {
-  // Prefer the project board status when present (open/closed/merged is coarse).
-  if (r.boardStatus) return boardBadge(r.boardStatus)
-  const s = r.state?.toUpperCase()
-  if (!s) return null
-  if (s === 'MERGED') return { label: 'merged', cls: 'merged' }
-  if (s === 'CLOSED') return { label: 'closed', cls: 'closed' }
-  // OPEN
-  if (r.kind === 'issue') return { label: 'open', cls: 'ok' }
-  if (r.isDraft) return { label: 'draft', cls: 'muted' }
-  if (r.reviewDecision === 'APPROVED') return { label: 'approved', cls: 'ok' }
-  if (r.reviewDecision === 'CHANGES_REQUESTED') return { label: 'changes', cls: 'closed' }
-  if (r.reviewDecision === 'REVIEW_REQUIRED') return { label: 'review', cls: 'pending' }
-  return { label: 'open', cls: 'ok' }
-}
-
-function RefButton({ r }: { r: SessionRef }) {
-  const b = badge(r)
-  return (
-    <button className="term-sb-link" onClick={() => void window.api.system.openExternal(r.url)}>
-      <div className="term-sb-link-row">
-        <span className="term-sb-refnum">
-          {r.kind === 'pr' ? 'PR' : 'Issue'} #{r.number}
-        </span>
-        {b && <span className={`gh-badge ${b.cls}`}>{b.label}</span>}
-      </div>
-      <span className="term-sb-repo" title={r.repo}>
-        {r.repo.split('/')[1] ?? r.repo}
-      </span>
-    </button>
-  )
-}
 
 // Per-session-pane progress sidebar: Claude's live task plan + the PRs/issues the
 // session worked on (parsed from the transcript, so multiple repos are covered).
-export function TermSidebar({ sessionId }: { sessionId?: string }) {
+export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; terminalId?: string }) {
   const [tasks, setTasks] = useState<SessionTask[]>([])
   const [refs, setRefs] = useState<SessionRef[]>([])
   const [hasPlan, setHasPlan] = useState(false)
@@ -143,10 +101,10 @@ export function TermSidebar({ sessionId }: { sessionId?: string }) {
         ) : (
           <div className="term-sb-reflist">
             {prs.map((r) => (
-              <RefButton key={r.url} r={r} />
+              <PrRow key={r.url} link={r} terminalId={terminalId} />
             ))}
             {issues.map((r) => (
-              <RefButton key={r.url} r={r} />
+              <PrRow key={r.url} link={r} terminalId={terminalId} />
             ))}
           </div>
         )}

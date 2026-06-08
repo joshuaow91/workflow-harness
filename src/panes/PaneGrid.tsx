@@ -151,7 +151,9 @@ export function PaneGrid({
               <div className="term-pane-term">
                 <TerminalPane id={pane.terminalId} />
               </div>
-              {showSidebar && pane.sessionId && <TermSidebar sessionId={pane.sessionId} />}
+              {showSidebar && pane.sessionId && (
+                <TermSidebar sessionId={pane.sessionId} terminalId={pane.terminalId} />
+              )}
             </div>
           </div>
         )
