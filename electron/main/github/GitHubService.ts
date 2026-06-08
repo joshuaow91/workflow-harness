@@ -551,9 +551,9 @@ export async function setProjectItemField(
 // Small 5-min cache for the per-PR auxiliary lookups (status + greptile), keyed
 // by type+repo#number, so re-renders don't re-query.
 const prAuxCache = new Map<string, { at: number; data: unknown }>()
-async function prAux<T>(key: string, fetch: () => Promise<T>): Promise<T> {
+async function prAux<T>(key: string, fetch: () => Promise<T>, ttl = 300000): Promise<T> {
   const hit = prAuxCache.get(key)
-  if (hit && Date.now() - hit.at < 300000) return hit.data as T
+  if (hit && Date.now() - hit.at < ttl) return hit.data as T
   const data = await fetch()
   prAuxCache.set(key, { at: Date.now(), data })
   return data
@@ -639,7 +639,7 @@ export async function prGreptileThreads(
           }))
         }
       })
-  })
+  }, 60000) // 60s cache so newly-posted Greptile comments surface quickly
 }
 
 async function resolveReviewThreadById(threadId: string): Promise<void> {
