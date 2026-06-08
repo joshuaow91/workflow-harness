@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { terminalBus } from '../lib/terminalBus'
-import { useDefaultSessionDir } from '../lib/settingsStore'
+import { settingsStore, useDefaultSessionDir } from '../lib/settingsStore'
 import { claudeCommand } from '../lib/launchClaude'
 import { useAgentInfo } from '../lib/useAgentInfo'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
@@ -35,6 +35,26 @@ export function TerminalsTab() {
   const [showSidebar, setShowSidebar] = useState(true)
   const [tabDrag, setTabDrag] = useState<number | null>(null)
   const [tabOver, setTabOver] = useState<number | null>(null)
+  const [focusedPaneId, setFocusedPaneId] = useState<number | null>(null)
+
+  // Rename a pane: relabel it, and persist the session title when it's a session.
+  const renamePane = (paneId: number, name: string): void => {
+    let sessionId: string | undefined
+    setTabs((t) =>
+      t.map((tab) => ({
+        ...tab,
+        panes: tab.panes.map((p) => {
+          if (p.paneId !== paneId) return p
+          if (p.sessionId) sessionId = p.sessionId
+          return { ...p, opts: { ...p.opts, label: name } }
+        })
+      }))
+    )
+    if (sessionId) {
+      const titles = settingsStore.get()?.sessionTitles ?? {}
+      void settingsStore.update({ sessionTitles: { ...titles, [sessionId]: name } })
+    }
+  }
   const tabCounter = useRef(1)
   const paneCounter = useRef(1)
   const defaultDir = useDefaultSessionDir()
@@ -332,9 +352,12 @@ export function TerminalsTab() {
             panes={active.panes}
             layout={active.layout}
             showSidebar={showSidebar}
+            focusedId={focusedPaneId}
             onClose={(p) => closePane(active.id, p)}
             onRestart={(p) => void restartPane(active.id, p)}
             onReorder={(f, to) => reorder(active.id, f, to)}
+            onFocus={setFocusedPaneId}
+            onRename={renamePane}
           />
         </>
       ) : (

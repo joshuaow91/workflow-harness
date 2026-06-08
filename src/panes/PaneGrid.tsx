@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
+import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
 import { TerminalPane } from './TerminalPane'
 import { TermSidebar } from './TermSidebar'
 
@@ -16,25 +17,32 @@ function basename(p: string): string {
   return p.split('/').filter(Boolean).pop() ?? p
 }
 
-// Renders a set of terminal panes in the chosen layout (CSS flex/grid so panes
-// never remount on layout change/reorder) with drag-to-reorder.
 export function PaneGrid({
   panes,
   layout,
   showSidebar,
+  focusedId,
   onClose,
   onRestart,
-  onReorder
+  onReorder,
+  onFocus,
+  onRename
 }: {
   panes: Pane[]
   layout: Layout
   showSidebar: boolean
+  focusedId: number | null
   onClose: (paneId: number) => void
   onRestart: (paneId: number) => void
   onReorder: (fromId: number, toId: number) => void
+  onFocus: (paneId: number) => void
+  onRename: (paneId: number, name: string) => void
 }) {
   const [drag, setDrag] = useState<number | null>(null)
   const [over, setOver] = useState<number | null>(null)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+  const alerts = useSessionAlerts()
 
   const gridStyle = (): React.CSSProperties => {
     const n = panes.length
@@ -58,54 +66,92 @@ export function PaneGrid({
     return { minWidth: 0, minHeight: 0 }
   }
 
+  const startRename = (pane: Pane): void => {
+    setDraft(pane.opts.label ?? basename(pane.opts.cwd))
+    setEditing(pane.paneId)
+  }
+  const saveRename = (paneId: number): void => {
+    const n = draft.trim()
+    if (n) onRename(paneId, n)
+    setEditing(null)
+  }
+
+  const focusPane = (pane: Pane): void => {
+    onFocus(pane.paneId)
+    if (pane.sessionId) sessionAlerts.clear(pane.sessionId)
+  }
+
   return (
     <div className="terminals-grid" style={gridStyle()}>
-      {panes.map((pane, i) => (
-        <div
-          key={pane.paneId}
-          className={`term-panel${over === pane.paneId && drag !== pane.paneId ? ' drag-over' : ''}${drag === pane.paneId ? ' dragging' : ''}`}
-          style={paneStyle(i)}
-          onDragOver={(e) => {
-            e.preventDefault()
-            if (over !== pane.paneId) setOver(pane.paneId)
-          }}
-          onDrop={(e) => {
-            e.preventDefault()
-            if (drag != null && drag !== pane.paneId) onReorder(drag, pane.paneId)
-            setDrag(null)
-            setOver(null)
-          }}
-        >
+      {panes.map((pane, i) => {
+        const alerted = !!pane.sessionId && alerts.has(pane.sessionId)
+        return (
           <div
-            className="term-panel-header"
-            draggable
-            onDragStart={() => setDrag(pane.paneId)}
-            onDragEnd={() => {
+            key={pane.paneId}
+            className={`term-panel${over === pane.paneId && drag !== pane.paneId ? ' drag-over' : ''}${drag === pane.paneId ? ' dragging' : ''}${focusedId === pane.paneId ? ' focused' : ''}${alerted ? ' needs-response' : ''}`}
+            style={paneStyle(i)}
+            onMouseDown={() => focusPane(pane)}
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (over !== pane.paneId) setOver(pane.paneId)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              if (drag != null && drag !== pane.paneId) onReorder(drag, pane.paneId)
               setDrag(null)
               setOver(null)
             }}
           >
-            <span className="term-panel-title" title={pane.opts.cwd}>
-              {pane.opts.initialCommand ? '◐ ' : '$ '}
-              {pane.opts.label ?? basename(pane.opts.cwd)}
-            </span>
-            <div className="term-panel-actions">
-              <button className="term-act" title="Restart pane" onClick={() => onRestart(pane.paneId)}>
-                ↻
-              </button>
-              <button className="term-act" title="Close pane" onClick={() => onClose(pane.paneId)}>
-                ✕
-              </button>
+            <div
+              className="term-panel-header"
+              draggable={editing !== pane.paneId}
+              onDragStart={() => setDrag(pane.paneId)}
+              onDragEnd={() => {
+                setDrag(null)
+                setOver(null)
+              }}
+            >
+              {editing === pane.paneId ? (
+                <input
+                  autoFocus
+                  className="term-tab-rename"
+                  value={draft}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={() => saveRename(pane.paneId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveRename(pane.paneId)
+                    if (e.key === 'Escape') setEditing(null)
+                  }}
+                />
+              ) : (
+                <span
+                  className="term-panel-title"
+                  title={`${pane.opts.cwd}\nDouble-click to rename`}
+                  onDoubleClick={() => startRename(pane)}
+                >
+                  {pane.opts.initialCommand ? '◐ ' : '$ '}
+                  {pane.opts.label ?? basename(pane.opts.cwd)}
+                </span>
+              )}
+              <div className="term-panel-actions">
+                <button className="term-act" title="Restart pane" onClick={() => onRestart(pane.paneId)}>
+                  ↻
+                </button>
+                <button className="term-act" title="Close pane" onClick={() => onClose(pane.paneId)}>
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="term-panel-body">
+              <div className="term-pane-term">
+                <TerminalPane id={pane.terminalId} />
+              </div>
+              {showSidebar && pane.sessionId && <TermSidebar sessionId={pane.sessionId} />}
             </div>
           </div>
-          <div className="term-panel-body">
-            <div className="term-pane-term">
-              <TerminalPane id={pane.terminalId} />
-            </div>
-            {showSidebar && pane.sessionId && <TermSidebar sessionId={pane.sessionId} />}
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

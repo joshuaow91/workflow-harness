@@ -3,6 +3,7 @@ import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
 import { launchClaude } from '../lib/launchClaude'
 import { diffBus } from '../lib/diffBus'
+import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { ContextMenu } from '../components/ContextMenu'
 import { Icon } from '../components/Icon'
@@ -110,7 +111,7 @@ export function Sidebar() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   // Detect when a session finishes a turn (busy -> idle) = needs a response.
-  const [needsResp, setNeedsResp] = useState<Set<string>>(new Set())
+  const needsResp = useSessionAlerts()
   const prevStatus = useRef<Record<string, string>>({})
   const working = (st?: string): boolean => st === 'busy' || st === 'running' || st === 'working'
   useEffect(() => {
@@ -123,23 +124,13 @@ export function Sidebar() {
         prevStatus.current[s.sessionId] = cur
       }
     if (added.length) {
-      setNeedsResp((set) => {
-        const n = new Set(set)
-        added.forEach((a) => n.add(a.id))
-        return n
-      })
+      added.forEach((a) => sessionAlerts.add(a.id))
       if (settings?.notifySessionResponse !== false)
         added.forEach((a) => void window.api.system.notify('Session needs a response', a.title))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects])
-  const clearAlert = (id: string): void =>
-    setNeedsResp((set) => {
-      if (!set.has(id)) return set
-      const n = new Set(set)
-      n.delete(id)
-      return n
-    })
+  const clearAlert = (id: string): void => sessionAlerts.clear(id)
 
   const toggleExpanded = (slug: string): void =>
     setExpanded((prev) => {
