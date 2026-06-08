@@ -16,6 +16,13 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
   const [showGreptile, setShowGreptile] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
   const [sent, setSent] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const copyUrl = (): void => {
+    void navigator.clipboard.writeText(link.url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1400)
+  }
 
   useEffect(() => {
     let active = true
@@ -78,17 +85,29 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
 
   return (
     <div className="pr-row">
-      <button className="term-sb-link" onClick={() => void window.api.system.openExternal(link.url)}>
-        <div className="term-sb-link-row">
-          <span className="term-sb-refnum">
-            {isPr ? 'PR' : 'Issue'} #{link.number}
+      <div className="pr-link-row">
+        <button className="term-sb-link" onClick={() => void window.api.system.openExternal(link.url)}>
+          <div className="term-sb-link-row">
+            <span className="term-sb-refnum">
+              {isPr ? 'PR' : 'Issue'} #{link.number}
+            </span>
+            {status?.current && <span className="gh-badge in-progress">{status.current}</span>}
+          </div>
+          <span className="term-sb-repo" title={link.repo}>
+            {link.repo.split('/')[1] ?? link.repo}
           </span>
-          {status?.current && <span className="gh-badge in-progress">{status.current}</span>}
-        </div>
-        <span className="term-sb-repo" title={link.repo}>
-          {link.repo.split('/')[1] ?? link.repo}
-        </span>
-      </button>
+        </button>
+        <button className="pr-copy-btn" title={copied ? 'Copied!' : 'Copy URL'} onClick={copyUrl}>
+          {copied ? (
+            '✓'
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          )}
+        </button>
+      </div>
 
       {status ? (
         <Dropdown

@@ -4318,6 +4318,35 @@ button {
   gap: 5px;
 }
 
+.pr-link-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.pr-link-row .term-sb-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-copy-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.pr-copy-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
 .pr-diff-btn {
   display: block;
   width: 100%;
