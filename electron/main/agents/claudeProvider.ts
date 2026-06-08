@@ -1,4 +1,5 @@
 import { execFile } from 'child_process'
+import { randomUUID } from 'crypto'
 import { homedir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
@@ -32,7 +33,10 @@ export const claudeProvider: AgentProvider = {
 
   buildCommand({ resumeId, mapFile, prompt, plan }) {
     let cmd = 'claude'
+    // Pin a session id for new sessions so the harness can link the pane to the
+    // session (needs-response ring, plan/PR sidebar). Resume uses the existing id.
     if (resumeId) cmd += ` --resume ${resumeId}`
+    else cmd += ` --session-id ${randomUUID()}`
     if (plan) cmd += ' --permission-mode plan'
     if (mapFile) cmd += ` --append-system-prompt-file '${mapFile}'`
     if (prompt) cmd += ` '${prompt.replace(/'/g, `'\\''`)}'`

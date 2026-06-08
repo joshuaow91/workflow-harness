@@ -65,7 +65,7 @@ export function TerminalsTab() {
 
   const makePane = async (opts: TerminalSpawnOptions): Promise<Pane> => {
     const terminalId = await window.api.terminal.create(opts)
-    const m = opts.initialCommand?.match(/--resume\s+(\S+)/)
+    const m = opts.initialCommand?.match(/--(?:resume|session-id)\s+(\S+)/)
     return { paneId: paneCounter.current++, terminalId, opts, sessionId: m?.[1] }
   }
 

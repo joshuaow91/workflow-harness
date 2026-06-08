@@ -119,8 +119,15 @@ export function Sidebar() {
     for (const p of projects)
       for (const s of p.sessions) {
         const cur = s.live?.status ?? 'dormant'
-        if (working(prevStatus.current[s.sessionId]) && !working(cur))
-          added.push({ id: s.sessionId, title: titleOf(s) })
+        const prev = prevStatus.current[s.sessionId]
+        // "waiting" = a permission prompt / awaiting input (fires on first sight);
+        // busy -> idle = finished a turn.
+        const needs = cur === 'waiting' || (working(prev) && cur === 'idle')
+        if (needs) {
+          if (!sessionAlerts.has(s.sessionId)) added.push({ id: s.sessionId, title: titleOf(s) })
+        } else if (working(cur)) {
+          sessionAlerts.clear(s.sessionId) // responded / processing again
+        }
         prevStatus.current[s.sessionId] = cur
       }
     if (added.length) {
