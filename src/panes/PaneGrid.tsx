@@ -4,6 +4,7 @@ import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
 import { focusTerminal } from '../lib/terminalFocus'
 import { TerminalPane } from './TerminalPane'
 import { TermSidebar } from './TermSidebar'
+import { WebFrame } from './WebFrame'
 
 export type Layout = 'cols' | 'rows' | 'grid' | 'mainGrid'
 
@@ -12,6 +13,8 @@ export interface Pane {
   terminalId: string
   opts: TerminalSpawnOptions
   sessionId?: string
+  /** When set, this pane is a browser (WebFrame) rather than a terminal. */
+  browserUrl?: string
 }
 
 function basename(p: string): string {
@@ -148,25 +151,33 @@ export function PaneGrid({
                   title={`${pane.opts.cwd}\nDouble-click to rename`}
                   onDoubleClick={() => startRename(pane)}
                 >
-                  {pane.opts.initialCommand ? '◐ ' : '$ '}
+                  {pane.browserUrl != null ? '🌐 ' : pane.opts.initialCommand ? '◐ ' : '$ '}
                   {pane.opts.label ?? basename(pane.opts.cwd)}
                 </span>
               )}
               <div className="term-panel-actions">
-                <button className="term-act" title="Restart pane" onClick={() => onRestart(pane.paneId)}>
-                  ↻
-                </button>
+                {pane.browserUrl == null && (
+                  <button className="term-act" title="Restart pane" onClick={() => onRestart(pane.paneId)}>
+                    ↻
+                  </button>
+                )}
                 <button className="term-act" title="Close pane" onClick={() => onClose(pane.paneId)}>
                   ✕
                 </button>
               </div>
             </div>
             <div className="term-panel-body">
-              <div className="term-pane-term">
-                <TerminalPane id={pane.terminalId} />
-              </div>
-              {showSidebar && pane.sessionId && (
-                <TermSidebar sessionId={pane.sessionId} terminalId={pane.terminalId} />
+              {pane.browserUrl != null ? (
+                <WebFrame src={pane.browserUrl} editableAddress />
+              ) : (
+                <>
+                  <div className="term-pane-term">
+                    <TerminalPane id={pane.terminalId} />
+                  </div>
+                  {showSidebar && pane.sessionId && (
+                    <TermSidebar sessionId={pane.sessionId} terminalId={pane.terminalId} />
+                  )}
+                </>
               )}
             </div>
           </div>

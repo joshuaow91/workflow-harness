@@ -146,7 +146,8 @@ export function TerminalsTab() {
   useEffect(() => {
     if (hydrated.current) return
     hydrated.current = true
-    let saved: { activeIndex?: number; tabs?: { name: string; layout: Layout; panes: TerminalSpawnOptions[] }[] } | null
+    type SavedPane = TerminalSpawnOptions & { _b?: string }
+    let saved: { activeIndex?: number; tabs?: { name: string; layout: Layout; panes: SavedPane[] }[] } | null
     try {
       saved = JSON.parse(localStorage.getItem('harness:terminals') || 'null')
     } catch {
@@ -154,13 +155,30 @@ export function TerminalsTab() {
     }
     if (!saved?.tabs?.length) return
     void (async () => {
+      // Which saved sessions actually have a conversation on disk? Picks the
+      // right flag: existing -> --resume; missing -> --session-id (recreate).
+      const existing = new Set<string>()
+      try {
+        const projects = await window.api.claude.getProjects()
+        for (const p of projects) for (const s of p.sessions) existing.add(s.sessionId)
+      } catch {
+        /* ignore */
+      }
       const rebuilt: Tab[] = []
       for (const st of saved.tabs ?? []) {
         const panes: Pane[] = []
-        for (const opts of st.panes) {
-          // A saved `--session-id <id>` is a session that now EXISTS — re-running
-          // it errors "already in use"; resume it instead.
-          const initialCommand = opts.initialCommand?.replace(/--session-id\s+(\S+)/, '--resume $1')
+        for (const raw of st.panes) {
+          const { _b, ...opts } = raw
+          if (_b) {
+            panes.push({ paneId: paneCounter.current++, terminalId: '', opts, browserUrl: _b })
+            continue
+          }
+          const id = opts.initialCommand?.match(/--(?:session-id|resume)\s+(\S+)/)?.[1]
+          let initialCommand = opts.initialCommand
+          if (id)
+            initialCommand = existing.has(id)
+              ? opts.initialCommand?.replace(/--session-id(\s+\S+)/, '--resume$1')
+              : opts.initialCommand?.replace(/--resume(\s+\S+)/, '--session-id$1')
           panes.push(await makePane({ ...opts, initialCommand }))
         }
         rebuilt.push({ id: tabCounter.current++, name: st.name, layout: st.layout, panes })
@@ -179,7 +197,11 @@ export function TerminalsTab() {
         'harness:terminals',
         JSON.stringify({
           activeIndex: tabs.findIndex((t) => t.id === activeId),
-          tabs: tabs.map((t) => ({ name: t.name, layout: t.layout, panes: t.panes.map((p) => p.opts) }))
+          tabs: tabs.map((t) => ({
+            name: t.name,
+            layout: t.layout,
+            panes: t.panes.map((p) => (p.browserUrl ? { ...p.opts, _b: p.browserUrl } : p.opts))
+          }))
         })
       )
     } catch {
@@ -207,10 +229,29 @@ export function TerminalsTab() {
     setTabs((t) => t.map((x) => (x.id === active.id ? { ...x, panes: [...x.panes, pane] } : x)))
   }
 
+  // Add a browser (WebFrame) pane to the active tab.
+  const splitBrowser = (): void => {
+    const url = settingsStore.get()?.defaultBrowserUrl || 'https://www.google.com'
+    const pane: Pane = {
+      paneId: paneCounter.current++,
+      terminalId: '',
+      opts: { cwd: splitCwd, label: 'browser' },
+      browserUrl: url
+    }
+    if (!active) {
+      const id = tabCounter.current++
+      setTabs((t) => [...t, { id, name: 'browser', panes: [pane], layout: 'cols' }])
+      setActiveId(id)
+    } else {
+      setTabs((t) => t.map((x) => (x.id === active.id ? { ...x, panes: [...x.panes, pane] } : x)))
+    }
+  }
+
   const splitCwd = active?.panes[0]?.opts.cwd ?? defaultDir
   const splitOptions: DropdownOption[] = [
     { value: '__claude', label: `＋ new ${agent.cli}`, sublabel: basename(splitCwd) },
     { value: '__shell', label: '＋ shell', sublabel: basename(splitCwd) },
+    { value: '__browser', label: '＋ browser', sublabel: 'web page' },
     ...sessions.slice(0, 60).map((s) => ({
       value: s.sessionId,
       label: `${s.live ? '● ' : ''}${s.title}`,
@@ -218,7 +259,8 @@ export function TerminalsTab() {
     }))
   ]
   const onSplit = async (value: string): Promise<void> => {
-    if (value === '__shell') void splitWith({ cwd: splitCwd, label: `shell · ${basename(splitCwd)}` })
+    if (value === '__browser') splitBrowser()
+    else if (value === '__shell') void splitWith({ cwd: splitCwd, label: `shell · ${basename(splitCwd)}` })
     else if (value === '__claude')
       void splitWith({ cwd: splitCwd, initialCommand: await claudeCommand(), label: `${agent.cli} · ${basename(splitCwd)}` })
     else {
