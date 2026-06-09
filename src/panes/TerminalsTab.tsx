@@ -155,12 +155,15 @@ export function TerminalsTab() {
     }
     if (!saved?.tabs?.length) return
     void (async () => {
-      // Which saved sessions actually have a conversation on disk? Picks the
-      // right flag: existing -> --resume; missing -> --session-id (recreate).
-      const existing = new Set<string>()
+      // Which saved sessions have a real conversation (messageCount > 0)? Only
+      // those are resumable — a title-only stub exists on disk but `claude
+      // --resume` fails "No conversation found", and `--session-id` on its id
+      // fails "already in use". So: resumable -> --resume; anything else (stub
+      // or missing) -> a fresh session with a brand-new id.
+      const resumable = new Set<string>()
       try {
         const projects = await window.api.claude.getProjects()
-        for (const p of projects) for (const s of p.sessions) existing.add(s.sessionId)
+        for (const p of projects) for (const s of p.sessions) if (s.messageCount > 0) resumable.add(s.sessionId)
       } catch {
         /* ignore */
       }
@@ -176,9 +179,9 @@ export function TerminalsTab() {
           const id = opts.initialCommand?.match(/--(?:session-id|resume)\s+(\S+)/)?.[1]
           let initialCommand = opts.initialCommand
           if (id)
-            initialCommand = existing.has(id)
+            initialCommand = resumable.has(id)
               ? opts.initialCommand?.replace(/--session-id(\s+\S+)/, '--resume$1')
-              : opts.initialCommand?.replace(/--resume(\s+\S+)/, '--session-id$1')
+              : opts.initialCommand?.replace(/--(?:session-id|resume)\s+\S+/, `--session-id ${crypto.randomUUID()}`)
           panes.push(await makePane({ ...opts, initialCommand }))
         }
         rebuilt.push({ id: tabCounter.current++, name: st.name, layout: st.layout, panes })
