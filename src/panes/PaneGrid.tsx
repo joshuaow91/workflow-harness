@@ -168,7 +168,13 @@ export function PaneGrid({
             </div>
             <div className="term-panel-body">
               {pane.browserUrl != null ? (
-                <WebFrame src={pane.browserUrl} editableAddress />
+                // onActivate registers this frame as the agent target, so a Claude
+                // session in the same tab can drive it (agent-browser MCP).
+                <WebFrame
+                  src={pane.browserUrl}
+                  editableAddress
+                  onActivate={(id) => void window.api.agent.setTarget(id)}
+                />
               ) : (
                 <>
                   <div className="term-pane-term">
