@@ -4918,6 +4918,12 @@ button {
   display: flex;
 }
 
+/* A browser pane's WebFrame must fill the panel (it only sets height: 100%). */
+.term-panel-body > .webframe {
+  flex: 1;
+  min-width: 0;
+}
+
 .term-host {
   position: absolute;
   inset: 0;
