@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Icon } from '../components/Icon'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { GhPullRequest } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
@@ -7,11 +8,31 @@ import { WebFrame } from '../panes/WebFrame'
 import { GhHeader, GhState } from './GhShared'
 import { PrRow } from './PrRow'
 
+// The GitHub tabs unmount when you switch away, so keep the open PR preview in
+// localStorage to restore it when you come back (and across restarts).
+const SEL_KEY = 'harness:myprs:selected'
+function loadSelected(): GhPullRequest | null {
+  try {
+    return JSON.parse(localStorage.getItem(SEL_KEY) || 'null') as GhPullRequest | null
+  } catch {
+    return null
+  }
+}
+
 export function MyPRsTab() {
   const { repos } = useRepos()
   const { data, error, loading, reload } = useAsync(() => window.api.github.myPRsAll(), [])
   const prs = data ?? []
-  const [selected, setSelected] = useState<GhPullRequest | null>(null)
+  const [selected, setSelectedState] = useState<GhPullRequest | null>(loadSelected)
+  const setSelected = (pr: GhPullRequest | null): void => {
+    setSelectedState(pr)
+    try {
+      if (pr) localStorage.setItem(SEL_KEY, JSON.stringify(pr))
+      else localStorage.removeItem(SEL_KEY)
+    } catch {
+      /* ignore quota / serialization errors */
+    }
+  }
 
   const groups = useMemo(() => {
     const byRepo = new Map<string, GhPullRequest[]>()
@@ -70,10 +91,10 @@ export function MyPRsTab() {
                   className="tbtn"
                   onClick={() => void window.api.system.openExternal(selected.url)}
                 >
-                  Open ↗
+                  Open <Icon name="external" size={12} />
                 </button>
                 <button className="term-act" title="Close preview" onClick={() => setSelected(null)}>
-                  ✕
+                  <Icon name="close" size={13} />
                 </button>
               </div>
               <div className="pr-preview-frame">

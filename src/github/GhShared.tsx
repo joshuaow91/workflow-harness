@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { Icon } from '../components/Icon'
 
 export function openExternal(url: string): void {
   if (url) void window.api.system.openExternal(url)
@@ -18,7 +19,7 @@ export function GhHeader({
       {children}
       {count !== undefined && <span className="gh-count">{count}</span>}
       <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={onRefresh}>
-        ↻ Refresh
+        <Icon name="refresh" size={14} /> Refresh
       </button>
     </div>
   )

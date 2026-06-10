@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../components/Icon'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { useDefaultSessionDir } from '../lib/settingsStore'
@@ -68,7 +69,7 @@ export function SideTerminal({ onClose }: { onClose?: () => void }) {
         />
         {onClose && (
           <button className="term-act" title="Close pane" onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         )}
       </div>

@@ -17,6 +17,8 @@ import {
   prDiff,
   prGreptileReview,
   prProjectStatus,
+  prsInRange,
+  prFiles,
   rateLimit,
   resolveGreptileThread,
   deferGreptileThread,
@@ -76,4 +78,8 @@ export function registerGithubIpc(): void {
       deferGreptileThread(repo, prNumber, threadId, replyToId)
   )
   ipcMain.handle(IPC.github.enrichLinks, (_e, refs: SessionRef[]) => enrichLinks(refs))
+  ipcMain.handle(IPC.github.prsInRange, (_e, repo: string, base: string, head: string) =>
+    prsInRange(repo, base, head)
+  )
+  ipcMain.handle(IPC.github.prFiles, (_e, repo: string, number: number) => prFiles(repo, number))
 }

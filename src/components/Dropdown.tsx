@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from './Icon'
 
 export interface DropdownOption {
   value: string
@@ -121,7 +122,7 @@ export function Dropdown({
       >
         {current?.swatch && <span className="dd-swatch" style={{ background: current.swatch }} />}
         <span className="dd-value">{triggerLabel ?? current?.label ?? placeholder}</span>
-        <span className="dd-caret">▾</span>
+        <span className="dd-caret"><Icon name="caret" size={12} /></span>
       </button>
 
       {open &&

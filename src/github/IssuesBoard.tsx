@@ -259,7 +259,7 @@ export function IssuesBoard({
         />
         <input className="issue-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search cards…" />
         <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={refreshBoard}>
-          ↻ Refresh
+          <Icon name="refresh" size={14} /> Refresh
         </button>
       </div>
 

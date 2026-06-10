@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../components/Icon'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { useRepos } from '../sidebar/useRepos'
@@ -17,28 +18,45 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   const [modal, setModal] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
   const [showSessionDiff, setShowSessionDiff] = useState(false)
+  const [showMoreIssues, setShowMoreIssues] = useState(false)
 
-  // Resolve the session's cwd/title (for "View diff") from the flat session list.
   const sessions = useFlatSessions()
-  const session = sessions.find((s) => s.sessionId === sessionId)
   const { repos } = useRepos()
 
+  // The pane's sessionId is frozen at launch, but `/clear` makes the same claude
+  // process (same pid) start a NEW session. Track the live pid so we follow the
+  // current conversation instead of showing the cleared one's stale tasks/links.
+  const pidRef = useRef<number | null>(null)
+  const launch = sessions.find((s) => s.sessionId === sessionId)
+  if (launch?.live?.pid != null) pidRef.current = launch.live.pid
+  const liveOnPid =
+    pidRef.current != null ? sessions.find((s) => s.live?.pid === pidRef.current) : undefined
+  const sid = liveOnPid?.sessionId ?? sessionId
+
+  // Resolve the (effective) session's cwd/title (for "View diff").
+  const session = sessions.find((s) => s.sessionId === sid)
+
   useEffect(() => {
-    if (!sessionId) {
+    if (!sid) {
       setTasks([])
       setRefs([])
       setHasPlan(false)
       return
     }
+    // A fresh (post-clear) session: drop the old session's data immediately so
+    // nothing stale lingers between the id change and the first reload.
+    setTasks([])
+    setRefs([])
+    setHasPlan(false)
     let active = true
     const loadTasks = (): void => {
-      void window.api.claude.sessionTasks(sessionId).then((t) => active && setTasks(t))
+      void window.api.claude.sessionTasks(sid).then((t) => active && setTasks(t))
     }
     const loadPlan = (): void => {
-      void window.api.claude.sessionPlan(sessionId).then((p) => active && setHasPlan(!!p.trim()))
+      void window.api.claude.sessionPlan(sid).then((p) => active && setHasPlan(!!p.trim()))
     }
     const loadLinks = (): void => {
-      void window.api.claude.sessionLinks(sessionId).then((parsed) => {
+      void window.api.claude.sessionLinks(sid).then((parsed) => {
         if (!active) return
         setRefs(parsed)
         if (parsed.length) void window.api.github.enrichLinks(parsed).then((e) => active && setRefs(e))
@@ -59,12 +77,16 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
       clearInterval(t2)
       clearInterval(t3)
     }
-  }, [sessionId])
+  }, [sid])
 
   const done = tasks.filter((t) => t.status === 'completed').length
   const prs = refs.filter((r) => r.kind === 'pr')
-  const issues = refs.filter((r) => r.kind === 'issue')
-  const issue = issues[0] // the issue this session is about (first referenced)
+  const allIssues = refs.filter((r) => r.kind === 'issue')
+  // The issue this session is about: the one anchored from the launch/first
+  // message, else the first referenced. Other issues (sub-issues a plan surveyed)
+  // are collapsed behind a "+N more" toggle so the section isn't noisy.
+  const issue = allIssues.find((r) => r.primary) ?? allIssues[0]
+  const otherIssues = allIssues.filter((r) => r !== issue)
 
   // Repos the session actually changed (cross-repo): the linked PR repos mapped
   // to local checkouts; fall back to issue repos, then the session cwd.
@@ -72,7 +94,7 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
     const r = repos.find((x) => x.nameWithOwner === nwo)
     return r ? { name: r.name, path: r.path } : undefined
   }
-  const candidateRefs = prs.length ? prs : issues
+  const candidateRefs = prs.length ? prs : allIssues
   const mapped = Array.from(
     new Map(
       candidateRefs
@@ -92,7 +114,7 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
     <div className="term-sidebar">
       {diffRepos.length > 0 && (
         <button className="term-sb-diff" onClick={() => setShowSessionDiff(true)}>
-          ⧉ View diff{diffRepos.length > 1 ? ` (${diffRepos.length} repos)` : ''}
+          <Icon name="diff" size={13} /> View diff{diffRepos.length > 1 ? ` (${diffRepos.length} repos)` : ''}
         </button>
       )}
       <div className="term-sb-section">
@@ -105,16 +127,16 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
           )}
           {(tasks.length > 0 || hasPlan) && (
             <button className="term-sb-expand" title="Open plan" onClick={() => setModal(true)}>
-              ⤢
+              <Icon name="expand" size={13} />
             </button>
           )}
         </div>
-        {!sessionId ? (
+        {!sid ? (
           <div className="term-sb-empty">Not a resumed session — no linked plan.</div>
         ) : tasks.length === 0 ? (
           hasPlan ? (
             <button className="term-sb-viewplan" onClick={() => setModal(true)}>
-              No task list — view the full plan ⤢
+              No task list — view the full plan <Icon name="expand" size={13} />
             </button>
           ) : (
             <div className="term-sb-empty">No tasks or plan yet.</div>
@@ -140,19 +162,24 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
             {prs.map((r) => (
               <PrRow key={r.url} link={r} terminalId={terminalId} />
             ))}
-            {issues.map((r) => (
-              <PrRow key={r.url} link={r} terminalId={terminalId} />
-            ))}
+            {issue && <PrRow key={issue.url} link={issue} terminalId={terminalId} />}
+            {otherIssues.length > 0 && (
+              <button className="term-sb-more" onClick={() => setShowMoreIssues((v) => !v)}>
+                {showMoreIssues ? 'Hide referenced issues' : `+${otherIssues.length} more referenced`}
+              </button>
+            )}
+            {showMoreIssues &&
+              otherIssues.map((r) => <PrRow key={r.url} link={r} terminalId={terminalId} />)}
           </div>
         )}
-        {issue && sessionId && (
+        {issue && sid && (
           <button className="tbtn post-update-btn" onClick={() => setPostOpen(true)}>
             ✎ Post update to #{issue.number}
           </button>
         )}
       </div>
 
-      {modal && <PlanModal sessionId={sessionId} onClose={() => setModal(false)} />}
+      {modal && <PlanModal sessionId={sid} onClose={() => setModal(false)} />}
       {showSessionDiff && (
         <SessionDiffModal
           repos={diffRepos}
@@ -160,11 +187,11 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
           onClose={() => setShowSessionDiff(false)}
         />
       )}
-      {postOpen && issue && sessionId && (
+      {postOpen && issue && sid && (
         <PostIssueModal
           repo={issue.repo}
           number={issue.number}
-          sessionId={sessionId}
+          sessionId={sid}
           onClose={() => setPostOpen(false)}
         />
       )}

@@ -599,6 +599,54 @@ export async function prProjectStatus(
   })
 }
 
+// PRs that shipped between two deployed SHAs: the git compare range, with PR
+// numbers/titles parsed from the commit messages (squash "title (#N)" or merge
+// "Merge pull request #N"). One gh call, cached 5 min. base/head accept short SHAs.
+export async function prsInRange(
+  repo: string,
+  base: string,
+  head: string
+): Promise<import('@shared/types').PrInRange[]> {
+  if (!base || !head || base === head) return []
+  return prAux(`range:${repo}:${base}..${head}`, async () => {
+    let messages: string[]
+    try {
+      messages = await ghJson<string[]>([
+        'api',
+        `repos/${repo}/compare/${base}...${head}`,
+        '--jq',
+        '[.commits[].commit.message]'
+      ])
+    } catch {
+      return []
+    }
+    const seen = new Map<number, import('@shared/types').PrInRange>()
+    for (const msg of messages) {
+      const first = (msg ?? '').split('\n')[0]
+      const m = first.match(/\(#(\d+)\)\s*$/) || first.match(/#(\d+)/)
+      if (!m) continue
+      const number = Number(m[1])
+      if (seen.has(number)) continue
+      const title = first.replace(/\s*\(#\d+\)\s*$/, '').replace(/^Merge pull request #\d+ from \S+/, '').trim()
+      seen.set(number, {
+        number,
+        title: title || `PR #${number}`,
+        url: `https://github.com/${repo}/pull/${number}`
+      })
+    }
+    return [...seen.values()]
+  })
+}
+
+// Files changed by a PR (paths only), for deploy culprit-correlation. Cached 5 min.
+export async function prFiles(repo: string, number: number): Promise<string[]> {
+  return prAux(`files:${repo}#${number}`, () =>
+    ghJson<string[]>(['pr', 'view', String(number), '-R', repo, '--json', 'files', '--jq', '[.files[].path]']).catch(
+      () => [] as string[]
+    )
+  )
+}
+
 // The full PR diff (checkout-independent), via gh. Cached 5 min.
 export async function prDiff(repo: string, number: number): Promise<string> {
   return prAux(`diff:${repo}#${number}`, () => gh(['pr', 'diff', String(number), '-R', repo]).catch(() => ''))

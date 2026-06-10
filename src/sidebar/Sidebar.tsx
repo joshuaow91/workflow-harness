@@ -5,6 +5,7 @@ import { launchClaude } from '../lib/launchClaude'
 import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { ContextMenu } from '../components/ContextMenu'
+import { Icon } from '../components/Icon'
 import { RepoTree } from './RepoTree'
 import { SideSection } from './SideSection'
 import { useClaudeProjects } from './useClaudeProjects'
@@ -13,6 +14,8 @@ interface MenuState {
   sessionId: string
   slug: string
   title: string
+  /** Live process pid, if the session is running (enables "Kill"). */
+  pid: number | null
   x: number
   y: number
 }
@@ -28,7 +31,8 @@ function SessionRow({
   onSubmitRename,
   onCancelRename,
   onSelect,
-  onContextMenu
+  onContextMenu,
+  onKill
 }: {
   session: ClaudeSession
   displayTitle: string
@@ -41,6 +45,7 @@ function SessionRow({
   onCancelRename: () => void
   onSelect: () => void
   onContextMenu: (e: React.MouseEvent) => void
+  onKill: () => void
 }) {
   const live = session.live
   const dotClass = live ? (live.status === 'busy' ? 'busy' : 'idle') : 'dormant'
@@ -82,6 +87,18 @@ function SessionRow({
           {live && <span className="session-live">{live.status}</span>}
         </span>
       </span>
+      {live && (
+        <button
+          className="session-kill"
+          title={`Kill this ${live.status} session (frees the process; conversation stays resumable)`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onKill()
+          }}
+        >
+          <Icon name="power" size={13} />
+        </button>
+      )}
     </div>
   )
 }
@@ -160,6 +177,12 @@ export function Sidebar() {
     }
   }
 
+  // Terminate a live session's process — frees an idle session; the conversation
+  // stays on disk and is resumable.
+  const killSession = (pid: number): void => {
+    void window.api.claude.killSession(pid)
+  }
+
   return (
     <div className="sidebar">
       {loading && projects.length === 0 ? (
@@ -210,9 +233,13 @@ export function Sidebar() {
                     sessionId: s.sessionId,
                     slug: project.slug,
                     title: titleOf(s),
+                    pid: s.live?.pid ?? null,
                     x: e.clientX,
                     y: e.clientY
                   })
+                }}
+                onKill={() => {
+                  if (s.live) killSession(s.live.pid)
                 }}
               />
             ))}
@@ -227,9 +254,7 @@ export function Sidebar() {
         ))
       )}
 
-      <SideSection title="Repos">
-        <RepoTree />
-      </SideSection>
+      <RepoTree />
 
       {menu && (
         <ContextMenu
@@ -238,6 +263,9 @@ export function Sidebar() {
           onClose={() => setMenu(null)}
           items={[
             { label: 'Rename', onClick: () => startRename(menu) },
+            ...(menu.pid != null
+              ? [{ label: 'Kill session', onClick: () => menu.pid != null && killSession(menu.pid) }]
+              : []),
             { label: 'Delete', danger: true, onClick: () => deleteSession(menu) }
           ]}
         />

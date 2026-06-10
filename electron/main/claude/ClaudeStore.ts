@@ -146,6 +146,16 @@ export function registerClaudeIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.claude.deleteSession, (_e, slug: string, sessionId: string) =>
     activeProvider().deleteSession(slug, sessionId)
   )
+  // Kill a live session's process (frees an idle session). The conversation stays
+  // on disk and is resumable; only the running process is terminated.
+  ipcMain.handle(IPC.claude.killSession, (_e, pid: number) => {
+    try {
+      process.kill(pid, 'SIGTERM')
+    } catch {
+      /* already gone */
+    }
+    pushUpdate() // refresh the sidebar so the row flips to dormant
+  })
   ipcMain.handle(IPC.claude.sessionTasks, (_e, sessionId: string) => activeProvider().sessionTasks(sessionId))
   ipcMain.handle(IPC.claude.sessionLinks, (_e, sessionId: string) => activeProvider().sessionLinks(sessionId))
   ipcMain.handle(IPC.claude.sessionPlan, (_e, sessionId: string) => activeProvider().sessionPlan(sessionId))

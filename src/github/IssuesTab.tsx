@@ -154,10 +154,10 @@ function IssueDetailView({
             ✦ Investigate &amp; plan
           </button>
           <button className="tbtn" onClick={() => void window.api.system.openExternal(data.url)}>
-            Open ↗
+            Open <Icon name="external" size={12} />
           </button>
           <button className="term-act" onClick={reload} title="Refresh">
-            ↻
+            <Icon name="refresh" size={14} />
           </button>
         </div>
       </div>
@@ -339,7 +339,7 @@ export function IssuesTab() {
                 closeTab(t.key)
               }}
             >
-              ✕
+              <Icon name="close" size={13} />
             </span>
           </button>
         ))}
@@ -382,7 +382,7 @@ export function IssuesTab() {
                 </div>
                 <span className="gh-count">{issues.length}</span>
                 <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={reload}>
-                  ↻ Refresh
+                  <Icon name="refresh" size={14} /> Refresh
                 </button>
               </>
             )}

@@ -154,6 +154,13 @@ export async function addWorktree(
   )
 }
 
-export async function removeWorktree(repoPath: string, worktreePath: string): Promise<void> {
-  await git(repoPath, ['worktree', 'remove', worktreePath])
+export async function removeWorktree(
+  repoPath: string,
+  worktreePath: string,
+  force = false
+): Promise<void> {
+  // Plain remove refuses a dirty/locked worktree; force discards its changes and
+  // removes it anyway (after the user confirms). Prune cleans stale entries.
+  await git(repoPath, ['worktree', 'remove', ...(force ? ['--force'] : []), worktreePath])
+  if (force) await tryGit(repoPath, ['worktree', 'prune'])
 }

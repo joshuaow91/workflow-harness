@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../components/Icon'
 import type { TotpAccount } from '@shared/types'
 import { generateTotp, totpRemaining } from '../lib/totp'
 
@@ -46,7 +47,7 @@ export function TotpRow({
       {copied && <span className="totp-copied">copied</span>}
       {onRemove && (
         <button className="term-act" title="Remove" onClick={onRemove}>
-          ✕
+          <Icon name="close" size={13} />
         </button>
       )}
     </div>

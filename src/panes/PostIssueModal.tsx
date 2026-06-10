@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../components/Icon'
 import { createPortal } from 'react-dom'
 import type { SessionRef, SessionTask } from '@shared/types'
 
@@ -84,7 +85,7 @@ export function PostIssueModal({
             Post update to {repo} #{number}
           </span>
           <button className="term-act" style={{ marginLeft: 'auto' }} onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="post-modal-body">

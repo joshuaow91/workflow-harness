@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Icon } from './Icon'
 import { browserRouter } from '../lib/browserRouter'
 import { WebFrame } from '../panes/WebFrame'
 
@@ -70,7 +71,7 @@ export function TabbedWebView({
                   close(tab.id)
                 }}
               >
-                ✕
+                <Icon name="close" size={13} />
               </button>
             )}
           </div>

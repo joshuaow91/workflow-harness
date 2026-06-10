@@ -104,6 +104,89 @@ export interface DatadogDashboard {
   custom: boolean
 }
 
+// ---- Deploy Watch ----
+
+/** One deployed version of a service, detected from APM `version`-tagged traffic. */
+export interface DeployInfo {
+  service: string
+  /** Deploy short-SHA (the `version` tag = git rev-parse --short HEAD). */
+  version: string
+  /** ms epoch the version first took traffic (≈ deploy time), null if never. */
+  firstSeen: number | null
+  /** ms epoch of the version's most recent traffic. */
+  lastSeen: number | null
+  /** Total request hits over the detection window (for the traffic floor). */
+  hits: number
+}
+
+export type MetricVerdict = 'good' | 'neutral' | 'warn' | 'bad' | 'nodata'
+
+export interface DeployMetric {
+  key: string
+  label: string
+  /** 1 = request golden signals, 2 = downstream, 3 = JVM/runtime. */
+  tier: 1 | 2 | 3
+  /** Display unit: 's' (seconds, auto ms), '%', 'req/s', 'MB', or '' (count). */
+  unit: string
+  /** Which direction is better; 'info' metrics are never scored. */
+  dir: 'lower' | 'higher' | 'info'
+  newValue: number | null
+  prevValue: number | null
+  /** Percent change new-vs-prev, null when no baseline. */
+  deltaPct: number | null
+  verdict: MetricVerdict
+}
+
+export type DeployVerdict =
+  | 'healthy'
+  | 'watch'
+  | 'rollback'
+  | 'warming'
+  | 'insufficient'
+  | 'nodata'
+
+export interface DeployHealth {
+  service: string
+  newVersion: string
+  prevVersion: string | null
+  /** ms epoch the new version was deployed. */
+  deployedAt: number
+  /** Length of each comparison window, ms. */
+  windowMs: number
+  /** New version's request hits within the window (drives the traffic floor). */
+  traffic: number
+  verdict: DeployVerdict
+  metrics: DeployMetric[]
+}
+
+/** A PR that rode along in a deploy (resolved from the git compare range). */
+export interface PrInRange {
+  number: number
+  title: string
+  url: string
+}
+
+/** One specific operation (endpoint / query) compared across the deploy. */
+export interface DeployResource {
+  /** APM resource_name, e.g. "post_/v2/stores/_storeid_/cdk/user-lookup". */
+  resource: string
+  newValue: number | null
+  prevValue: number | null
+  deltaPct: number | null
+  /** New-version request count over the window (for the traffic floor). */
+  hits: number
+  verdict: MetricVerdict
+}
+
+/** A ranked group of the worst-regressed operations of one kind. */
+export interface DeployDrill {
+  /** 'endpoints' | 'mongo' | 'redis' | 'http_out'. */
+  family: string
+  label: string
+  unit: string
+  rows: DeployResource[]
+}
+
 export interface TotpAccount {
   id: string
   label: string
@@ -161,6 +244,8 @@ export interface SessionRef {
   repo: string
   number: number
   url: string
+  /** The issue/PR this session is about (anchored from the launch / first message). */
+  primary?: boolean
   /** Current state from gh: OPEN | CLOSED | MERGED (filled by enrichLinks). */
   state?: string
   isDraft?: boolean
@@ -214,6 +299,36 @@ export interface Worktree {
   head: string | null
   isMain: boolean
   locked: boolean
+}
+
+export interface BranchInfo {
+  name: string
+  current: boolean
+  isDefault: boolean
+  /** Upstream remote branch was deleted (typically a merged PR). */
+  gone: boolean
+  /** Merged into origin/<default>. */
+  merged: boolean
+  upstream: string | null
+  /** Checked out in a secondary worktree. Deleting it removes that worktree first. */
+  worktree: boolean
+  /** The secondary worktree's path, when `worktree` is true. */
+  worktreePath?: string
+}
+
+export interface RepoBranchStatus {
+  repo: string
+  path: string
+  defaultBranch: string
+  currentBranch: string
+  /** Commits local default is behind origin/default (0 = up to date). */
+  defaultBehind: number
+  branches: BranchInfo[]
+}
+
+export interface BranchDeleteResult {
+  deleted: string[]
+  failed: { name: string; error: string }[]
 }
 
 export interface Repo {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from '../components/Icon'
 import { createPortal } from 'react-dom'
 import { DiffPanel } from '../diff/DiffPanel'
 import { Dropdown } from '../components/Dropdown'
@@ -22,6 +23,7 @@ export function SessionDiffModal({
           <span className="modal-title">Changes · {title}</span>
           {repos.length > 1 && (
             <Dropdown
+              className="diff-repo-dd"
               value={path}
               options={repos.map((r) => ({ value: r.path, label: r.name }))}
               onChange={setPath}
@@ -29,7 +31,7 @@ export function SessionDiffModal({
             />
           )}
           <button className="term-act" style={{ marginLeft: 'auto' }} onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="diff-modal-body">

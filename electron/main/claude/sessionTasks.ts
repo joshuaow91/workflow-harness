@@ -41,6 +41,11 @@ export async function getSessionTasks(sessionId: string): Promise<SessionTask[]>
 
   const tasks: MutableTask[] = []
   const byId = new Map<number, MutableTask>()
+  // TaskCreate's tool_use doesn't carry its assigned id — that comes back in the
+  // tool_result ("Task #N created"). Correlate via tool_use_id so TaskUpdate(taskId)
+  // matches the REAL id, not a fabricated 1..N (which silently breaks whenever the
+  // task counter didn't start at 1, e.g. a continued session → 0/N completed).
+  const byToolUse = new Map<string, MutableTask>()
 
   const rl = createInterface({
     input: createReadStream(file, { encoding: 'utf8' }),
@@ -59,40 +64,61 @@ export async function getSessionTasks(sessionId: string): Promise<SessionTask[]>
       const content = o.message?.content
       if (!Array.isArray(content)) continue
       for (const b of content as Array<Record<string, unknown>>) {
-        if (!b || b.type !== 'tool_use') continue
-        const input = (b.input ?? {}) as Record<string, unknown>
-        if (b.name === 'TaskCreate') {
-          const t: MutableTask = {
-            id: tasks.length + 1,
-            subject: String(input.subject ?? '(task)'),
-            description: input.description ? String(input.description) : undefined,
-            status: 'pending'
-          }
-          tasks.push(t)
-          byId.set(t.id, t)
-        } else if (b.name === 'TaskUpdate') {
-          const t = byId.get(Number(input.taskId))
-          const status = input.status as string | undefined
-          if (t && status) {
-            if (status === 'deleted') t.deleted = true
-            else if (status === 'pending' || status === 'in_progress' || status === 'completed')
-              t.status = status
-          }
-        } else if (b.name === 'TodoWrite' && Array.isArray(input.todos)) {
-          tasks.length = 0
-          byId.clear()
-          ;(input.todos as Array<Record<string, unknown>>).forEach((td, i) => {
+        if (!b) continue
+        if (b.type === 'tool_use') {
+          const input = (b.input ?? {}) as Record<string, unknown>
+          if (b.name === 'TaskCreate') {
+            const subject = input.subject != null ? String(input.subject).trim() : ''
+            if (!subject) continue // skip empty / mid-stream creates (no "(task)")
             const t: MutableTask = {
-              id: i + 1,
-              subject: String(td.content ?? td.activeForm ?? '(todo)'),
-              status:
-                td.status === 'in_progress' || td.status === 'completed'
-                  ? (td.status as SessionTask['status'])
-                  : 'pending'
+              id: 0, // real id assigned when the matching tool_result is seen
+              subject,
+              description: input.description ? String(input.description) : undefined,
+              status: 'pending'
             }
             tasks.push(t)
-            byId.set(t.id, t)
-          })
+            if (typeof b.id === 'string') byToolUse.set(b.id, t)
+          } else if (b.name === 'TaskUpdate') {
+            const t = byId.get(Number(input.taskId))
+            const status = input.status as string | undefined
+            if (t && status) {
+              if (status === 'deleted') t.deleted = true
+              else if (status === 'pending' || status === 'in_progress' || status === 'completed')
+                t.status = status
+            }
+          } else if (b.name === 'TodoWrite' && Array.isArray(input.todos)) {
+            tasks.length = 0
+            byId.clear()
+            byToolUse.clear()
+            ;(input.todos as Array<Record<string, unknown>>).forEach((td, i) => {
+              const subject = String(td.content ?? td.activeForm ?? '').trim()
+              if (!subject) return // skip empty todos (no "(todo)")
+              const t: MutableTask = {
+                id: i + 1,
+                subject,
+                status:
+                  td.status === 'in_progress' || td.status === 'completed'
+                    ? (td.status as SessionTask['status'])
+                    : 'pending'
+              }
+              tasks.push(t)
+              byId.set(t.id, t)
+            })
+          }
+        } else if (b.type === 'tool_result') {
+          // Bind the real task id from "Task #N created" back onto its create.
+          const rc = b.content
+          const txt = Array.isArray(rc)
+            ? (rc as Array<Record<string, unknown>>).map((x) => String(x?.text ?? '')).join('')
+            : String(rc ?? '')
+          const m = txt.match(/Task #(\d+) created/)
+          if (m && typeof b.tool_use_id === 'string') {
+            const t = byToolUse.get(b.tool_use_id)
+            if (t) {
+              t.id = Number(m[1])
+              byId.set(t.id, t)
+            }
+          }
         }
       }
     }
@@ -231,7 +257,63 @@ export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> 
     if (!bucket.has(url)) bucket.set(url, ref)
   }
 
+  // Anchor the "primary" ref: the issue/PR named in the FIRST real user message
+  // (the launch prompt, e.g. "Investigate issue #5067 …"). A planning session may
+  // reference many sub-issues; this marks the one it's actually about.
+  const ut = firstUserText(raw)
+  if (ut) {
+    let primaryUrl: string | null = null
+    URL_RE.lastIndex = 0
+    let um: RegExpExecArray | null
+    while ((um = URL_RE.exec(ut))) {
+      const [, owner, repo, kind, num] = um
+      if (!owners.has(owner)) continue
+      const isPr = kind === 'pull'
+      const url = `https://github.com/${owner}/${repo}/${isPr ? 'pull' : 'issues'}/${num}`
+      if (!isPr) {
+        primaryUrl = url // prefer the first issue
+        break
+      }
+      if (!primaryUrl) primaryUrl = url
+    }
+    if (!primaryUrl) {
+      GH_CMD_RE.lastIndex = 0
+      const gm = GH_CMD_RE.exec(ut)
+      if (gm && owners.has(gm[3])) {
+        const isPr = gm[1] === 'pr'
+        primaryUrl = `https://github.com/${gm[3]}/${gm[4]}/${isPr ? 'pull' : 'issues'}/${gm[2]}`
+      }
+    }
+    if (primaryUrl) {
+      const ref = issues.get(primaryUrl) ?? prs.get(primaryUrl)
+      if (ref) ref.primary = true
+    }
+  }
+
   const refs = [...prs.values(), ...issues.values()]
   linkCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, refs })
   return refs
+}
+
+// Text of the first real user message (the launch prompt) — skips tool_result-only
+// user turns, which carry no text.
+function firstUserText(raw: string): string {
+  for (const line of raw.split('\n')) {
+    if (!line.includes('"role":"user"') && !line.includes('"type":"user"')) continue
+    try {
+      const o = JSON.parse(line) as { type?: string; message?: { role?: string; content?: unknown } }
+      if (o.type !== 'user' && o.message?.role !== 'user') continue
+      const c = o.message?.content
+      if (typeof c === 'string') return c
+      if (Array.isArray(c)) {
+        const txt = (c as Array<Record<string, unknown>>)
+          .map((b) => (b && typeof b.text === 'string' ? b.text : ''))
+          .join(' ')
+        if (txt.trim()) return txt
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return ''
 }

@@ -1,21 +1,13 @@
 import { ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { DatadogDashboard } from '@shared/types'
-import { getSettings } from '../settings/SettingsStore'
+import { ddCreds, NO_DD_KEYS } from './ddClient'
+import { recentDeploys, deployHealth, deployHotspots } from './DeployWatchService'
 
-export const NO_DD_KEYS = 'NO_DD_KEYS'
-
-function creds(): { api: string; app: string; site: string } {
-  const s = getSettings()
-  return {
-    api: s.ddApiKey || process.env.DD_API_KEY || '',
-    app: s.ddAppKey || process.env.DD_APP_KEY || '',
-    site: s.ddSite || process.env.DD_SITE || 'datadoghq.com'
-  }
-}
+export { NO_DD_KEYS }
 
 async function listDashboards(): Promise<DatadogDashboard[]> {
-  const { api, app, site } = creds()
+  const { api, app, site } = ddCreds()
   if (!api || !app) throw new Error(NO_DD_KEYS)
 
   const res = await fetch(`https://api.${site}/api/v1/dashboard`, {
@@ -36,4 +28,15 @@ async function listDashboards(): Promise<DatadogDashboard[]> {
 
 export function registerDatadogIpc(): void {
   ipcMain.handle(IPC.datadog.listDashboards, () => listDashboards())
+  ipcMain.handle(IPC.datadog.deploys, (_e, service: string) => recentDeploys(service))
+  ipcMain.handle(
+    IPC.datadog.deployHealth,
+    (_e, service: string, newVersion: string, prevVersion: string | null, deployedAt: number) =>
+      deployHealth(service, newVersion, prevVersion, deployedAt)
+  )
+  ipcMain.handle(
+    IPC.datadog.deployHotspots,
+    (_e, service: string, newVersion: string, prevVersion: string | null, deployedAt: number) =>
+      deployHotspots(service, newVersion, prevVersion, deployedAt)
+  )
 }

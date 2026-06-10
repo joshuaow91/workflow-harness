@@ -6,15 +6,21 @@ import type {
   AgentInfo,
   AppSettings,
   AutoUpdateStatus,
+  BranchDeleteResult,
   BrowserHistoryEntry,
+  RepoBranchStatus,
   ClaudeProject,
   GitChanges,
   DatadogDashboard,
+  DeployDrill,
+  DeployHealth,
+  DeployInfo,
   GhIssue,
   GhIssueDetail,
   GhIssueEdit,
   GhRateLimit,
   GreptileReview,
+  PrInRange,
   PrProjectStatus,
   MongoDatabase,
   ObsidianNote,
@@ -45,6 +51,7 @@ const api = {
     getProjects: (): Promise<ClaudeProject[]> => ipcRenderer.invoke(IPC.claude.getProjects),
     deleteSession: (slug: string, sessionId: string): Promise<void> =>
       ipcRenderer.invoke(IPC.claude.deleteSession, slug, sessionId),
+    killSession: (pid: number): Promise<void> => ipcRenderer.invoke(IPC.claude.killSession, pid),
     sessionTasks: (sessionId: string): Promise<SessionTask[]> =>
       ipcRenderer.invoke(IPC.claude.sessionTasks, sessionId),
     sessionLinks: (sessionId: string): Promise<SessionRef[]> =>
@@ -58,13 +65,25 @@ const api = {
     listRepos: (): Promise<Repo[]> => ipcRenderer.invoke(IPC.worktree.listRepos),
     add: (repoPath: string, branch: string, fromRef?: string): Promise<Worktree> =>
       ipcRenderer.invoke(IPC.worktree.add, repoPath, branch, fromRef),
-    remove: (repoPath: string, worktreePath: string): Promise<void> =>
-      ipcRenderer.invoke(IPC.worktree.remove, repoPath, worktreePath)
+    remove: (repoPath: string, worktreePath: string, force?: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.worktree.remove, repoPath, worktreePath, force)
+  },
+  branch: {
+    status: (repoPath: string, fetch?: boolean): Promise<RepoBranchStatus> =>
+      ipcRenderer.invoke(IPC.branch.status, repoPath, fetch),
+    pullDefault: (repoPath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.branch.pullDefault, repoPath),
+    checkout: (repoPath: string, branch: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.branch.checkout, repoPath, branch),
+    delete: (repoPath: string, names: string[], force?: boolean): Promise<BranchDeleteResult> =>
+      ipcRenderer.invoke(IPC.branch.delete, repoPath, names, force)
   },
   terminal: {
     create: (opts: TerminalSpawnOptions): Promise<string> =>
       ipcRenderer.invoke(IPC.terminal.create, opts),
     getBuffer: (id: string): Promise<string> => ipcRenderer.invoke(IPC.terminal.getBuffer, id),
+    saveLayout: (json: string): Promise<void> => ipcRenderer.invoke(IPC.terminal.saveLayout, json),
+    getLayout: (): Promise<string> => ipcRenderer.invoke(IPC.terminal.getLayout),
     write: (id: string, data: string): void => {
       ipcRenderer.send(IPC.terminal.write, id, data)
     },
@@ -121,7 +140,11 @@ const api = {
     resolveThread: (threadId: string): Promise<void> =>
       ipcRenderer.invoke(IPC.github.resolveThread, threadId),
     deferThread: (repo: string, prNumber: number, threadId: string, replyToId: number | null): Promise<void> =>
-      ipcRenderer.invoke(IPC.github.deferThread, repo, prNumber, threadId, replyToId)
+      ipcRenderer.invoke(IPC.github.deferThread, repo, prNumber, threadId, replyToId),
+    prsInRange: (repo: string, base: string, head: string): Promise<PrInRange[]> =>
+      ipcRenderer.invoke(IPC.github.prsInRange, repo, base, head),
+    prFiles: (repo: string, number: number): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.github.prFiles, repo, number)
   },
   browser: {
     onOpenTab: (cb: (payload: { url: string; sourceId: number }) => void) =>
@@ -156,7 +179,23 @@ const api = {
   },
   datadog: {
     listDashboards: (): Promise<DatadogDashboard[]> =>
-      ipcRenderer.invoke(IPC.datadog.listDashboards)
+      ipcRenderer.invoke(IPC.datadog.listDashboards),
+    deploys: (service: string): Promise<DeployInfo[]> =>
+      ipcRenderer.invoke(IPC.datadog.deploys, service),
+    deployHealth: (
+      service: string,
+      newVersion: string,
+      prevVersion: string | null,
+      deployedAt: number
+    ): Promise<DeployHealth> =>
+      ipcRenderer.invoke(IPC.datadog.deployHealth, service, newVersion, prevVersion, deployedAt),
+    deployHotspots: (
+      service: string,
+      newVersion: string,
+      prevVersion: string | null,
+      deployedAt: number
+    ): Promise<DeployDrill[]> =>
+      ipcRenderer.invoke(IPC.datadog.deployHotspots, service, newVersion, prevVersion, deployedAt)
   },
   obsidian: {
     listNotes: (): Promise<ObsidianNote[]> => ipcRenderer.invoke(IPC.obsidian.listNotes),

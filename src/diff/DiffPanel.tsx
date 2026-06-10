@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Icon } from '../components/Icon'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAsync } from '../lib/useAsync'
 import { DiffView } from './DiffView'
@@ -43,7 +44,7 @@ export function DiffPanel({
         </div>
         <span className="gh-count">{files.length}</span>
         <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={() => changes.reload()}>
-          ↻ Refresh
+          <Icon name="refresh" size={14} /> Refresh
         </button>
       </div>
 

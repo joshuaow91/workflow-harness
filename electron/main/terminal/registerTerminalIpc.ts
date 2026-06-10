@@ -1,4 +1,6 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { TerminalSpawnOptions } from '@shared/types'
 import type { BackendSession } from './TerminalBackend'
@@ -40,6 +42,24 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
   })
 
   ipcMain.handle(IPC.terminal.getBuffer, (_e, id: string): string => buffers.get(id) ?? '')
+
+  // Durable layout backup on disk, mirroring the renderer's localStorage. Survives
+  // an HMR/state wipe so the layout can always be recovered (see getLayout below).
+  const layoutFile = (): string => join(app.getPath('userData'), 'terminal-layout.json')
+  ipcMain.handle(IPC.terminal.saveLayout, (_e, json: string) => {
+    try {
+      if (json && json.length > 2) writeFileSync(layoutFile(), json)
+    } catch {
+      /* ignore */
+    }
+  })
+  ipcMain.handle(IPC.terminal.getLayout, (): string => {
+    try {
+      return readFileSync(layoutFile(), 'utf8')
+    } catch {
+      return ''
+    }
+  })
 
   ipcMain.on(IPC.terminal.write, (_e, id: string, data: string) => {
     sessions.get(id)?.write(data)

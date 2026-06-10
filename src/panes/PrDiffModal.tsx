@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useAsync } from '../lib/useAsync'
+import { Icon } from '../components/Icon'
 import { DiffView } from '../diff/DiffView'
 
 // The full PR diff (gh pr diff) — checkout-independent "all changes" view.
@@ -21,7 +22,7 @@ export function PrDiffModal({
             PR diff · {repo.split('/')[1]} #{number}
           </span>
           <button className="term-act" style={{ marginLeft: 'auto' }} onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="diff-modal-body">

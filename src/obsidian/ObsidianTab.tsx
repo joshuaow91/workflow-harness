@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAsync } from '../lib/useAsync'
 import { settingsStore, useSettings } from '../lib/settingsStore'
+import { Dropdown } from '../components/Dropdown'
+import { Icon } from '../components/Icon'
 import { WysiwygEditor } from './WysiwygEditor'
 
 export function ObsidianTab() {
@@ -78,73 +79,57 @@ export function ObsidianTab() {
   }
 
   const filtered = q ? list.filter((n) => n.title.toLowerCase().includes(q.toLowerCase())) : list
+  const current = list.find((n) => n.path === sel)
 
   return (
-    <div className="obs-tab">
-      <PanelGroup direction="horizontal" autoSaveId="obs-h2">
-        <Panel defaultSize={22} minSize={14}>
-          <div className="obs-listcol">
-            <div className="obs-listbar">
-              <input
-                className="dd-search"
-                placeholder="Search notes…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-              <button className="term-act" title="New note" onClick={() => void newNote()}>
-                ＋
-              </button>
-              <button className="term-act" title="Refresh" onClick={() => notes.reload()}>
-                ↻
-              </button>
-            </div>
-            <div className="obs-list">
-              {notes.loading && <div className="side-term-hint">Loading notes…</div>}
-              {filtered.map((n) => (
-                <div
-                  key={n.path}
-                  className={`obs-item${sel === n.path ? ' sel' : ''}`}
-                  onClick={() => setSel(n.path)}
-                  title={n.path}
-                >
-                  <span className="obs-item-main">
-                    <span className="obs-item-title">{n.title}</span>
-                    {n.folder && <span className="obs-item-folder">{n.folder}</span>}
-                  </span>
-                  <button
-                    className="obs-item-del"
-                    title="Delete note"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      void deleteNote(n.path)
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
+    <div className="obs-tab obs-single">
+      <div className="obs-toolbar">
+        <input
+          className="obs-search"
+          placeholder="Search notes…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <div className="obs-selectrow">
+          <Dropdown
+            className="obs-noteselect"
+            value={sel ?? ''}
+            triggerLabel={current?.title ?? 'Select a note…'}
+            options={filtered.map((n) => ({ value: n.path, label: n.title, sublabel: n.folder }))}
+            onChange={(v) => setSel(v)}
+            minWidth={200}
+          />
+          <button className="obs-btn" title="New note" onClick={() => void newNote()}>
+            <Icon name="plus" size={17} />
+          </button>
+          <button className="obs-btn" title="Refresh" onClick={() => notes.reload()}>
+            <Icon name="refresh" size={16} />
+          </button>
+          {sel && (
+            <button className="obs-btn" title="Delete note" onClick={() => void deleteNote(sel)}>
+              <Icon name="trash" size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="obs-view">
+        <div className="obs-viewbar">
+          <span className="obs-viewtitle" title={sel ?? undefined}>
+            {current?.title ?? sel ?? 'No note selected'}
+          </span>
+          <span className="obs-saved">{saved ? 'saved' : 'saving…'}</span>
+        </div>
+        {sel && ready ? (
+          <div className="obs-editor">
+            <WysiwygEditor key={sel} doc={content} onChange={onEdit} />
           </div>
-        </Panel>
-        <PanelResizeHandle className="resize-handle" />
-        <Panel defaultSize={78} minSize={30}>
-          <div className="obs-view">
-            <div className="obs-viewbar">
-              <span className="obs-viewtitle">{sel ?? 'No note selected'}</span>
-              <span className="obs-saved">{saved ? 'saved' : 'saving…'}</span>
-            </div>
-            {sel && ready ? (
-              <div className="obs-editor">
-                <WysiwygEditor key={sel} doc={content} onChange={onEdit} />
-              </div>
-            ) : (
-              <div className="side-term-hint" style={{ padding: 24 }}>
-                {sel ? 'Loading…' : 'Select a note, or press ＋ to create one.'}
-              </div>
-            )}
+        ) : (
+          <div className="side-term-hint" style={{ padding: 24 }}>
+            {sel ? 'Loading…' : 'Select a note, or press ＋ to create one.'}
           </div>
-        </Panel>
-      </PanelGroup>
+        )}
+      </div>
     </div>
   )
 }

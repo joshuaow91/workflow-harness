@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from '../components/Icon'
 import type { TotpAccount } from '@shared/types'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { parseOtp } from '../lib/totp'
@@ -45,7 +46,7 @@ export function TotpSection() {
             onClick={() => void window.api.system.openTotpWindow()}
             title="Open a floating always-on-top window with your codes"
           >
-            ⧉ Open in window
+            <Icon name="diff" size={13} /> Open in window
           </button>
         )}
       </div>

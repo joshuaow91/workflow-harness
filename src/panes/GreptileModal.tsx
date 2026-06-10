@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from '../components/Icon'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
 import type { GreptileThread } from '@shared/types'
@@ -54,7 +55,7 @@ export function GreptileModal({
             {threads.length === 1 ? '' : 's'}
           </span>
           <button className="term-act" style={{ marginLeft: 'auto' }} onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="modal-body greptile-modal-body">
@@ -78,7 +79,7 @@ export function GreptileModal({
                   )}
                   {c?.url && (
                     <button className="greptile-card-open" onClick={() => void window.api.system.openExternal(c.url)}>
-                      open ↗
+                      open <Icon name="external" size={12} />
                     </button>
                   )}
                 </div>

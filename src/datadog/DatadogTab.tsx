@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Icon } from '../components/Icon'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { DatadogDashboard } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
@@ -74,7 +75,7 @@ function DashboardsSection() {
                 onChange={(e) => setQ(e.target.value)}
               />
               <button className="term-act" title="Refresh" onClick={reload}>
-                ↻
+                <Icon name="refresh" size={14} />
               </button>
             </div>
             <div className="dd-list">

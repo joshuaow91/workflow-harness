@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../components/Icon'
 import { createPortal } from 'react-dom'
 import type { SetupCheck } from '@shared/types'
 
@@ -41,10 +42,10 @@ export function SetupModal({ onClose }: { onClose: () => void }) {
               ))}
           </span>
           <button className="term-act" style={{ marginLeft: 'auto' }} onClick={load} title="Re-check">
-            ↻
+            <Icon name="refresh" size={14} />
           </button>
           <button className="term-act" onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="modal-body">

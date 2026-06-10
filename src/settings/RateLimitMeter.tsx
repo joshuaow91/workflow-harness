@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../components/Icon'
 import type { GhRateLimit, GhRateResource } from '@shared/types'
 
 function resetText(reset: number): string {
@@ -64,7 +65,7 @@ export function RateLimitMeter() {
         free (doesn’t count against it). Refreshes every 30s.
       </p>
       <button className="tbtn" onClick={load}>
-        ↻ Refresh
+        <Icon name="refresh" size={14} /> Refresh
       </button>
     </section>
   )

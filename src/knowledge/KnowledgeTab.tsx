@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Icon } from '../components/Icon'
 import mermaid from 'mermaid'
 import type { RepoKnowledge } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
@@ -140,7 +141,7 @@ export function KnowledgeTab() {
                     disabled={busy === repo.path || !!progress}
                     onClick={() => generateOne(repo.path)}
                   >
-                    {busy === repo.path ? '…' : '↻'}
+                    {busy === repo.path ? '…' : <Icon name="refresh" size={14} />}
                   </button>
                 </div>
                 {k ? (

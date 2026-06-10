@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { diffBus } from '../lib/diffBus'
+import { Icon } from '../components/Icon'
 import { DiffPanel } from './DiffPanel'
 
 export function DiffModal({
@@ -24,10 +25,10 @@ export function DiffModal({
               onClose()
             }}
           >
-            Open in Changes tab ↗
+            Open in Changes tab <Icon name="external" size={12} />
           </button>
           <button className="term-act" onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="diff-modal-body">

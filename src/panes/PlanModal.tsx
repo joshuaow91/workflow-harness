@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Icon } from '../components/Icon'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
 
@@ -19,7 +20,7 @@ export function PlanModal({ sessionId, onClose }: { sessionId?: string; onClose:
         <div className="modal-head">
           <span className="modal-title">Plan</span>
           <button className="term-act" onClick={onClose}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         </div>
         <div className="modal-body">

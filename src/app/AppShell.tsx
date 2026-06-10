@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Sidebar } from '../sidebar/Sidebar'
 import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
@@ -9,6 +9,7 @@ import { DiffTab } from '../diff/DiffTab'
 import { DiffModal } from '../diff/DiffModal'
 import { diffBus } from '../lib/diffBus'
 import { DatadogTab } from '../datadog/DatadogTab'
+import { DeployWatchTab } from '../datadog/DeployWatchTab'
 import { ObsidianTab } from '../obsidian/ObsidianTab'
 import { MermaidTab } from '../mermaid/MermaidTab'
 import { MongoTab } from '../mongo/MongoTab'
@@ -31,7 +32,7 @@ type TabId =
   | 'review'
   | 'changes'
   | 'datadog'
-  | 'notes'
+  | 'deploys'
   | 'mermaid'
   | 'mongo'
   | 'knowledge'
@@ -51,7 +52,7 @@ const TABS: TabDef[] = [
   { id: 'review', label: 'Review', icon: 'check' },
   { id: 'changes', label: 'Changes', icon: 'diff' },
   { id: 'datadog', label: 'Datadog', icon: 'chart' },
-  { id: 'notes', label: 'Notes', icon: 'notebook' },
+  { id: 'deploys', label: 'Deploys', icon: 'rocket' },
   { id: 'mermaid', label: 'Diagram', icon: 'diagram' },
   { id: 'mongo', label: 'Mongo', icon: 'database' },
   { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
@@ -69,8 +70,8 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
       return <DiffTab />
     case 'datadog':
       return <DatadogTab />
-    case 'notes':
-      return <ObsidianTab />
+    case 'deploys':
+      return <DeployWatchTab />
     case 'mermaid':
       return <MermaidTab />
     case 'mongo':
@@ -83,12 +84,48 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
 }
 
 export function AppShell() {
-  const [activeTab, setActiveTab] = useState<TabId>(
-    () => (localStorage.getItem('harness:activeTab') as TabId) || 'terminals'
-  )
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const saved = localStorage.getItem('harness:activeTab')
+    // 'notes' is no longer a tab (it's the right sidebar) — don't restore it.
+    return saved && saved !== 'notes' ? (saved as TabId) : 'terminals'
+  })
   useEffect(() => {
     localStorage.setItem('harness:activeTab', activeTab)
   }, [activeTab])
+
+  // Notes live in a collapsible right sidebar, toggled from the titlebar.
+  const [notesOpen, setNotesOpen] = useState(() => localStorage.getItem('harness:notesOpen') === '1')
+  const notesVisited = useRef(notesOpen) // mount the editor once, keep it alive
+  if (notesOpen) notesVisited.current = true
+  useEffect(() => {
+    localStorage.setItem('harness:notesOpen', notesOpen ? '1' : '0')
+  }, [notesOpen])
+
+  const [notesWidth, setNotesWidth] = useState(
+    () => Number(localStorage.getItem('harness:notesWidth')) || 460
+  )
+  useEffect(() => {
+    localStorage.setItem('harness:notesWidth', String(notesWidth))
+  }, [notesWidth])
+
+  // Drag the notes panel's left edge to resize (panel is pinned to the right).
+  const startNotesResize = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    const onMove = (ev: MouseEvent): void =>
+      setNotesWidth(
+        Math.min(Math.max(window.innerWidth - ev.clientX, 280), Math.round(window.innerWidth * 0.7))
+      )
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
   const [setupOpen, setSetupOpen] = useState(false)
   const [diffModal, setDiffModal] = useState<{ path: string; title: string } | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -127,13 +164,23 @@ export function AppShell() {
   }, [settings?.themeName])
 
   return (
-    <div className="shell">
+    <div
+      className={`shell${notesOpen ? ' notes-open' : ''}`}
+      style={{ ['--notes-w']: `${notesWidth}px` } as React.CSSProperties}
+    >
       <div className="titlebar">
         <span className="brand">
           blink<span className="brand-dot">·</span>workflow
         </span>
         <div className="titlebar-right">
           <ThemePicker />
+          <button
+            className={`titlebar-gear${notesOpen ? ' on' : ''}`}
+            onClick={() => setNotesOpen((o) => !o)}
+            title="Notes"
+          >
+            <Icon name="notebook" size={15} />
+          </button>
           <button
             className="titlebar-gear"
             onClick={() => setSetupOpen(true)}
@@ -146,7 +193,7 @@ export function AppShell() {
             onClick={() => setActiveTab('settings')}
             title="Settings"
           >
-            <Icon name="settings" size={15} />
+            <Icon name="cog" size={15} />
           </button>
         </div>
       </div>
@@ -190,6 +237,11 @@ export function AppShell() {
           {activeTab !== 'terminals' && activeTab !== 'browser' && <TabPanel tab={activeTab} />}
         </div>
       </div>
+
+      <aside className="notes-panel" style={{ display: notesOpen ? 'flex' : 'none' }}>
+        <div className="notes-resize" onMouseDown={startNotesResize} title="Drag to resize" />
+        {notesVisited.current && <ObsidianTab />}
+      </aside>
     </div>
   )
 }

@@ -4,6 +4,8 @@ import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
+import { BranchModal } from './BranchModal'
+import { SideSection } from './SideSection'
 import { useRepos } from './useRepos'
 import { useFlatSessions } from './useFlatSessions'
 
@@ -31,7 +33,25 @@ function WorktreeRow({
       await window.api.worktree.remove(repo.path, wt.path)
       onChanged()
     } catch (err) {
-      window.alert(`Could not remove worktree:\n${(err as Error).message}`)
+      // Plain remove refuses a dirty/locked worktree — offer to force.
+      const msg = (err as Error).message
+      const dirty = /not empty|contains modified|locked|use --force|is dirty/i.test(msg)
+      if (
+        dirty &&
+        window.confirm(
+          `This worktree can't be removed cleanly:\n\n${msg.trim()}\n\nForce-remove it? Uncommitted changes here will be discarded.`
+        )
+      ) {
+        try {
+          await window.api.worktree.remove(repo.path, wt.path, true)
+          onChanged()
+          return
+        } catch (err2) {
+          window.alert(`Force-remove failed:\n${(err2 as Error).message}`)
+          return
+        }
+      }
+      window.alert(`Could not remove worktree:\n${msg}`)
     }
   }
 
@@ -64,7 +84,7 @@ function WorktreeRow({
         </button>
         {!wt.isMain && (
           <button className="term-act" title="Remove worktree" onClick={remove}>
-            ✕
+            <Icon name="close" size={13} />
           </button>
         )}
       </div>
@@ -95,6 +115,7 @@ function RepoRow({
   const [branch, setBranch] = useState('')
   const [base, setBase] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showBranches, setShowBranches] = useState(false)
 
   const extraWorktrees = repo.worktrees.filter((w) => !w.isMain).length
   const liveCount = repo.worktrees.filter((w) => liveCwds.has(w.path)).length
@@ -148,11 +169,23 @@ function RepoRow({
         onClick={() => setOpen((v) => !v)}
       >
         <span className={`chev${open ? '' : ' collapsed'}`}>▼</span>
-        <span className="repo-name">{repo.name}</span>
+        <span className="repo-name" title={repo.name}>
+          {repo.name}
+        </span>
         {repo.currentBranch && <span className="repo-branch">{repo.currentBranch}</span>}
         {liveCount > 0 && <span className="repo-live-count">{liveCount} live</span>}
         {extraWorktrees > 0 && <span className="repo-wt-count">{extraWorktrees}⎇</span>}
         <div className="repo-actions">
+          <button
+            className="term-act"
+            title="Manage branches — pull latest & clean up old branches"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowBranches(true)
+            }}
+          >
+            <Icon name="branch" size={13} />
+          </button>
           <button
             className="term-act"
             title="Open claude in the main checkout"
@@ -175,6 +208,10 @@ function RepoRow({
           </button>
         </div>
       </div>
+
+      {showBranches && (
+        <BranchModal repoPath={repo.path} repoName={repo.name} onClose={() => setShowBranches(false)} />
+      )}
 
       {open && (
         <div className="repo-children">
@@ -215,7 +252,7 @@ function RepoRow({
                     setBranch('')
                   }}
                 >
-                  ✕
+                  <Icon name="close" size={13} />
                 </button>
               </div>
               <div className="wt-from">
@@ -280,10 +317,14 @@ export function RepoTree() {
   }
 
   return (
-    <>
-      <button className="side-action" onClick={refresh} title="Rescan repos">
-        ↻ refresh repos
-      </button>
+    <SideSection
+      title="Repos"
+      action={
+        <button className="side-section-icon" onClick={refresh} title="Rescan repos">
+          <Icon name="refresh" size={13} />
+        </button>
+      }
+    >
       {loading ? (
         <div className="side-empty">Scanning repos…</div>
       ) : ordered.length === 0 ? (
@@ -312,6 +353,6 @@ export function RepoTree() {
           />
         ))
       )}
-    </>
+    </SideSection>
   )
 }

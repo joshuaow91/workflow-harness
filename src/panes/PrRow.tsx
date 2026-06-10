@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Icon } from '../components/Icon'
 import type { GreptileThread, PrProjectStatus, SessionRef } from '@shared/types'
 import { Dropdown } from '../components/Dropdown'
 import { GreptileModal } from './GreptileModal'
@@ -71,7 +72,7 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
         `${i + 1}. ${c.path ? `${c.path}:${c.line ?? '?'} — ` : ''}${c.body.replace(/\s+/g, ' ').trim()}`
     )
     const prompt =
-      `Address these Greptile review comments on ${link.repo} PR #${link.number} (${link.url}): ` +
+      `Address these Greptile review comments and determine validity on ${link.repo} PR #${link.number} (${link.url}): ` +
       `${lines.join('   ')}   For each, fix it if it's valid, then reply on the PR comment thread ` +
       `with the disposition (fixed / stale / doesn't apply) and a brief reason.`
     // Stage the prompt in the running session (no auto-submit — you press Enter).
@@ -101,10 +102,7 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
           {copied ? (
             '✓'
           ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
+            <Icon name="copy" size={12} />
           )}
         </button>
       </div>
@@ -120,7 +118,7 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
 
       {isPr && (
         <button className="pr-diff-btn" onClick={() => setShowDiff(true)}>
-          ⧉ View diff
+          <Icon name="diff" size={13} /> View diff
         </button>
       )}
 

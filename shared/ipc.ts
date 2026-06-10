@@ -6,6 +6,7 @@ export const IPC = {
   claude: {
     getProjects: 'claude:getProjects',
     deleteSession: 'claude:deleteSession',
+    killSession: 'claude:killSession',
     sessionTasks: 'claude:sessionTasks',
     sessionLinks: 'claude:sessionLinks',
     sessionPlan: 'claude:sessionPlan',
@@ -16,12 +17,20 @@ export const IPC = {
     add: 'worktree:add',
     remove: 'worktree:remove'
   },
+  branch: {
+    status: 'branch:status',
+    pullDefault: 'branch:pullDefault',
+    checkout: 'branch:checkout',
+    delete: 'branch:delete'
+  },
   terminal: {
     create: 'terminal:create',
     write: 'terminal:write',
     resize: 'terminal:resize',
     kill: 'terminal:kill',
     getBuffer: 'terminal:getBuffer',
+    saveLayout: 'terminal:saveLayout',
+    getLayout: 'terminal:getLayout',
     data: 'terminal:data', // main -> renderer push
     exit: 'terminal:exit' // main -> renderer push
   },
@@ -38,6 +47,8 @@ export const IPC = {
     prDiff: 'github:prDiff',
     resolveThread: 'github:resolveThread',
     deferThread: 'github:deferThread',
+    prsInRange: 'github:prsInRange',
+    prFiles: 'github:prFiles',
     enrichLinks: 'github:enrichLinks',
     issueDetail: 'github:issueDetail',
     addComment: 'github:addComment',
@@ -72,7 +83,10 @@ export const IPC = {
     set: 'settings:set'
   },
   datadog: {
-    listDashboards: 'datadog:listDashboards'
+    listDashboards: 'datadog:listDashboards',
+    deploys: 'datadog:deploys',
+    deployHealth: 'datadog:deployHealth',
+    deployHotspots: 'datadog:deployHotspots'
   },
   obsidian: {
     listNotes: 'obsidian:listNotes',

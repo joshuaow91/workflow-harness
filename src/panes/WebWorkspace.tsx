@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../components/Icon'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { AgentActivity } from '@shared/types'
 import { browserRouter } from '../lib/browserRouter'
@@ -201,7 +202,7 @@ export function WebWorkspace() {
                       closeTab(t.id)
                     }}
                   >
-                    ✕
+                    <Icon name="close" size={13} />
                   </button>
                 </div>
               ))}
@@ -366,7 +367,7 @@ function SidePaneFragment({
           <div className="side-browser">
             <WebFrame src={browserUrl} onActivate={onActivate} />
             <button className="side-browser-close term-act" title="Close" onClick={onClose}>
-              ✕
+              <Icon name="close" size={13} />
             </button>
           </div>
         )}

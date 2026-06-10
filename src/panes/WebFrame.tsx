@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Icon } from '../components/Icon'
 import type { BrowserHistoryEntry } from '@shared/types'
 import type { WebviewElement } from '../webview'
 import { normalizeInput } from '../lib/url'
@@ -133,7 +134,7 @@ export function WebFrame({
           onClick={() => (loading ? ref.current?.stop() : ref.current?.reload())}
           title={loading ? 'Stop' : 'Reload'}
         >
-          {loading ? '✕' : '↻'}
+          {loading ? <Icon name="close" size={13} /> : <Icon name="refresh" size={14} />}
         </button>
         <div className="address-wrap">
           <input

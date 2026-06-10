@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
+import { Icon } from '../components/Icon'
 import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
 import { focusTerminal } from '../lib/terminalFocus'
 import { TerminalPane } from './TerminalPane'
@@ -158,11 +159,11 @@ export function PaneGrid({
               <div className="term-panel-actions">
                 {pane.browserUrl == null && (
                   <button className="term-act" title="Restart pane" onClick={() => onRestart(pane.paneId)}>
-                    ↻
+                    <Icon name="refresh" size={14} />
                   </button>
                 )}
                 <button className="term-act" title="Close pane" onClick={() => onClose(pane.paneId)}>
-                  ✕
+                  <Icon name="close" size={13} />
                 </button>
               </div>
             </div>

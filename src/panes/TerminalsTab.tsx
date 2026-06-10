@@ -140,73 +140,103 @@ export function TerminalsTab() {
   }
   useEffect(() => terminalBus.subscribe((opts) => void openTab(opts)), [])
 
-  // Restore the saved tab/pane/layout on first mount (re-launches each pane's
-  // command, e.g. claude --resume <id> or a shell).
+  type SavedPane = TerminalSpawnOptions & { _b?: string }
+  type SavedLayout = {
+    activeIndex?: number
+    tabs?: { name: string; layout: Layout; panes: SavedPane[] }[]
+  }
+
+  const [restoreErr, setRestoreErr] = useState<string | null>(null)
+
+  // Rebuild tabs/panes from a saved layout, re-launching each pane's command.
+  // Which saved sessions have a real conversation (messageCount > 0)? Only those
+  // are resumable — a title-only stub exists on disk but `claude --resume` fails
+  // "No conversation found", and `--session-id` on its id fails "already in use".
+  // So: resumable -> --resume; anything else (stub/missing) -> a fresh id.
+  const restoreLayout = async (saved: SavedLayout | null): Promise<void> => {
+    if (!saved?.tabs?.length) return
+    const resumable = new Set<string>()
+    try {
+      const projects = await window.api.claude.getProjects()
+      for (const p of projects) for (const s of p.sessions) if (s.messageCount > 0) resumable.add(s.sessionId)
+    } catch {
+      /* ignore */
+    }
+    const rebuilt: Tab[] = []
+    for (const st of saved.tabs) {
+      const panes: Pane[] = []
+      for (const raw of st.panes) {
+        const { _b, ...opts } = raw
+        if (_b) {
+          panes.push({ paneId: paneCounter.current++, terminalId: '', opts, browserUrl: _b })
+          continue
+        }
+        const id = opts.initialCommand?.match(/--(?:session-id|resume)\s+(\S+)/)?.[1]
+        let initialCommand = opts.initialCommand
+        if (id)
+          initialCommand = resumable.has(id)
+            ? opts.initialCommand?.replace(/--session-id(\s+\S+)/, '--resume$1')
+            : opts.initialCommand?.replace(/--(?:session-id|resume)\s+\S+/, `--session-id ${crypto.randomUUID()}`)
+        panes.push(await makePane({ ...opts, initialCommand }))
+      }
+      rebuilt.push({ id: tabCounter.current++, name: st.name, layout: st.layout, panes })
+    }
+    if (rebuilt.length) {
+      setTabs(rebuilt)
+      setActiveId(rebuilt[Math.min(saved.activeIndex ?? 0, rebuilt.length - 1)].id)
+    }
+  }
+
+  // Manual recovery: prefer the disk backup (survives an HMR/localStorage wipe),
+  // fall back to localStorage. Surfaced via "Restore last layout" in the empty state.
+  const restoreLast = async (): Promise<void> => {
+    setRestoreErr(null)
+    try {
+      const json = (await window.api.terminal.getLayout()) || localStorage.getItem('harness:terminals') || ''
+      const saved = json ? (JSON.parse(json) as SavedLayout) : null
+      if (!saved?.tabs?.length) {
+        setRestoreErr('No saved layout found.')
+        return
+      }
+      await restoreLayout(saved)
+    } catch (e) {
+      setRestoreErr((e as Error).message)
+    }
+  }
+
+  // Restore the saved tab/pane/layout on first mount.
   const hydrated = useRef(false)
   useEffect(() => {
     if (hydrated.current) return
     hydrated.current = true
-    type SavedPane = TerminalSpawnOptions & { _b?: string }
-    let saved: { activeIndex?: number; tabs?: { name: string; layout: Layout; panes: SavedPane[] }[] } | null
+    let saved: SavedLayout | null
     try {
       saved = JSON.parse(localStorage.getItem('harness:terminals') || 'null')
     } catch {
       saved = null
     }
-    if (!saved?.tabs?.length) return
-    void (async () => {
-      // Which saved sessions have a real conversation (messageCount > 0)? Only
-      // those are resumable — a title-only stub exists on disk but `claude
-      // --resume` fails "No conversation found", and `--session-id` on its id
-      // fails "already in use". So: resumable -> --resume; anything else (stub
-      // or missing) -> a fresh session with a brand-new id.
-      const resumable = new Set<string>()
-      try {
-        const projects = await window.api.claude.getProjects()
-        for (const p of projects) for (const s of p.sessions) if (s.messageCount > 0) resumable.add(s.sessionId)
-      } catch {
-        /* ignore */
-      }
-      const rebuilt: Tab[] = []
-      for (const st of saved.tabs ?? []) {
-        const panes: Pane[] = []
-        for (const raw of st.panes) {
-          const { _b, ...opts } = raw
-          if (_b) {
-            panes.push({ paneId: paneCounter.current++, terminalId: '', opts, browserUrl: _b })
-            continue
-          }
-          const id = opts.initialCommand?.match(/--(?:session-id|resume)\s+(\S+)/)?.[1]
-          let initialCommand = opts.initialCommand
-          if (id)
-            initialCommand = resumable.has(id)
-              ? opts.initialCommand?.replace(/--session-id(\s+\S+)/, '--resume$1')
-              : opts.initialCommand?.replace(/--(?:session-id|resume)\s+\S+/, `--session-id ${crypto.randomUUID()}`)
-          panes.push(await makePane({ ...opts, initialCommand }))
-        }
-        rebuilt.push({ id: tabCounter.current++, name: st.name, layout: st.layout, panes })
-      }
-      if (rebuilt.length) {
-        setTabs(rebuilt)
-        setActiveId(rebuilt[Math.min(saved!.activeIndex ?? 0, rebuilt.length - 1)].id)
-      }
-    })()
+    void restoreLayout(saved)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Persist the layout (without runtime ids).
   useEffect(() => {
+    // Never persist an empty layout: a Fast-Refresh remount (HMR) momentarily
+    // resets `tabs` to [], and saving that would wipe the real saved layout.
+    // Closing the last tab simply leaves the prior layout saved — acceptable.
+    if (tabs.length === 0) return
     try {
-      localStorage.setItem(
-        'harness:terminals',
-        JSON.stringify({
-          activeIndex: tabs.findIndex((t) => t.id === activeId),
-          tabs: tabs.map((t) => ({
-            name: t.name,
-            layout: t.layout,
-            panes: t.panes.map((p) => (p.browserUrl ? { ...p.opts, _b: p.browserUrl } : p.opts))
-          }))
-        })
-      )
+      const json = JSON.stringify({
+        activeIndex: tabs.findIndex((t) => t.id === activeId),
+        tabs: tabs.map((t) => ({
+          name: t.name,
+          layout: t.layout,
+          panes: t.panes.map((p) => (p.browserUrl ? { ...p.opts, _b: p.browserUrl } : p.opts))
+        }))
+      })
+      localStorage.setItem('harness:terminals', json)
+      // Mirror to a durable disk backup so an HMR/localStorage wipe is recoverable.
+      void window.api.terminal.saveLayout(json)
     } catch {
       /* ignore */
     }
@@ -414,7 +444,7 @@ export function TerminalsTab() {
                 closeTab(tab.id)
               }}
             >
-              ✕
+              <Icon name="close" size={13} />
             </button>
           </div>
         ))}
@@ -484,6 +514,14 @@ export function TerminalsTab() {
             Click a session in the sidebar to open it as a tab, or press ＋ for a new shell. Split a
             tab into panes with “Split pane”.
           </div>
+          <button className="tbtn" style={{ marginTop: 12 }} onClick={() => void restoreLast()}>
+            <Icon name="refresh" size={14} /> Restore last layout
+          </button>
+          {restoreErr && (
+            <div className="ph-sub" style={{ marginTop: 6, opacity: 0.8 }}>
+              {restoreErr}
+            </div>
+          )}
         </div>
       )}
     </div>
