@@ -5,3 +5,6 @@ out/
 .DS_Store
 .vite/
 .electron-vite/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
