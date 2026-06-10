@@ -207,9 +207,15 @@ export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> 
   const cached = linkCache.get(file)
   if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) return cached.refs
 
-  const owners = new Set(
-    (await discoverRepos()).map((r) => r.nameWithOwner?.split('/')[0]).filter(Boolean) as string[]
-  )
+  const repos = await discoverRepos()
+  const owners = new Set(repos.map((r) => r.nameWithOwner?.split('/')[0]).filter(Boolean) as string[])
+  // Resolve a cwd to its repo's owner/name (longest path wins), for `gh … view N`
+  // commands that omit -R and rely on the working directory.
+  const repoByPath = repos.filter((r) => r.nameWithOwner).sort((a, b) => b.path.length - a.path.length)
+  const repoForCwd = (cwd: string): string | null => {
+    for (const r of repoByPath) if (cwd === r.path || cwd.startsWith(r.path + '/')) return r.nameWithOwner!
+    return null
+  }
   const prs = new Map<string, SessionRef>()
   const issues = new Map<string, SessionRef>()
 
@@ -255,6 +261,32 @@ export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> 
     const ref: SessionRef = { kind: isPr ? 'pr' : 'issue', repo: `${owner}/${repo}`, number: Number(num), url }
     const bucket = isPr ? prs : issues
     if (!bucket.has(url)) bucket.set(url, ref)
+  }
+
+  // `gh issue|pr view N` WITHOUT -R: resolve the repo from that line's cwd, so an
+  // agent that ran `gh issue view 5095` inside a repo still links the issue.
+  const GH_NOREPO_RE = /gh\s+(issue|pr)\s+view\s+(\d+)/g
+  for (const line of raw.split('\n')) {
+    if (!line.includes('gh ') || !line.includes('view')) continue
+    let o: { cwd?: string }
+    try {
+      o = JSON.parse(line)
+    } catch {
+      continue
+    }
+    if (!o.cwd) continue
+    const nwo = repoForCwd(o.cwd)
+    if (!nwo) continue
+    GH_NOREPO_RE.lastIndex = 0
+    let gm: RegExpExecArray | null
+    while ((gm = GH_NOREPO_RE.exec(line))) {
+      if (/^\s*(?:-R|--repo)\b/.test(line.slice(gm.index + gm[0].length))) continue // -R form handled above
+      const isPr = gm[1] === 'pr'
+      const url = `https://github.com/${nwo}/${isPr ? 'pull' : 'issues'}/${gm[2]}`
+      const bucket = isPr ? prs : issues
+      if (!bucket.has(url))
+        bucket.set(url, { kind: isPr ? 'pr' : 'issue', repo: nwo, number: Number(gm[2]), url })
+    }
   }
 
   // Anchor the "primary" ref: the issue/PR named in the FIRST real user message
