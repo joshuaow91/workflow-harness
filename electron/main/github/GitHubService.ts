@@ -224,6 +224,27 @@ async function cachedMeta<T>(key: string, fetch: () => Promise<T>): Promise<T> {
   return data
 }
 
+// "My activity this week" for the header bar — cached 10 min (3 cheap searches).
+let statsCache: { at: number; data: import('@shared/types').WeeklyStats } | null = null
+export async function weeklyStats(): Promise<import('@shared/types').WeeklyStats> {
+  if (statsCache && Date.now() - statsCache.at < 600000) return statsCache.data
+  const now = new Date()
+  const back = (now.getDay() + 6) % 7 // days since Monday
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back)
+  const since = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`
+  const count = (args: string[]): Promise<number> =>
+    ghJson<unknown[]>(args)
+      .then((r) => r.length)
+      .catch(() => 0)
+  const [merged, open, toReview] = await Promise.all([
+    count(['search', 'prs', `author:@me`, `merged:>=${since}`, '--limit', '100', '--json', 'number']),
+    count(['search', 'prs', '--author=@me', '--state=open', '--limit', '100', '--json', 'number']),
+    count(['search', 'prs', '--review-requested=@me', '--state=open', '--limit', '100', '--json', 'number'])
+  ])
+  statsCache = { at: Date.now(), data: { merged, open, toReview } }
+  return statsCache.data
+}
+
 export async function rateLimit(): Promise<import('@shared/types').GhRateLimit> {
   const out = await ghJson<{ resources: Record<string, { remaining: number; limit: number; reset: number }> }>([
     'api',

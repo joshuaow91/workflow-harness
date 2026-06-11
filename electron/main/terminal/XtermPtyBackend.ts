@@ -30,6 +30,10 @@ class PtySession implements BackendSession {
     }
   }
 
+  get pid(): number {
+    return this.proc.pid
+  }
+
   write(data: string): void {
     this.proc.write(data)
   }

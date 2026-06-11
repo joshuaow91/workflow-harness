@@ -501,6 +501,16 @@ export interface GreptileReview {
   threads: GreptileThread[]
 }
 
+/** Lightweight "my activity" counters for the header bar (cached in main). */
+export interface WeeklyStats {
+  /** PRs I authored that merged since Monday. */
+  merged: number
+  /** My open PRs (org-wide). */
+  open: number
+  /** PRs awaiting my review. */
+  toReview: number
+}
+
 export interface GhRateResource {
   remaining: number
   limit: number

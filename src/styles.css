@@ -5756,3 +5756,23 @@ button {
 }
 
 .diff-repo-dd { margin-left: 12px; }
+
+/* Titlebar "my activity this week" chips */
+.header-stats { display: flex; align-items: center; gap: 4px; margin-right: 8px; }
+.hstat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hstat b { color: var(--text); font-size: 12px; }
+.hstat:hover { background: var(--surface-2); border-color: var(--accent); }
+.hstat.alert b { color: #e0a93f; }
+.hstat.alert { border-color: rgba(224, 169, 63, 0.5); }

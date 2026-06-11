@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
@@ -23,15 +23,28 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   const sessions = useFlatSessions()
   const { repos } = useRepos()
 
-  // The pane's sessionId is frozen at launch, but `/clear` makes the same claude
-  // process (same pid) start a NEW session. Track the live pid so we follow the
-  // current conversation instead of showing the cleared one's stale tasks/links.
-  const pidRef = useRef<number | null>(null)
-  const launch = sessions.find((s) => s.sessionId === sessionId)
-  if (launch?.live?.pid != null) pidRef.current = launch.live.pid
-  const liveOnPid =
-    pidRef.current != null ? sessions.find((s) => s.live?.pid === pidRef.current) : undefined
-  const sid = liveOnPid?.sessionId ?? sessionId
+  // The pane's sessionId is frozen at launch, but `/clear` starts a NEW session id
+  // inside the same pty. Resolve the session actually running in this terminal (by
+  // walking the pty's process tree in main) so we always show the current
+  // conversation, not the pre-clear one. Falls back to the launch id.
+  const [resolvedSid, setResolvedSid] = useState<string | null>(null)
+  useEffect(() => {
+    if (!terminalId) {
+      setResolvedSid(null)
+      return
+    }
+    let active = true
+    const resolve = (): void => {
+      void window.api.terminal.sessionFor(terminalId).then((s) => active && setResolvedSid(s))
+    }
+    resolve()
+    const iv = setInterval(resolve, 4000) // catch /clear promptly
+    return () => {
+      active = false
+      clearInterval(iv)
+    }
+  }, [terminalId])
+  const sid = resolvedSid ?? sessionId
 
   // Resolve the (effective) session's cwd/title (for "View diff").
   const session = sessions.find((s) => s.sessionId === sid)

@@ -17,6 +17,7 @@ import { KnowledgeTab } from '../knowledge/KnowledgeTab'
 import { SettingsTab } from '../settings/SettingsTab'
 import { SetupModal } from './SetupModal'
 import { CommandPalette } from './CommandPalette'
+import { HeaderStats } from './HeaderStats'
 import { ThemePicker } from '../themes/ThemePicker'
 import { themeStore } from '../themes/themeStore'
 import { Icon } from '../components/Icon'
@@ -173,6 +174,7 @@ export function AppShell() {
           blink<span className="brand-dot">·</span>workflow
         </span>
         <div className="titlebar-right">
+          <HeaderStats onNav={(t) => setActiveTab(t as TabId)} />
           <ThemePicker />
           <button
             className={`titlebar-gear${notesOpen ? ' on' : ''}`}

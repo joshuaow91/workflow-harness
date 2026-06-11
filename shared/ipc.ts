@@ -31,6 +31,7 @@ export const IPC = {
     getBuffer: 'terminal:getBuffer',
     saveLayout: 'terminal:saveLayout',
     getLayout: 'terminal:getLayout',
+    sessionFor: 'terminal:sessionFor',
     data: 'terminal:data', // main -> renderer push
     exit: 'terminal:exit' // main -> renderer push
   },
@@ -50,6 +51,7 @@ export const IPC = {
     prsInRange: 'github:prsInRange',
     prFiles: 'github:prFiles',
     enrichLinks: 'github:enrichLinks',
+    weeklyStats: 'github:weeklyStats',
     issueDetail: 'github:issueDetail',
     addComment: 'github:addComment',
     setIssueState: 'github:setIssueState',

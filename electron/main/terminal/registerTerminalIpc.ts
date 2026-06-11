@@ -1,10 +1,63 @@
-import { readFileSync, writeFileSync } from 'fs'
+import { execFile } from 'child_process'
+import { readFileSync, readdirSync, writeFileSync } from 'fs'
+import { homedir } from 'os'
 import { join } from 'path'
+import { promisify } from 'util'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { TerminalSpawnOptions } from '@shared/types'
 import type { BackendSession } from './TerminalBackend'
 import { XtermPtyBackend } from './XtermPtyBackend'
+
+const pexec = promisify(execFile)
+
+// Resolve the claude session currently running inside a pty (by its pid). Walks
+// the process tree so it stays correct across `/clear` (which spawns a new
+// session id on the same pty) — far more robust than the renderer guessing.
+async function sessionForPtyPid(ptyPid: number): Promise<string | null> {
+  const sdir = join(homedir(), '.claude', 'sessions')
+  const live: { pid: number; sessionId: string; updatedAt: number }[] = []
+  try {
+    for (const f of readdirSync(sdir)) {
+      if (!f.endsWith('.json')) continue
+      try {
+        const o = JSON.parse(readFileSync(join(sdir, f), 'utf8')) as {
+          pid?: number
+          sessionId?: string
+          updatedAt?: number
+        }
+        if (o.sessionId && typeof o.pid === 'number')
+          live.push({ pid: o.pid, sessionId: o.sessionId, updatedAt: o.updatedAt ?? 0 })
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    return null
+  }
+  if (!live.length) return null
+
+  const ppid: Record<number, number> = {}
+  try {
+    const { stdout } = await pexec('ps', ['-axo', 'pid=,ppid='])
+    for (const line of stdout.split('\n')) {
+      const m = line.trim().match(/^(\d+)\s+(\d+)$/)
+      if (m) ppid[Number(m[1])] = Number(m[2])
+    }
+  } catch {
+    return null
+  }
+  const isDescendant = (pid: number): boolean => {
+    let p = pid
+    for (let n = 0; p && p !== 1 && n < 50; n++) {
+      if (p === ptyPid) return true
+      p = ppid[p]
+    }
+    return false
+  }
+  const matches = live.filter((s) => isDescendant(s.pid)).sort((a, b) => b.updatedAt - a.updatedAt)
+  return matches[0]?.sessionId ?? null
+}
 
 // Single backend instance (the Ghostty seam point). Swap this construction to
 // change the terminal engine app-wide.
@@ -42,6 +95,11 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
   })
 
   ipcMain.handle(IPC.terminal.getBuffer, (_e, id: string): string => buffers.get(id) ?? '')
+
+  ipcMain.handle(IPC.terminal.sessionFor, (_e, id: string): Promise<string | null> => {
+    const s = sessions.get(id)
+    return s ? sessionForPtyPid(s.pid) : Promise.resolve(null)
+  })
 
   // Durable layout backup on disk, mirroring the renderer's localStorage. Survives
   // an HMR/state wipe so the layout can always be recovered (see getLayout below).

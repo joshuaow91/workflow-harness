@@ -55,6 +55,14 @@ export async function getSessionTasks(sessionId: string): Promise<SessionTask[]>
     for await (const raw of rl) {
       const line = raw.trim()
       if (!line) continue
+      // `/clear` wipes the conversation context in place (same session id/file),
+      // so drop everything parsed before it — only the post-clear plan is current.
+      if (line.includes('/clear</command-name>')) {
+        tasks.length = 0
+        byId.clear()
+        byToolUse.clear()
+        continue
+      }
       let o: { message?: { content?: unknown } }
       try {
         o = JSON.parse(line)
@@ -224,6 +232,16 @@ export async function getSessionLinks(sessionId: string): Promise<SessionRef[]> 
     raw = readFileSync(file, 'utf8')
   } catch {
     return []
+  }
+
+  // `/clear` starts a fresh context in the same transcript — only link the
+  // issues/PRs from the latest segment (after the last /clear), not the whole file.
+  {
+    const lines = raw.split('\n')
+    let lastClear = -1
+    for (let i = 0; i < lines.length; i++)
+      if (lines[i].includes('/clear</command-name>')) lastClear = i
+    if (lastClear >= 0) raw = lines.slice(lastClear + 1).join('\n')
   }
 
   // Authoritative PRs from pr-link entries.

@@ -90,9 +90,17 @@ export async function pullDefault(repoPath: string): Promise<void> {
   const current = await tryGit(repoPath, ['symbolic-ref', '--short', 'HEAD'])
   await tryGit(repoPath, ['fetch', '--prune', '--quiet'])
   if (current === def) {
-    await git(repoPath, ['pull', '--ff-only'])
+    // Use an explicit fast-forward merge rather than `git pull` (which honors a
+    // user's pull.rebase=true and errors cryptically on a dirty tree).
+    const dirty = ((await tryGit(repoPath, ['status', '--porcelain'])) ?? '').trim()
+    try {
+      await git(repoPath, ['merge', '--ff-only', `origin/${def}`])
+    } catch (e) {
+      if (dirty) throw new Error(`Uncommitted changes on ${def} — commit or stash before pulling.`)
+      throw new Error(((e as { stderr?: string }).stderr ?? (e as Error).message).trim() || 'Pull failed')
+    }
   } else {
-    // Fails (non-fast-forward) only if local default diverged — surfaced to the user.
+    // Fast-forward the local default in place; fails only if it diverged.
     await git(repoPath, ['fetch', 'origin', `${def}:${def}`])
   }
 }

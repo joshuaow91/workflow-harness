@@ -32,15 +32,15 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     fit.fit()
 
     // Shift+Enter -> insert a newline so claude's prompt accepts multi-line input.
-    // When the app has bracketed-paste mode on (claude's prompt), inject the
-    // newline as a 1-char bracketed paste — identical to how a real multi-line
-    // paste inserts newlines, so it stays reliable right after a paste (the bare
-    // `\x1b\r` Meta+Enter gets mis-parsed as a submit in that case). Falls back to
-    // Meta+Enter (ESC+CR) at a raw shell, where bracketed paste is off.
+    // Route it through xterm's OWN paste pipeline (term.paste) rather than a direct
+    // write: that orders it after any in-flight paste and reuses the exact path a
+    // real multi-line paste uses, so it stays reliable right after a paste (a
+    // direct ESC+CR could be mis-parsed as a submit there). Falls back to Meta+
+    // Enter (ESC+CR) at a raw shell, where bracketed paste is off.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
-        const bracketed = term.modes.bracketedPasteMode
-        window.api.terminal.write(id, bracketed ? '\x1b[200~\n\x1b[201~' : '\x1b\r')
+        if (term.modes.bracketedPasteMode) term.paste('\n')
+        else window.api.terminal.write(id, '\x1b\r')
         return false
       }
       return true

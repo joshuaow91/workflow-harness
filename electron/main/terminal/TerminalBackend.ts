@@ -10,6 +10,8 @@ import type { TerminalSpawnOptions } from '@shared/types'
 
 export interface BackendSession {
   readonly id: string
+  /** OS process id of the pty's shell — used to resolve the live claude session. */
+  readonly pid: number
   write(data: string): void
   resize(cols: number, rows: number): void
   kill(): void

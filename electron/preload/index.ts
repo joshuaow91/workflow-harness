@@ -19,6 +19,7 @@ import type {
   GhIssueDetail,
   GhIssueEdit,
   GhRateLimit,
+  WeeklyStats,
   GreptileReview,
   PrInRange,
   PrProjectStatus,
@@ -84,6 +85,8 @@ const api = {
     getBuffer: (id: string): Promise<string> => ipcRenderer.invoke(IPC.terminal.getBuffer, id),
     saveLayout: (json: string): Promise<void> => ipcRenderer.invoke(IPC.terminal.saveLayout, json),
     getLayout: (): Promise<string> => ipcRenderer.invoke(IPC.terminal.getLayout),
+    sessionFor: (id: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.terminal.sessionFor, id),
     write: (id: string, data: string): void => {
       ipcRenderer.send(IPC.terminal.write, id, data)
     },
@@ -107,6 +110,7 @@ const api = {
       ipcRenderer.invoke(IPC.github.setIssueState, repo, number, action),
     fetchAsset: (url: string): Promise<string> => ipcRenderer.invoke(IPC.github.fetchAsset, url),
     rateLimit: (): Promise<GhRateLimit> => ipcRenderer.invoke(IPC.github.rateLimit),
+    weeklyStats: (): Promise<WeeklyStats> => ipcRenderer.invoke(IPC.github.weeklyStats),
     repoLabels: (repo: string): Promise<{ name: string; color: string }[]> =>
       ipcRenderer.invoke(IPC.github.repoLabels, repo),
     repoAssignees: (repo: string): Promise<string[]> =>
