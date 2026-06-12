@@ -177,10 +177,10 @@ export function Sidebar() {
     }
   }
 
-  // Terminate a live session's process — frees an idle session; the conversation
-  // stays on disk and is resumable.
-  const killSession = (pid: number): void => {
-    void window.api.claude.killSession(pid)
+  // Close a live session — terminates all its processes (some sessions span
+  // several panes); the conversation stays on disk and is resumable.
+  const killSession = (sessionId: string): void => {
+    void window.api.claude.killSession(sessionId)
   }
 
   return (
@@ -239,7 +239,7 @@ export function Sidebar() {
                   })
                 }}
                 onKill={() => {
-                  if (s.live) killSession(s.live.pid)
+                  if (s.live) killSession(s.sessionId)
                 }}
               />
             ))}
@@ -264,7 +264,7 @@ export function Sidebar() {
           items={[
             { label: 'Rename', onClick: () => startRename(menu) },
             ...(menu.pid != null
-              ? [{ label: 'Kill session', onClick: () => menu.pid != null && killSession(menu.pid) }]
+              ? [{ label: 'Kill session', onClick: () => killSession(menu.sessionId) }]
               : []),
             { label: 'Delete', danger: true, onClick: () => deleteSession(menu) }
           ]}

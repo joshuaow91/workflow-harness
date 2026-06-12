@@ -52,7 +52,8 @@ const api = {
     getProjects: (): Promise<ClaudeProject[]> => ipcRenderer.invoke(IPC.claude.getProjects),
     deleteSession: (slug: string, sessionId: string): Promise<void> =>
       ipcRenderer.invoke(IPC.claude.deleteSession, slug, sessionId),
-    killSession: (pid: number): Promise<void> => ipcRenderer.invoke(IPC.claude.killSession, pid),
+    killSession: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.claude.killSession, sessionId),
     sessionTasks: (sessionId: string): Promise<SessionTask[]> =>
       ipcRenderer.invoke(IPC.claude.sessionTasks, sessionId),
     sessionLinks: (sessionId: string): Promise<SessionRef[]> =>

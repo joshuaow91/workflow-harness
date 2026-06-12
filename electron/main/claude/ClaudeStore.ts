@@ -28,6 +28,35 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
+/** Every alive process whose session file carries this sessionId (a session can
+ * have several when it was opened in multiple panes). */
+async function pidsForSession(sessionId: string): Promise<number[]> {
+  let files: string[]
+  try {
+    files = await readdir(SESSIONS_DIR)
+  } catch {
+    return []
+  }
+  const pids: number[] = []
+  await Promise.all(
+    files
+      .filter((f) => f.endsWith('.json'))
+      .map(async (f) => {
+        try {
+          const o = JSON.parse(await readFile(join(SESSIONS_DIR, f), 'utf8')) as {
+            sessionId?: string
+            pid?: number
+          }
+          if (o.sessionId === sessionId && typeof o.pid === 'number' && isProcessAlive(o.pid))
+            pids.push(o.pid)
+        } catch {
+          /* ignore */
+        }
+      })
+  )
+  return [...new Set(pids)]
+}
+
 /** Map of sessionId -> live info, for sessions whose pid is an alive process. */
 async function readLiveSessions(): Promise<Map<string, LiveInfo>> {
   const live = new Map<string, LiveInfo>()
@@ -146,15 +175,35 @@ export function registerClaudeIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.claude.deleteSession, (_e, slug: string, sessionId: string) =>
     activeProvider().deleteSession(slug, sessionId)
   )
-  // Kill a live session's process (frees an idle session). The conversation stays
-  // on disk and is resumable; only the running process is terminated.
-  ipcMain.handle(IPC.claude.killSession, (_e, pid: number) => {
-    try {
-      process.kill(pid, 'SIGTERM')
-    } catch {
-      /* already gone */
+  // Close a live session: terminate ALL its processes (a session opened in several
+  // panes has several) so the row reliably flips to dormant. The conversation
+  // stays on disk and is resumable; only the running processes are killed.
+  ipcMain.handle(IPC.claude.killSession, async (_e, sessionId: string) => {
+    const pids = await pidsForSession(sessionId)
+    for (const p of pids) {
+      try {
+        process.kill(p, 'SIGTERM')
+      } catch {
+        /* gone */
+      }
     }
-    pushUpdate() // refresh the sidebar so the row flips to dormant
+    // A busy claude can catch SIGTERM and linger, and an immediate refresh races
+    // the processes actually dying — so escalate to SIGKILL for any survivors,
+    // then refresh once they're truly gone.
+    const settle = (): void => {
+      for (const p of pids) {
+        if (isProcessAlive(p)) {
+          try {
+            process.kill(p, 'SIGKILL')
+          } catch {
+            /* gone */
+          }
+        }
+      }
+      pushUpdate()
+    }
+    setTimeout(settle, 1500)
+    pushUpdate() // optimistic immediate refresh
   })
   ipcMain.handle(IPC.claude.sessionTasks, (_e, sessionId: string) => activeProvider().sessionTasks(sessionId))
   ipcMain.handle(IPC.claude.sessionLinks, (_e, sessionId: string) => activeProvider().sessionLinks(sessionId))
