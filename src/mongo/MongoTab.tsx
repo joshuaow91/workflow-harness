@@ -6,6 +6,84 @@ import { Dropdown } from '../components/Dropdown'
 const SYSTEM_DBS = ['admin', 'local', 'config']
 type Op = 'find' | 'aggregate'
 
+// ---- Compass-style document rendering (relaxed EJSON from main) ----
+
+type Obj = Record<string, unknown>
+const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v)
+const isOid = (v: unknown): v is { $oid: string } =>
+  isObj(v) && typeof v.$oid === 'string' && Object.keys(v).length === 1
+const isDate = (v: unknown): v is { $date: unknown } =>
+  isObj(v) && '$date' in v && Object.keys(v).length === 1
+const isLong = (v: unknown): v is { $numberLong: string } => isObj(v) && typeof v.$numberLong === 'string'
+const isDecimal = (v: unknown): v is { $numberDecimal: string } =>
+  isObj(v) && typeof v.$numberDecimal === 'string'
+const isLeaf = (v: unknown): boolean =>
+  v === null || typeof v !== 'object' || isOid(v) || isDate(v) || isLong(v) || isDecimal(v)
+
+function dateStr(d: unknown): string {
+  if (typeof d === 'string') return d.replace('T', ' ').replace(/\.\d+Z$/, '')
+  if (isObj(d) && typeof d.$numberLong === 'string')
+    return new Date(Number(d.$numberLong)).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
+  return String(d)
+}
+
+function Scalar({ value }: { value: unknown }) {
+  if (value === null) return <span className="mv-null">null</span>
+  if (isOid(value)) return <span className="mv-oid">ObjectId(&apos;{value.$oid}&apos;)</span>
+  if (isDate(value)) return <span className="mv-date">{dateStr(value.$date)}</span>
+  if (isLong(value)) return <span className="mv-num">{value.$numberLong}</span>
+  if (isDecimal(value)) return <span className="mv-num">{value.$numberDecimal}</span>
+  if (typeof value === 'string') return <span className="mv-str">&quot;{value}&quot;</span>
+  if (typeof value === 'number') return <span className="mv-num">{value}</span>
+  if (typeof value === 'boolean') return <span className="mv-bool">{String(value)}</span>
+  return <span className="mv-str">{String(value)}</span>
+}
+
+function Node({ k, value, depth }: { k: string | number; value: unknown; depth: number }) {
+  const [open, setOpen] = useState(false)
+  if (isLeaf(value)) {
+    return (
+      <div className="mongo-field" style={{ paddingLeft: 10 + depth * 14 }}>
+        <span className="mk">{k}</span>
+        <span className="mc">:</span> <Scalar value={value} />
+      </div>
+    )
+  }
+  const arr = Array.isArray(value)
+  const entries: [string | number, unknown][] = arr
+    ? (value as unknown[]).map((v, i) => [i, v])
+    : Object.entries(value as Obj)
+  const typeLabel = arr ? `Array (${entries.length})` : `Object (${entries.length})`
+  return (
+    <>
+      <div
+        className="mongo-field expandable"
+        style={{ paddingLeft: 10 + depth * 14 }}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="mtri">{open ? '▾' : '▸'}</span>
+        <span className="mk">{k}</span>
+        <span className="mc">:</span> <span className="mtype">{typeLabel}</span>
+      </div>
+      {open && entries.map(([ck, cv]) => <Node key={String(ck)} k={ck} value={cv} depth={depth + 1} />)}
+    </>
+  )
+}
+
+function MongoDoc({ doc, index }: { doc: unknown; index: number }) {
+  const entries = isObj(doc) ? Object.entries(doc) : []
+  return (
+    <div className="mongo-doc-card">
+      <span className="mongo-doc-idx">{index + 1}</span>
+      <div className="mongo-doc-body">
+        {entries.map(([k, v]) => (
+          <Node key={k} k={k} value={v} depth={0} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function MissingUri() {
   return (
     <div className="placeholder">
@@ -32,6 +110,7 @@ export function MongoTab() {
   const [ai, setAi] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiErr, setAiErr] = useState<string | null>(null)
+  const [collFilter, setCollFilter] = useState('')
 
   const docs = useAsync(
     () =>
@@ -102,27 +181,47 @@ export function MongoTab() {
                 placeholder={dbs.loading ? 'connecting…' : 'database'}
               />
             </div>
+            <input
+              className="mongo-coll-filter"
+              placeholder="Filter collections…"
+              value={collFilter}
+              onChange={(e) => setCollFilter(e.target.value)}
+            />
             <div className="mongo-colls">
               {dbs.error && !dbs.error.includes('NO_MONGO_URI') && (
                 <div className="gh-state gh-error">{dbs.error}</div>
               )}
               {colls.loading && <div className="side-term-hint">Loading…</div>}
-              {(colls.data ?? []).map((c) => (
-                <button
-                  key={c}
-                  className={`mongo-coll${coll === c ? ' sel' : ''}`}
-                  onClick={() => selectColl(c)}
-                  title={c}
-                >
-                  {c}
-                </button>
-              ))}
+              {(colls.data ?? [])
+                .filter((c) => !collFilter || c.toLowerCase().includes(collFilter.toLowerCase()))
+                .map((c) => (
+                  <button
+                    key={c}
+                    className={`mongo-coll${coll === c ? ' sel' : ''}`}
+                    onClick={() => selectColl(c)}
+                    title={c}
+                  >
+                    <span className="mongo-coll-ico">▤</span>
+                    {c}
+                  </button>
+                ))}
             </div>
           </div>
         </Panel>
         <PanelResizeHandle className="resize-handle" />
         <Panel defaultSize={80} minSize={30}>
           <div className="mongo-view">
+            <div className="mongo-crumbs">
+              <span className="mongo-crumb db">{db ?? '—'}</span>
+              <span className="mongo-crumb-sep">›</span>
+              <span className="mongo-crumb coll">{coll ?? '—'}</span>
+              {!docs.loading && !docs.error && (
+                <span className="mongo-crumb-count">
+                  {rows.length}
+                  {rows.length >= limit ? '+' : ''} document{rows.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
             <div className="mongo-ai">
               <textarea
                 className="mongo-ai-input"
@@ -186,9 +285,7 @@ export function MongoTab() {
                 <div className="side-term-hint">No documents.</div>
               )}
               {rows.map((doc, i) => (
-                <pre key={i} className="mongo-doc">
-                  {JSON.stringify(doc, null, 2)}
-                </pre>
+                <MongoDoc key={i} doc={doc} index={i} />
               ))}
             </div>
           </div>
