@@ -36,7 +36,10 @@ export function TerminalsTab() {
   const [draft, setDraft] = useState('')
   const [showSidebar, setShowSidebar] = useState(true)
   const [tabDrag, setTabDrag] = useState<number | null>(null)
-  const [tabOver, setTabOver] = useState<number | null>(null)
+  // Which tab is the drop target, and what the drop will do: reorder (default
+  // drag) or merge (hold ⌥). Same single hook as before, so Fast Refresh keeps
+  // session state across this edit instead of remounting.
+  const [tabOver, setTabOver] = useState<{ id: number; mode: 'reorder' | 'merge' } | null>(null)
   const [focusedPaneId, setFocusedPaneId] = useState<number | null>(null)
 
   // Rename a pane: relabel it, and persist the session title when it's a session.
@@ -356,6 +359,44 @@ export function TerminalsTab() {
   const setLayout = (tabId: number, layout: Layout): void =>
     setTabs((t) => t.map((x) => (x.id === tabId ? { ...x, layout } : x)))
 
+  // Reorder the tab strip: move the dragged tab to the drop target's position.
+  const reorderTabs = (fromId: number, toId: number): void =>
+    setTabs((t) => {
+      const ids = t.map((x) => x.id)
+      const from = ids.indexOf(fromId)
+      const to = ids.indexOf(toId)
+      if (from < 0 || to < 0 || from === to) return t
+      const arr = [...t]
+      const [moved] = arr.splice(from, 1)
+      arr.splice(to, 0, moved)
+      return arr
+    })
+
+  // Pop a pane out of a multi-pane tab into its own new tab. The pane keeps its
+  // terminalId (no kill/respawn — the process keeps running); it just re-mounts
+  // in the new tab. No-op for a tab that already has a single pane.
+  const extractPane = (tabId: number, paneId: number): void => {
+    const tab = tabs.find((x) => x.id === tabId)
+    const pane = tab?.panes.find((p) => p.paneId === paneId)
+    if (!tab || !pane || tab.panes.length <= 1) return
+    const id = tabCounter.current++
+    setTabs((t) => {
+      const updated = t.map((x) =>
+        x.id === tabId ? { ...x, panes: x.panes.filter((p) => p.paneId !== paneId) } : x
+      )
+      const idx = updated.findIndex((x) => x.id === tabId)
+      const newTab: Tab = {
+        id,
+        name: pane.opts.label ?? basename(pane.opts.cwd),
+        panes: [pane],
+        layout: 'cols'
+      }
+      updated.splice(idx + 1, 0, newTab)
+      return updated
+    })
+    setActiveId(id)
+  }
+
   // Merge one tab's panes into another (drop tab A on tab B).
   const mergeTabs = (fromId: number, toId: number): void => {
     if (fromId === toId) return
@@ -389,20 +430,37 @@ export function TerminalsTab() {
 
   return (
     <div className="terminals">
+      {tabDrag != null && (
+        <div className="term-drag-hint">
+          {tabOver?.mode === 'merge' ? (
+            <>
+              Merging panes into this tab — release <kbd>⌥</kbd> to reorder instead
+            </>
+          ) : (
+            <>
+              Drop to reorder · hold <kbd>⌥</kbd> to merge into a tab
+            </>
+          )}
+        </div>
+      )}
       <div className="term-tabstrip">
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={`term-tab${tab.id === activeId ? ' active' : ''}${tabOver === tab.id && tabDrag !== tab.id ? ' merge-target' : ''}${tabDrag === tab.id ? ' dragging' : ''}`}
+            className={`term-tab${tab.id === activeId ? ' active' : ''}${tabOver?.id === tab.id && tabDrag !== tab.id ? (tabOver.mode === 'merge' ? ' merge-target' : ' reorder-target') : ''}${tabDrag === tab.id ? ' dragging' : ''}`}
             draggable={editing !== tab.id}
             onDragStart={() => setTabDrag(tab.id)}
             onDragOver={(e) => {
               e.preventDefault()
-              if (tabOver !== tab.id) setTabOver(tab.id)
+              const mode = e.altKey ? 'merge' : 'reorder'
+              if (tabOver?.id !== tab.id || tabOver.mode !== mode) setTabOver({ id: tab.id, mode })
             }}
             onDrop={(e) => {
               e.preventDefault()
-              if (tabDrag != null) mergeTabs(tabDrag, tab.id)
+              if (tabDrag != null && tabDrag !== tab.id) {
+                if (e.altKey) mergeTabs(tabDrag, tab.id)
+                else reorderTabs(tabDrag, tab.id)
+              }
               setTabDrag(null)
               setTabOver(null)
             }}
@@ -415,7 +473,7 @@ export function TerminalsTab() {
               setDraft(tab.name)
               setEditing(tab.id)
             }}
-            title="Double-click to rename · drag onto another tab to merge"
+            title="Drag to reorder · hold ⌥ and drop on a tab to merge · double-click to rename"
           >
             {tab.id !== activeId &&
               tab.panes.some((p) => p.sessionId && alerts.has(p.sessionId)) && (
@@ -502,6 +560,7 @@ export function TerminalsTab() {
             onClose={(p) => closePane(active.id, p)}
             onRestart={(p) => void restartPane(active.id, p)}
             onReorder={(f, to) => reorder(active.id, f, to)}
+            onExtract={(p) => extractPane(active.id, p)}
             onFocus={setFocusedPaneId}
             onRename={renamePane}
           />

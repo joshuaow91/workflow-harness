@@ -30,6 +30,7 @@ export function PaneGrid({
   onClose,
   onRestart,
   onReorder,
+  onExtract,
   onFocus,
   onRename
 }: {
@@ -40,6 +41,7 @@ export function PaneGrid({
   onClose: (paneId: number) => void
   onRestart: (paneId: number) => void
   onReorder: (fromId: number, toId: number) => void
+  onExtract: (paneId: number) => void
   onFocus: (paneId: number) => void
   onRename: (paneId: number, name: string) => void
 }) {
@@ -157,6 +159,15 @@ export function PaneGrid({
                 </span>
               )}
               <div className="term-panel-actions">
+                {panes.length > 1 && (
+                  <button
+                    className="term-act"
+                    title="Move this pane to its own tab"
+                    onClick={() => onExtract(pane.paneId)}
+                  >
+                    <Icon name="expand" size={13} />
+                  </button>
+                )}
                 {pane.browserUrl == null && (
                   <button className="term-act" title="Restart pane" onClick={() => onRestart(pane.paneId)}>
                     <Icon name="refresh" size={14} />
