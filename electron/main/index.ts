@@ -1,7 +1,17 @@
 import { execFile } from 'child_process'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { app, BrowserWindow, shell, ipcMain, session, Menu, clipboard, nativeTheme } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  shell,
+  ipcMain,
+  session,
+  Menu,
+  clipboard,
+  nativeTheme,
+  nativeImage
+} from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerDevtoolsIpc } from './devtools/registerDevtoolsIpc'
 import { registerSettingsIpc } from './settings/registerSettingsIpc'
@@ -231,9 +241,21 @@ app.disableHardwareAcceleration()
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
 
+// Show the app's own logo in the dock instead of the generic Electron icon.
+// Loaded from the repo-committed build/icon.png (relative to the app dir) so it
+// works for anyone running the project, not just a local absolute path. In a
+// packaged build electron-builder sets the real icon, so this is mainly for dev;
+// isEmpty() makes it a safe no-op if the file isn't there.
+function setDockIcon(): void {
+  if (process.platform !== 'darwin' || !app.dock) return
+  const icon = nativeImage.createFromPath(join(app.getAppPath(), 'build', 'icon.png'))
+  if (!icon.isEmpty()) app.dock.setIcon(icon)
+}
+
 app.whenReady().then(() => {
   // Make embedded sites (Datadog, GitHub, …) report a dark color scheme.
   nativeTheme.themeSource = 'dark'
+  setDockIcon()
   session.fromPartition('persist:harness').setUserAgent(CHROME_UA)
   registerIpc()
   createWindow()
