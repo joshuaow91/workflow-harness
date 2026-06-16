@@ -69,6 +69,19 @@ const sessions = new Map<string, BackendSession>()
 const buffers = new Map<string, string>()
 const MAX_BUFFER = 256 * 1024
 
+// Maps a live pty -> the claude session id it's resuming, so we can adopt an
+// existing process instead of spawning a duplicate. A renderer reload (sleep/wake
+// or the dev boot race) re-runs layout hydration; without this, every reload
+// spawns a fresh `claude --resume <id>`, piling up duplicate processes that all
+// hammer the API for the same conversation (rate limits) and clobber its shared
+// transcript. We dedup only on resume/session-id commands so multiple *fresh*
+// `claude` panes in the same cwd are still allowed.
+const resumeKeys = new Map<string, string>()
+function resumeIdOf(cmd?: string): string | null {
+  const m = cmd?.match(/--(?:resume|session-id)[= ]+([a-f0-9-]{8,})/)
+  return m ? m[1] : null
+}
+
 export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void {
   const send = (channel: string, payload: unknown): void => {
     const win = getWindow()
@@ -76,9 +89,20 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
   }
 
   ipcMain.handle(IPC.terminal.create, (_e, opts: TerminalSpawnOptions): string => {
+    // Adopt an already-running pty for the same resumed session rather than
+    // spawning a duplicate (handlers run to completion, so same-tick hydration
+    // calls can't race past this check).
+    const resumeId = resumeIdOf(opts.initialCommand)
+    if (resumeId) {
+      for (const [id, rid] of resumeKeys) {
+        if (rid === resumeId && sessions.has(id)) return id
+      }
+    }
+
     const session = backend.spawn(opts)
     sessions.set(session.id, session)
     buffers.set(session.id, '')
+    if (resumeId) resumeKeys.set(session.id, resumeId)
 
     session.onData((data) => {
       const buf = (buffers.get(session.id) ?? '') + data
@@ -89,6 +113,7 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       send(IPC.terminal.exit, { id: session.id, exitCode, signal })
       sessions.delete(session.id)
       buffers.delete(session.id)
+      resumeKeys.delete(session.id)
     })
 
     return session.id
