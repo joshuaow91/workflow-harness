@@ -92,6 +92,12 @@ export function AppShell() {
   })
   useEffect(() => {
     localStorage.setItem('harness:activeTab', activeTab)
+    // The Terminals tab stays mounted but display:none when hidden; returning to
+    // it leaves xterm un-painted (blank). Nudge a refit/repaint on the way back.
+    if (activeTab === 'terminals') {
+      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 50)
+      return () => clearTimeout(t)
+    }
   }, [activeTab])
 
   // Notes live in a collapsible right sidebar, toggled from the titlebar.

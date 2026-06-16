@@ -129,20 +129,6 @@ function createWindow(): void {
   mainWindow.on('move', scheduleSaveWindowState)
   mainWindow.on('close', saveWindowState)
 
-  // A full renderer reload (sleep/wake, manual reload, vite full-reload) re-runs
-  // the layout hydration and spawns a fresh set of ptys. Without killing the old
-  // ones first, they survive in main and you get duplicate `claude --resume`
-  // processes (even for a single tab). Kill them on every reload after the first
-  // so there's always exactly one process per pane. HMR doesn't trigger this.
-  let firstLoad = true
-  mainWindow.webContents.on('did-start-loading', () => {
-    if (firstLoad) {
-      firstLoad = false
-      return
-    }
-    killAllTerminals()
-  })
-
   mainWindow.webContents.on('did-attach-webview', (_e, contents) => wireGuestWebview(contents))
 
   // Open target=_blank / window.open links in the system browser, not new Electron windows.
@@ -232,6 +218,13 @@ app.on('before-quit', () => {
   void disposeClaudeWatcher()
   killAllTerminals()
 })
+
+// The GPU compositor on this setup throws repeated skia "Invalid mailbox" errors,
+// which can force Electron to reload the renderer (re-hydrating panes / spawning
+// duplicate ptys) and leaves xterm canvases blank. We render terminals with
+// xterm's DOM renderer (no webgl addon), so disabling GPU compositing costs us
+// nothing and removes the crash + involuntary reloads. Must run before app ready.
+app.disableHardwareAcceleration()
 
 // Present the embedded browser as a normal Chrome so github.com serves its
 // standard login flow (the default Electron UA can trigger odd/blocked behavior).

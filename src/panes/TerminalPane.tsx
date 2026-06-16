@@ -73,16 +73,28 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
       for (const d of queue) term.write(d)
       queue.length = 0
       ready = true
-      window.api.terminal.resize(id, term.cols, term.rows)
+      // Replaying the captured bytes can't restore a full-screen TUI (claude uses
+      // the alternate screen, and the buffer is capped), so a re-attach can land
+      // blank. Force the program to repaint with a real size change (SIGWINCH).
+      const c = term.cols
+      if (c > 1) {
+        window.api.terminal.resize(id, c - 1, term.rows)
+        setTimeout(() => window.api.terminal.resize(id, c, term.rows), 40)
+      } else {
+        window.api.terminal.resize(id, c, term.rows)
+      }
     })
 
     const doFit = (): void => {
       try {
         fit.fit()
+        window.api.terminal.resize(id, term.cols, term.rows)
+        // Force a repaint: xterm doesn't redraw when its container returns from
+        // display:none at the same size (tab switch), leaving the pane blank.
+        term.refresh(0, term.rows - 1)
       } catch {
-        /* detached */
+        /* detached / not yet sized */
       }
-      window.api.terminal.resize(id, term.cols, term.rows)
     }
     const ro = new ResizeObserver(doFit)
     ro.observe(container)
