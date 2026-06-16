@@ -129,6 +129,20 @@ function createWindow(): void {
   mainWindow.on('move', scheduleSaveWindowState)
   mainWindow.on('close', saveWindowState)
 
+  // A full renderer reload (sleep/wake, manual reload, vite full-reload) re-runs
+  // the layout hydration and spawns a fresh set of ptys. Without killing the old
+  // ones first, they survive in main and you get duplicate `claude --resume`
+  // processes (even for a single tab). Kill them on every reload after the first
+  // so there's always exactly one process per pane. HMR doesn't trigger this.
+  let firstLoad = true
+  mainWindow.webContents.on('did-start-loading', () => {
+    if (firstLoad) {
+      firstLoad = false
+      return
+    }
+    killAllTerminals()
+  })
+
   mainWindow.webContents.on('did-attach-webview', (_e, contents) => wireGuestWebview(contents))
 
   // Open target=_blank / window.open links in the system browser, not new Electron windows.
