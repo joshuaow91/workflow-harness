@@ -2495,8 +2495,30 @@ button {
 }
 
 .mongo-dbbar {
-  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
   border-bottom: 1px solid var(--border);
+}
+
+/* Connection + database pickers side by side, each sharing the row width. */
+.mongo-pickers {
+  flex-direction: row;
+  align-items: center;
+}
+.mongo-pickers .dd {
+  flex: 1;
+  min-width: 0;
+}
+.mongo-pickers .dd-trigger {
+  width: 100%;
+  min-width: 0;
+}
+.mongo-pickers .dd-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mongo-colls {
@@ -5903,7 +5925,7 @@ button {
 .hstat.alert { border-color: rgba(224, 169, 63, 0.5); }
 
 .mongo-coll-filter {
-  margin: 0 8px 6px;
+  margin: 8px 8px 6px;
   padding: 5px 9px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);

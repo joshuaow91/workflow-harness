@@ -18,6 +18,7 @@ function defaults(): AppSettings {
     ddSite: 'datadoghq.com',
     obsidianVault: '',
     mongoUri: '',
+    mongoConnections: [],
     repoOrder: [],
     injectRepoMap: true,
     autoUpdateRepos: 'off',

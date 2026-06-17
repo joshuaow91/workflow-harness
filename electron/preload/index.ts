@@ -216,18 +216,21 @@ const api = {
     generate: (prompt: string): Promise<string> => ipcRenderer.invoke(IPC.mermaid.generate, prompt)
   },
   mongo: {
-    listDatabases: (): Promise<MongoDatabase[]> => ipcRenderer.invoke(IPC.mongo.listDatabases),
-    listCollections: (db: string): Promise<string[]> =>
-      ipcRenderer.invoke(IPC.mongo.listCollections, db),
+    listDatabases: (conn?: string): Promise<MongoDatabase[]> =>
+      ipcRenderer.invoke(IPC.mongo.listDatabases, conn),
+    listCollections: (conn: string | undefined, db: string): Promise<string[]> =>
+      ipcRenderer.invoke(IPC.mongo.listCollections, conn, db),
     run: (
+      conn: string | undefined,
       db: string,
       coll: string,
       operation: 'find' | 'aggregate',
       query: string,
       limit: number
-    ): Promise<unknown[]> => ipcRenderer.invoke(IPC.mongo.run, db, coll, operation, query, limit),
-    aiQuery: (db: string, prompt: string): Promise<string> =>
-      ipcRenderer.invoke(IPC.mongo.aiQuery, db, prompt)
+    ): Promise<unknown[]> =>
+      ipcRenderer.invoke(IPC.mongo.run, conn, db, coll, operation, query, limit),
+    aiQuery: (conn: string | undefined, db: string, prompt: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.mongo.aiQuery, conn, db, prompt)
   },
   autoUpdate: {
     status: (): Promise<AutoUpdateStatus> => ipcRenderer.invoke(IPC.autoUpdate.status),

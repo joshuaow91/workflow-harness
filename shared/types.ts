@@ -28,8 +28,11 @@ export interface AppSettings {
   ddSite: string
   /** Absolute path to the Obsidian vault directory. */
   obsidianVault: string
-  /** MongoDB connection string (fallback to MONGODB_URI env). */
+  /** MongoDB connection string (fallback to MONGODB_URI env). Legacy single
+   *  connection; kept as the default/fallback when mongoConnections is empty. */
   mongoUri: string
+  /** Named MongoDB connections (e.g. read-only Prod + Local) to switch between. */
+  mongoConnections: MongoConnection[]
   /** Custom sidebar repo order (by repo path); unlisted repos sort after, alphabetically. */
   repoOrder: string[]
   /** Inject the repo knowledge map into new claude sessions (when a map exists). */
@@ -63,6 +66,11 @@ export interface AutoUpdateStatus {
 export interface MongoDatabase {
   name: string
   sizeOnDisk?: number
+}
+
+export interface MongoConnection {
+  name: string
+  uri: string
 }
 
 // ---- Repo knowledge graph ----

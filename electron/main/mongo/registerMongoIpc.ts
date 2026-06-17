@@ -8,17 +8,31 @@ import { getSettings } from '../settings/SettingsStore'
 
 export const NO_MONGO_URI = 'NO_MONGO_URI'
 
-let client: MongoClient | null = null
-let clientUri = ''
+// Resolve a connection name to its URI. Prefers the named connection, then the
+// first configured one, then the legacy single mongoUri, then the env var — so
+// older single-URI setups keep working without migration.
+function resolveUri(connName?: string): string {
+  const s = getSettings()
+  const conns = s.mongoConnections ?? []
+  if (connName) {
+    const match = conns.find((c) => c.name === connName)
+    if (match?.uri) return match.uri
+  }
+  return conns[0]?.uri || s.mongoUri || process.env.MONGODB_URI || ''
+}
 
-async function getClient(): Promise<MongoClient> {
-  const uri = getSettings().mongoUri || process.env.MONGODB_URI || ''
+// One cached client per distinct URI, so switching between (and back to) Prod
+// and Local is instant and both stay connected.
+const clients = new Map<string, MongoClient>()
+
+async function getClient(connName?: string): Promise<MongoClient> {
+  const uri = resolveUri(connName)
   if (!uri) throw new Error(NO_MONGO_URI)
-  if (client && clientUri === uri) return client
-  if (client) await client.close().catch(() => {})
-  client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 })
-  await client.connect()
-  clientUri = uri
+  const cached = clients.get(uri)
+  if (cached) return cached
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 })
+  await client.connect() // failure propagates and nothing is cached
+  clients.set(uri, client)
   return client
 }
 
@@ -27,14 +41,14 @@ function toPlain(docs: unknown[]): unknown[] {
   return JSON.parse(EJSON.stringify(docs, { relaxed: true }) as string)
 }
 
-async function listDatabases(): Promise<MongoDatabase[]> {
-  const c = await getClient()
+async function listDatabases(conn?: string): Promise<MongoDatabase[]> {
+  const c = await getClient(conn)
   const { databases } = await c.db().admin().listDatabases()
   return databases.map((d) => ({ name: d.name, sizeOnDisk: d.sizeOnDisk }))
 }
 
-async function listCollections(db: string): Promise<string[]> {
-  const c = await getClient()
+async function listCollections(conn: string | undefined, db: string): Promise<string[]> {
+  const c = await getClient(conn)
   const colls = await c.db(db).listCollections().toArray()
   return colls.map((x) => x.name).sort()
 }
@@ -44,13 +58,14 @@ const WRITE_STAGES = ['$out', '$merge']
 // Run a read-only find or aggregate. queryJson is a filter object (find) or a
 // pipeline array (aggregate), in extended JSON.
 async function run(
+  conn: string | undefined,
   db: string,
   coll: string,
   operation: 'find' | 'aggregate',
   queryJson: string,
   limit: number
 ): Promise<unknown[]> {
-  const c = await getClient()
+  const c = await getClient(conn)
   const col = c.db(db).collection(coll)
   const cap = Math.min(limit || 50, 500)
 
@@ -85,8 +100,8 @@ async function run(
 // Natural language -> a full query spec. Gives Claude every collection in the db
 // plus a sample document of each, and lets it pick the collection and build a
 // find filter or an aggregation pipeline.
-async function aiQuery(db: string, prompt: string): Promise<string> {
-  const c = await getClient()
+async function aiQuery(conn: string | undefined, db: string, prompt: string): Promise<string> {
+  const c = await getClient(conn)
   const names = (await c.db(db).listCollections().toArray()).map((x) => x.name).sort()
 
   const samples: Record<string, unknown> = {}
@@ -120,12 +135,23 @@ async function aiQuery(db: string, prompt: string): Promise<string> {
 }
 
 export function registerMongoIpc(): void {
-  ipcMain.handle(IPC.mongo.listDatabases, () => listDatabases())
-  ipcMain.handle(IPC.mongo.listCollections, (_e, db: string) => listCollections(db))
+  ipcMain.handle(IPC.mongo.listDatabases, (_e, conn?: string) => listDatabases(conn))
+  ipcMain.handle(IPC.mongo.listCollections, (_e, conn: string | undefined, db: string) =>
+    listCollections(conn, db)
+  )
   ipcMain.handle(
     IPC.mongo.run,
-    (_e, db: string, coll: string, operation: 'find' | 'aggregate', query: string, limit: number) =>
-      run(db, coll, operation, query, limit)
+    (
+      _e,
+      conn: string | undefined,
+      db: string,
+      coll: string,
+      operation: 'find' | 'aggregate',
+      query: string,
+      limit: number
+    ) => run(conn, db, coll, operation, query, limit)
   )
-  ipcMain.handle(IPC.mongo.aiQuery, (_e, db: string, prompt: string) => aiQuery(db, prompt))
+  ipcMain.handle(IPC.mongo.aiQuery, (_e, conn: string | undefined, db: string, prompt: string) =>
+    aiQuery(conn, db, prompt)
+  )
 }

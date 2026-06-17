@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import type { MongoConnection } from '@shared/types'
 import { useAsync } from '../lib/useAsync'
+import { useSettings } from '../lib/settingsStore'
 import { Dropdown } from '../components/Dropdown'
 
 const SYSTEM_DBS = ['admin', 'local', 'config']
@@ -98,9 +100,21 @@ function MissingUri() {
 }
 
 export function MongoTab() {
-  const dbs = useAsync(() => window.api.mongo.listDatabases(), [])
+  const settings = useSettings()
+  // Named connections to switch between; migrate a legacy single mongoUri.
+  const connections: MongoConnection[] = settings?.mongoConnections?.length
+    ? settings.mongoConnections
+    : settings?.mongoUri
+      ? [{ name: 'Default', uri: settings.mongoUri }]
+      : []
+  const [conn, setConn] = useState<string | null>(null)
+
+  const dbs = useAsync(() => window.api.mongo.listDatabases(conn ?? undefined), [conn])
   const [db, setDb] = useState<string | null>(null)
-  const colls = useAsync(() => (db ? window.api.mongo.listCollections(db) : Promise.resolve([])), [db])
+  const colls = useAsync(
+    () => (db ? window.api.mongo.listCollections(conn ?? undefined, db) : Promise.resolve([])),
+    [conn, db]
+  )
   const [coll, setColl] = useState<string | null>(null)
   const [op, setOp] = useState<Op>('find')
   const [queryText, setQueryText] = useState('{}')
@@ -114,9 +128,20 @@ export function MongoTab() {
 
   const docs = useAsync(
     () =>
-      db && coll ? window.api.mongo.run(db, coll, op, queryText, limit) : Promise.resolve([]),
-    [db, coll, nonce]
+      db && coll
+        ? window.api.mongo.run(conn ?? undefined, db, coll, op, queryText, limit)
+        : Promise.resolve([]),
+    [conn, db, coll, nonce]
   )
+
+  // Default to the first connection; reset db when the connection changes so the
+  // db/collection pickers re-resolve against the new server.
+  useEffect(() => {
+    if (!conn && connections.length) setConn(connections[0].name)
+  }, [connections, conn])
+  useEffect(() => {
+    setDb(null)
+  }, [conn])
 
   useEffect(() => {
     if (!db && dbs.data?.length) {
@@ -148,7 +173,7 @@ export function MongoTab() {
     setAiLoading(true)
     setAiErr(null)
     try {
-      const raw = await window.api.mongo.aiQuery(db, ai.trim())
+      const raw = await window.api.mongo.aiQuery(conn ?? undefined, db, ai.trim())
       const spec = JSON.parse(raw) as { collection: string; operation: Op; query: unknown; limit?: number }
       setColl(spec.collection)
       setOp(spec.operation === 'aggregate' ? 'aggregate' : 'find')
@@ -171,19 +196,29 @@ export function MongoTab() {
       <PanelGroup direction="horizontal" autoSaveId="mongo-h">
         <Panel defaultSize={20} minSize={13}>
           <div className="mongo-listcol">
-            <div className="mongo-dbbar">
+            <div className="mongo-dbbar mongo-pickers">
+              {connections.length > 1 && (
+                <Dropdown
+                  value={conn ?? ''}
+                  options={connections.map((c) => ({ value: c.name, label: c.name }))}
+                  onChange={setConn}
+                  minWidth={160}
+                  placeholder="connection"
+                />
+              )}
               <Dropdown
                 value={db ?? ''}
                 options={(dbs.data ?? []).map((d) => ({ value: d.name, label: d.name }))}
                 onChange={setDb}
                 searchable
-                minWidth={200}
+                minWidth={160}
                 placeholder={dbs.loading ? 'connecting…' : 'database'}
               />
             </div>
             <input
               className="mongo-coll-filter"
-              placeholder="Filter collections…"
+              type="search"
+              placeholder="Search collections…"
               value={collFilter}
               onChange={(e) => setCollFilter(e.target.value)}
             />
