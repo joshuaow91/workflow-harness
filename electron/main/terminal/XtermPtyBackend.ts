@@ -7,6 +7,24 @@ function defaultShell(): string {
   return process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh')
 }
 
+// Environment for a pane shell. Strip Claude session vars so a pane's `claude`
+// runs as a clean TOP-LEVEL session. The harness may itself be launched from
+// inside a Claude session (notably during development), which exports
+// CLAUDECODE / CLAUDE_CODE_* — inheriting those makes the pane's claude run in
+// nested/child mode: it won't register a ~/.claude/sessions file (so the sidebar
+// can't detect it as live) and may behave differently. No-op when the harness is
+// launched normally (a plain terminal or the packaged .app).
+function paneEnv(): Record<string, string> {
+  const env: Record<string, string> = {
+    ...process.env,
+    TERM: 'xterm-256color'
+  } as Record<string, string>
+  for (const k of Object.keys(env)) {
+    if (k === 'CLAUDECODE' || k.startsWith('CLAUDE_CODE_')) delete env[k]
+  }
+  return env
+}
+
 class PtySession implements BackendSession {
   readonly id = randomUUID()
   private readonly proc: pty.IPty
@@ -20,7 +38,7 @@ class PtySession implements BackendSession {
       cwd: opts.cwd,
       cols: opts.cols ?? 80,
       rows: opts.rows ?? 24,
-      env: { ...process.env, TERM: 'xterm-256color' } as Record<string, string>
+      env: paneEnv()
     })
 
     if (opts.initialCommand) {

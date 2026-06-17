@@ -9,6 +9,7 @@ import { focusTerminal } from '../lib/terminalFocus'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { Icon } from '../components/Icon'
 import { Dropdown, type DropdownOption } from '../components/Dropdown'
+import { OpenSessionsSync } from '../lib/openSessions'
 import { PaneGrid, type Layout, type Pane } from './PaneGrid'
 
 interface Tab {
@@ -319,11 +320,19 @@ export function TerminalsTab() {
     }
   }
 
+  // Free a pane's backing resource when it's truly closed: a browser pane owns a
+  // persistent native view (destroyed explicitly, not on unmount), a terminal
+  // pane owns a pty.
+  const disposePane = (p: Pane): void => {
+    if (p.browserUrl != null) void window.api.browserView.destroy(`pane-${p.paneId}`)
+    else window.api.terminal.kill(p.terminalId)
+  }
+
   const closePane = (tabId: number, paneId: number): void =>
     setTabs((t) => {
       const tab = t.find((x) => x.id === tabId)
       const pane = tab?.panes.find((p) => p.paneId === paneId)
-      if (pane) window.api.terminal.kill(pane.terminalId)
+      if (pane) disposePane(pane)
       const panes = (tab?.panes ?? []).filter((p) => p.paneId !== paneId)
       if (panes.length === 0) {
         const remaining = t.filter((x) => x.id !== tabId)
@@ -364,7 +373,7 @@ export function TerminalsTab() {
 
   const closeTab = (tabId: number): void =>
     setTabs((t) => {
-      t.find((x) => x.id === tabId)?.panes.forEach((p) => window.api.terminal.kill(p.terminalId))
+      t.find((x) => x.id === tabId)?.panes.forEach(disposePane)
       const remaining = t.filter((x) => x.id !== tabId)
       if (tabId === activeId) setActiveId(remaining.length ? remaining[remaining.length - 1].id : null)
       return remaining
@@ -442,8 +451,18 @@ export function TerminalsTab() {
     setEditing(null)
   }
 
+  // Sessions open in any pane (across all tabs) are live even when claude wrote
+  // no ~/.claude/sessions file — feed them (with their terminalId) to the sidebar
+  // liveness store, which also taps pty output to derive busy/idle + last-active.
+  const openPanes = tabs.flatMap((t) =>
+    t.panes
+      .filter((p) => p.sessionId)
+      .map((p) => ({ terminalId: p.terminalId, sessionId: p.sessionId as string }))
+  )
+
   return (
     <div className="terminals">
+      <OpenSessionsSync panes={openPanes} />
       {tabDrag != null && (
         <div className="term-drag-hint">
           {tabOver?.mode === 'merge' ? (

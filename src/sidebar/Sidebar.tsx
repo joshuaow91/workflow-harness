@@ -9,6 +9,7 @@ import { Icon } from '../components/Icon'
 import { RepoTree } from './RepoTree'
 import { SideSection } from './SideSection'
 import { useClaudeProjects } from './useClaudeProjects'
+import { usePaneSessions, type PaneStatus } from '../lib/openSessions'
 
 interface MenuState {
   sessionId: string
@@ -25,6 +26,7 @@ function SessionRow({
   displayTitle,
   selected,
   needsResponse,
+  pane,
   editing,
   draft,
   onDraft,
@@ -38,6 +40,7 @@ function SessionRow({
   displayTitle: string
   selected: boolean
   needsResponse: boolean
+  pane: PaneStatus | undefined
   editing: boolean
   draft: string
   onDraft: (v: string) => void
@@ -48,7 +51,12 @@ function SessionRow({
   onKill: () => void
 }) {
   const live = session.live
-  const dotClass = live ? (live.status === 'busy' ? 'busy' : 'idle') : 'dormant'
+  // Status precedence: claude's own sessions file (when present), else pane
+  // output activity (resumed-in-pty sessions don't write a file), else dormant.
+  const status = live ? live.status : pane ? (pane.busy ? 'busy' : 'idle') : null
+  const dotClass = status === 'busy' ? 'busy' : status ? 'idle' : 'dormant'
+  // Prefer the live pty output time for an open pane; else the transcript time.
+  const lastActiveIso = pane ? new Date(pane.lastActive).toISOString() : session.lastActivityAt
   const branch = session.gitBranch && session.gitBranch !== 'HEAD' ? session.gitBranch : null
 
   const resume = (): void => {
@@ -83,8 +91,8 @@ function SessionRow({
         )}
         <span className="session-meta">
           {branch && <span className="session-branch">⎇ {branch}</span>}
-          <span>{relativeTime(session.lastActivityAt)}</span>
-          {live && <span className="session-live">{live.status}</span>}
+          <span>{relativeTime(lastActiveIso)}</span>
+          {status && <span className="session-live">{status}</span>}
         </span>
       </span>
       {live && (
@@ -105,6 +113,7 @@ function SessionRow({
 
 export function Sidebar() {
   const { projects, loading } = useClaudeProjects()
+  const paneStatus = usePaneSessions()
   const settings = useSettings()
   const titles = settings?.sessionTitles ?? {}
   const [selected, setSelected] = useState<string | null>(null)
@@ -151,6 +160,17 @@ export function Sidebar() {
     })
 
   const titleOf = (s: ClaudeSession): string => titles[s.sessionId] ?? s.title
+
+  // Float the most-recently-active session to the top. Uses live pty activity for
+  // open panes (which may be ahead of the on-disk transcript) as well as the
+  // transcript time, so an actively-responding session rises immediately.
+  const liveKey = (s: ClaudeSession): number => {
+    const p = paneStatus.get(s.sessionId)
+    const t = s.lastActivityAt ? Date.parse(s.lastActivityAt) : 0
+    return Math.max(p?.lastActive ?? 0, Number.isNaN(t) ? 0 : t)
+  }
+  const sortByActivity = (arr: ClaudeSession[]): ClaudeSession[] =>
+    [...arr].sort((a, b) => liveKey(b) - liveKey(a))
 
   const startRename = (m: MenuState): void => {
     setDraft(m.title)
@@ -209,8 +229,8 @@ export function Sidebar() {
               ＋ new claude session
             </button>
             {(expanded.has(project.slug)
-              ? project.sessions
-              : project.sessions.slice(0, 10)
+              ? sortByActivity(project.sessions)
+              : sortByActivity(project.sessions).slice(0, 10)
             ).map((s) => (
               <SessionRow
                 key={s.sessionId}
@@ -218,6 +238,7 @@ export function Sidebar() {
                 displayTitle={titleOf(s)}
                 selected={selected === s.sessionId}
                 needsResponse={needsResp.has(s.sessionId)}
+                pane={paneStatus.get(s.sessionId)}
                 editing={editing === s.sessionId}
                 draft={draft}
                 onDraft={setDraft}
