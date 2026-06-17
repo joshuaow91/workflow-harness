@@ -207,18 +207,32 @@ export function TerminalsTab() {
     }
   }
 
-  // Restore the saved tab/pane/layout on first mount.
+  // Restore the saved tab/pane/layout on first mount. Read BOTH mirrors and use
+  // whichever has more tabs: the on-disk backup survives a localStorage clobber
+  // (e.g. two app instances racing on the same storage), so it's the safer source.
   const hydrated = useRef(false)
   useEffect(() => {
     if (hydrated.current) return
     hydrated.current = true
-    let saved: SavedLayout | null
-    try {
-      saved = JSON.parse(localStorage.getItem('harness:terminals') || 'null')
-    } catch {
-      saved = null
+    const parse = (s: string | null): SavedLayout | null => {
+      try {
+        return s ? (JSON.parse(s) as SavedLayout) : null
+      } catch {
+        return null
+      }
     }
-    void restoreLayout(saved)
+    void (async () => {
+      const local = parse(localStorage.getItem('harness:terminals'))
+      let disk: SavedLayout | null = null
+      try {
+        disk = parse(await window.api.terminal.getLayout())
+      } catch {
+        /* ignore */
+      }
+      const pick =
+        (disk?.tabs?.length ?? 0) >= (local?.tabs?.length ?? 0) ? disk ?? local : local ?? disk
+      void restoreLayout(pick)
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

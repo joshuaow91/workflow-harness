@@ -22,6 +22,10 @@ export default defineConfig({
     }
   },
   renderer: {
+    // Pin to a dedicated port so the harness never collides with other Vite dev
+    // servers (e.g. blink_dashboard on the default 5173). strictPort fails loudly
+    // instead of silently wandering onto another project's port.
+    server: { port: 5180, strictPort: true },
     root: 'src',
     resolve: {
       alias: {
