@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useSuspendBrowserViews } from '../lib/browserViewBus'
 
 export interface ContextMenuItem {
   label: string
@@ -18,6 +19,7 @@ export function ContextMenu({
   items: ContextMenuItem[]
   onClose: () => void
 }) {
+  useSuspendBrowserViews() // native browser views paint over DOM — hide while open
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { createPortal } from 'react-dom'
 import type { SetupCheck } from '@shared/types'
+import { useSuspendBrowserViews } from '../lib/browserViewBus'
 
 function SetupRow({ c }: { c: SetupCheck }) {
   return (
@@ -17,6 +18,7 @@ function SetupRow({ c }: { c: SetupCheck }) {
 }
 
 export function SetupModal({ onClose }: { onClose: () => void }) {
+  useSuspendBrowserViews() // native browser views paint over DOM — hide while open
   const [checks, setChecks] = useState<SetupCheck[] | null>(null)
   const load = (): void => {
     setChecks(null)

@@ -1,6 +1,17 @@
 import { homedir } from 'os'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
+// Exposes the `browserAction` bridge + registers the <browser-action-list> custom
+// element (the extension toolbar). These use preload-context APIs (contextBridge/
+// webFrame/ipcRenderer), so they MUST run here, not in the renderer.
+import 'electron-chrome-extensions/preload'
+import { injectBrowserAction } from 'electron-chrome-extensions/browser-action'
 import { IPC } from '@shared/ipc'
+
+try {
+  injectBrowserAction()
+} catch (e) {
+  console.error('[extensions] toolbar inject failed:', (e as Error)?.message)
+}
 import type {
   AgentActivity,
   AgentInfo,
@@ -8,6 +19,9 @@ import type {
   AutoUpdateStatus,
   BranchDeleteResult,
   BrowserHistoryEntry,
+  BrowserViewState,
+  BrowserFindResult,
+  BrowserShortcut,
   RepoBranchStatus,
   ClaudeProject,
   GitChanges,
@@ -159,6 +173,30 @@ const api = {
     },
     suggest: (query: string): Promise<BrowserHistoryEntry[]> =>
       ipcRenderer.invoke(IPC.browser.suggest, query)
+  },
+  browserView: {
+    create: (id: string, url: string, partition: string): Promise<number> =>
+      ipcRenderer.invoke(IPC.browserView.create, id, url, partition),
+    destroy: (id: string): Promise<void> => ipcRenderer.invoke(IPC.browserView.destroy, id),
+    setBounds: (
+      id: string,
+      bounds: { x: number; y: number; width: number; height: number }
+    ): Promise<void> => ipcRenderer.invoke(IPC.browserView.setBounds, id, bounds),
+    setVisible: (id: string, visible: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.browserView.setVisible, id, visible),
+    loadURL: (id: string, url: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.browserView.loadURL, id, url),
+    goBack: (id: string): Promise<void> => ipcRenderer.invoke(IPC.browserView.goBack, id),
+    goForward: (id: string): Promise<void> => ipcRenderer.invoke(IPC.browserView.goForward, id),
+    reload: (id: string): Promise<void> => ipcRenderer.invoke(IPC.browserView.reload, id),
+    stop: (id: string): Promise<void> => ipcRenderer.invoke(IPC.browserView.stop, id),
+    find: (id: string, text: string, forward: boolean, findNext: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.browserView.find, id, text, forward, findNext),
+    stopFind: (id: string): Promise<void> => ipcRenderer.invoke(IPC.browserView.stopFind, id),
+    onState: (cb: (s: BrowserViewState) => void): (() => void) => on(IPC.browserView.state, cb),
+    onFindResult: (cb: (r: BrowserFindResult) => void): (() => void) =>
+      on(IPC.browserView.findResult, cb),
+    onShortcut: (cb: (s: BrowserShortcut) => void): (() => void) => on(IPC.browserView.shortcut, cb)
   },
   agent: {
     setTarget: (webContentsId: number | null): Promise<void> =>

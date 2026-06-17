@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useSuspendBrowserViews } from '../lib/browserViewBus'
 import { useRepos } from '../sidebar/useRepos'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { launchClaude } from '../lib/launchClaude'
@@ -23,6 +24,7 @@ export function CommandPalette({
   navigate: (tab: string) => void
   onClose: () => void
 }) {
+  useSuspendBrowserViews() // native browser views paint over DOM — hide while open
   const { repos } = useRepos()
   const sessions = useFlatSessions()
   const agent = useAgentInfo()

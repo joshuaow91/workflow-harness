@@ -247,6 +247,42 @@ export interface Bookmark {
   title: string
 }
 
+/** Per-view navigation state pushed from main for a WebContentsView browser. */
+export interface BrowserViewState {
+  id: string
+  url: string
+  title: string
+  canGoBack: boolean
+  canGoForward: boolean
+  loading: boolean
+  webContentsId: number
+  /** Favicon URL for the current page, if the page reported one. */
+  favicon?: string
+}
+
+/** found-in-page result pushed from main for a browser view. */
+export interface BrowserFindResult {
+  id: string
+  activeMatchOrdinal: number
+  matches: number
+}
+
+/** A browser keyboard shortcut intercepted from a focused native page and
+ *  forwarded to the renderer (the DOM can't see keys while the page has focus). */
+export type BrowserShortcutAction =
+  | 'find'
+  | 'reload'
+  | 'back'
+  | 'forward'
+  | 'focusAddress'
+  | 'newTab'
+  | 'closeTab'
+
+export interface BrowserShortcut {
+  id: string
+  action: BrowserShortcutAction
+}
+
 export interface SessionRef {
   kind: 'pr' | 'issue'
   repo: string

@@ -67,6 +67,22 @@ export const IPC = {
     recordVisit: 'browser:recordVisit',
     suggest: 'browser:suggest'
   },
+  browserView: {
+    create: 'browserView:create',
+    destroy: 'browserView:destroy',
+    setBounds: 'browserView:setBounds',
+    setVisible: 'browserView:setVisible',
+    loadURL: 'browserView:loadURL',
+    goBack: 'browserView:goBack',
+    goForward: 'browserView:goForward',
+    reload: 'browserView:reload',
+    stop: 'browserView:stop',
+    find: 'browserView:find',
+    stopFind: 'browserView:stopFind',
+    state: 'browserView:state', // main -> renderer push (per-view nav/title/loading)
+    findResult: 'browserView:findResult', // main -> renderer (found-in-page matches)
+    shortcut: 'browserView:shortcut' // main -> renderer (browser keyboard shortcut from a focused page)
+  },
   agent: {
     setTarget: 'agent:setTarget',
     connectClaude: 'agent:connectClaude',

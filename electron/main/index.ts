@@ -27,6 +27,8 @@ import { gitChanges, gitFileDiff } from './git/DiffService'
 import { registerNotifications } from './notifications/registerNotifications'
 import { registerClaudeIpc, disposeClaudeWatcher } from './claude/ClaudeStore'
 import { registerTerminalIpc, killAllTerminals } from './terminal/registerTerminalIpc'
+import { registerBrowserViewIpc, destroyAllBrowserViews } from './browser/registerBrowserViewIpc'
+import { setupExtensions } from './browser/extensions'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
 import { registerGithubIpc } from './github/registerGithubIpc'
 
@@ -220,6 +222,7 @@ function registerIpc(): void {
   // Feature handlers, registered as each step lands:
   registerClaudeIpc(() => mainWindow)
   registerTerminalIpc(() => mainWindow)
+  registerBrowserViewIpc(() => mainWindow)
   registerWorktreeIpc()
   registerGithubIpc()
 }
@@ -227,14 +230,15 @@ function registerIpc(): void {
 app.on('before-quit', () => {
   void disposeClaudeWatcher()
   killAllTerminals()
+  destroyAllBrowserViews()
 })
 
-// The GPU compositor on this setup throws repeated skia "Invalid mailbox" errors,
-// which can force Electron to reload the renderer (re-hydrating panes / spawning
-// duplicate ptys) and leaves xterm canvases blank. We render terminals with
-// xterm's DOM renderer (no webgl addon), so disabling GPU compositing costs us
-// nothing and removes the crash + involuntary reloads. Must run before app ready.
-app.disableHardwareAcceleration()
+// Hardware acceleration stays ON. It was briefly disabled to stop skia "Invalid
+// mailbox" errors during a renderer-reload storm, but that storm's root cause (a
+// killAll-on-reload + duplicate-pty loop) is fixed, and the native WebContentsView
+// browser REQUIRES GPU compositing — disabling it produced "Failed to create
+// context" GL errors and broken page rendering. If the skia mailbox errors ever
+// recur, the targeted macOS fix is `--use-angle=metal`, not a blanket disable.
 
 // Present the embedded browser as a normal Chrome so github.com serves its
 // standard login flow (the default Electron UA can trigger odd/blocked behavior).
@@ -259,6 +263,12 @@ app.whenReady().then(() => {
   session.fromPartition('persist:harness').setUserAgent(CHROME_UA)
   registerIpc()
   createWindow()
+  // Set up Chrome-extension + Web Store support in the BACKGROUND — it must
+  // finish before a browser view loads a page, which is always well after the
+  // window appears, so it must never block (or hang) window creation.
+  void setupExtensions('persist:harness').catch((e) =>
+    console.error('[extensions] setup failed:', (e as Error)?.message)
+  )
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

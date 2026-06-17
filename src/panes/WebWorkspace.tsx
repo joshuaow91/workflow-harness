@@ -7,7 +7,7 @@ import { settingsStore, useSettings } from '../lib/settingsStore'
 import { useAgentInfo } from '../lib/useAgentInfo'
 import { DevToolsPane } from './DevToolsPane'
 import { SideTerminal } from './SideTerminal'
-import { WebFrame } from './WebFrame'
+import { BrowserView } from './BrowserView'
 
 const FALLBACK_URL = 'https://github.com'
 
@@ -15,6 +15,8 @@ interface Tab {
   id: number
   url: string
   title: string
+  favicon?: string
+  loading?: boolean
 }
 interface SidePane {
   id: number
@@ -30,11 +32,13 @@ export function WebWorkspace() {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTab, setActiveTab] = useState(0)
   const [sidePanes, setSidePanes] = useState<SidePane[]>([])
-  const [bottom, setBottom] = useState<'devtools' | 'activity' | null>('devtools')
-  const [showSide, setShowSide] = useState(true)
+  // DevTools and the side panel start closed — they're opt-in via the toolbar.
+  const [bottom, setBottom] = useState<'devtools' | 'activity' | null>(null)
+  const [showSide, setShowSide] = useState(false)
   const tabCounter = useRef(1)
   const sideCounter = useRef(1)
   const didInit = useRef(false)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   // Agent: the focused browser is what Claude drives. Every tab is agent-aware.
   const [activity, setActivity] = useState<AgentActivity[]>([])
@@ -68,15 +72,29 @@ export function WebWorkspace() {
     setConnecting(false)
   }
 
-  // Open the first tab at the configured default once settings load.
+  // Restore the previously-open tabs once settings load (else open one default).
   useEffect(() => {
     if (settings && !didInit.current) {
       didInit.current = true
-      const id = tabCounter.current++
-      setTabs([{ id, url: settings.defaultBrowserUrl, title: 'New Tab' }])
-      setActiveTab(id)
+      let restored: { url: string; title: string }[] = []
+      try {
+        restored = JSON.parse(localStorage.getItem('harness:wsTabs') || '[]')
+      } catch {
+        /* ignore */
+      }
+      const built = (restored.length ? restored : [{ url: settings.defaultBrowserUrl, title: 'New Tab' }]).map(
+        (r) => ({ id: tabCounter.current++, url: r.url, title: r.title || 'New Tab' })
+      )
+      setTabs(built)
+      setActiveTab(built[0].id)
     }
   }, [settings])
+
+  // Persist open tabs (their last URL/title) so they come back on restart.
+  useEffect(() => {
+    if (!didInit.current) return
+    localStorage.setItem('harness:wsTabs', JSON.stringify(tabs.map((t) => ({ url: t.url, title: t.title }))))
+  }, [tabs])
 
   const [activeWC, setActiveWC] = useState<number | null>(null)
   const [devtoolsWC, setDevtoolsWC] = useState<number | null>(null)
@@ -133,6 +151,7 @@ export function WebWorkspace() {
   }, [])
   const closeTab = (id: number): void => {
     delete tabWc.current[id]
+    void window.api.browserView.destroy(`ws-tab-${id}`)
     setTabs((t) => {
       const next = t.filter((x) => x.id !== id)
       if (id === activeTab && next.length) selectTab(next[next.length - 1].id)
@@ -143,6 +162,39 @@ export function WebWorkspace() {
     setTabs((t) => t.map((x) => (x.id === id ? { ...x, title } : x)))
   const setTabUrl = (id: number, url: string): void =>
     setTabs((t) => t.map((x) => (x.id === id ? { ...x, url } : x)))
+  const setTabFavicon = (id: number, favicon?: string): void =>
+    setTabs((t) => t.map((x) => (x.id === id ? { ...x, favicon } : x)))
+  const setTabLoading = (id: number, loading: boolean): void =>
+    setTabs((t) => t.map((x) => (x.id === id ? { ...x, loading } : x)))
+
+  // ⌘T / ⌘W forwarded from a focused page (or pressed in the DOM): new/close tab.
+  useEffect(() => {
+    const offShortcut = window.api.browserView.onShortcut((s) => {
+      if (!s.id.startsWith('ws-tab-')) return
+      if (s.action === 'newTab') addTab()
+      else if (s.action === 'closeTab') closeTab(Number(s.id.slice('ws-tab-'.length)))
+    })
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      // Only when the Browser workspace is the visible app tab (offsetParent is
+      // null under display:none) — don't hijack ⌘T/⌘W on the Terminals tab.
+      if (!rootRef.current || rootRef.current.offsetParent === null) return
+      const k = e.key.toLowerCase()
+      if (k === 't') {
+        e.preventDefault()
+        addTab()
+      } else if (k === 'w' && tabs.length) {
+        e.preventDefault()
+        closeTab(activeTab)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      offShortcut()
+      window.removeEventListener('keydown', onKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, tabs.length])
 
   const openBookmark = (url: string, title: string): void => {
     const id = tabCounter.current++
@@ -160,10 +212,13 @@ export function WebWorkspace() {
 
   const addSide = (kind: SidePane['kind']): void =>
     setSidePanes((p) => [...p, { id: sideCounter.current++, kind }])
-  const closeSide = (id: number): void => setSidePanes((p) => p.filter((x) => x.id !== id))
+  const closeSide = (id: number): void => {
+    void window.api.browserView.destroy(`ws-side-${id}`) // no-op if it was a terminal pane
+    setSidePanes((p) => p.filter((x) => x.id !== id))
+  }
 
   return (
-    <div className="workspace">
+    <div className="workspace" ref={rootRef}>
       <PanelGroup direction="horizontal" className="ws-root" autoSaveId="ws-h">
         <Panel defaultSize={72} minSize={32}>
           <div className="ws-primary">
@@ -192,8 +247,21 @@ export function WebWorkspace() {
                   key={t.id}
                   className={`ws-tab${t.id === activeTab ? ' active' : ''}`}
                   onClick={() => selectTab(t.id)}
+                  onAuxClick={(e) => {
+                    if (e.button === 1) {
+                      e.preventDefault()
+                      closeTab(t.id)
+                    }
+                  }}
                   title={t.url}
                 >
+                  {t.loading ? (
+                    <span className="ws-tab-spinner" />
+                  ) : t.favicon ? (
+                    <img className="ws-tab-favicon" src={t.favicon} alt="" />
+                  ) : (
+                    <span className="ws-tab-favicon ws-tab-favicon-blank" />
+                  )}
                   <span className="ws-tab-title">{t.title || 'New Tab'}</span>
                   <button
                     className="ws-tab-x"
@@ -221,27 +289,29 @@ export function WebWorkspace() {
               >
                 {connecting ? 'Connecting…' : connected ? `✓ ${agent.label}` : `Connect ${agent.label}`}
               </button>
-              <button
-                className={`ws-dt-toggle${bottom === 'activity' ? ' on' : ''}`}
-                onClick={() => setBottomView(bottom === 'activity' ? null : 'activity')}
-                title="Agent activity log"
-              >
-                Activity
-              </button>
-              <button
-                className={`ws-dt-toggle${bottom === 'devtools' ? ' on' : ''}`}
-                onClick={() => setBottomView(bottom === 'devtools' ? null : 'devtools')}
-                title="Toggle DevTools"
-              >
-                ⌥ DevTools
-              </button>
-              <button
-                className={`ws-dt-toggle${showSide ? ' on' : ''}`}
-                onClick={() => setShowSide((v) => !v)}
-                title="Toggle side panel"
-              >
-                {showSide ? '⟩ Panel' : '⟨ Panel'}
-              </button>
+              <div className="ws-tools">
+                <button
+                  className={`ws-tool${bottom === 'activity' ? ' on' : ''}`}
+                  onClick={() => setBottomView(bottom === 'activity' ? null : 'activity')}
+                  title="Agent activity log"
+                >
+                  <Icon name="activity" size={15} />
+                </button>
+                <button
+                  className={`ws-tool${bottom === 'devtools' ? ' on' : ''}`}
+                  onClick={() => setBottomView(bottom === 'devtools' ? null : 'devtools')}
+                  title="Toggle DevTools"
+                >
+                  <Icon name="code" size={15} />
+                </button>
+                <button
+                  className={`ws-tool${showSide ? ' on' : ''}`}
+                  onClick={() => setShowSide((v) => !v)}
+                  title="Toggle side panel"
+                >
+                  <Icon name="sidebar" size={15} />
+                </button>
+              </div>
             </div>
 
             <PanelGroup direction="vertical" className="ws-vert" autoSaveId="ws-v">
@@ -258,7 +328,8 @@ export function WebWorkspace() {
                         className="ws-tab-layer"
                         style={{ display: t.id === activeTab ? 'block' : 'none' }}
                       >
-                        <WebFrame
+                        <BrowserView
+                          viewId={`ws-tab-${t.id}`}
                           src={t.url}
                           onActivate={(wc) => {
                             tabWc.current[t.id] = wc
@@ -266,6 +337,8 @@ export function WebWorkspace() {
                           }}
                           onTitle={(title) => setTabTitle(t.id, title)}
                           onUrl={(url) => setTabUrl(t.id, url)}
+                          onFavicon={(f) => setTabFavicon(t.id, f)}
+                          onLoading={(l) => setTabLoading(t.id, l)}
                         />
                       </div>
                     ))
@@ -365,10 +438,16 @@ function SidePaneFragment({
           <SideTerminal onClose={onClose} />
         ) : (
           <div className="side-browser">
-            <WebFrame src={browserUrl} onActivate={onActivate} />
-            <button className="side-browser-close term-act" title="Close" onClick={onClose}>
-              <Icon name="close" size={13} />
-            </button>
+            <BrowserView
+              viewId={`ws-side-${pane.id}`}
+              src={browserUrl}
+              onActivate={onActivate}
+              leftSlot={
+                <button className="nav-btn" title="Close" onClick={onClose}>
+                  <Icon name="close" size={13} />
+                </button>
+              }
+            />
           </div>
         )}
       </Panel>

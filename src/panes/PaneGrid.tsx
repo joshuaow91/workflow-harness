@@ -5,7 +5,7 @@ import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
 import { focusTerminal } from '../lib/terminalFocus'
 import { TerminalPane } from './TerminalPane'
 import { TermSidebar } from './TermSidebar'
-import { WebFrame } from './WebFrame'
+import { BrowserView } from './BrowserView'
 
 export type Layout = 'cols' | 'rows' | 'grid' | 'mainGrid'
 
@@ -182,7 +182,8 @@ export function PaneGrid({
               {pane.browserUrl != null ? (
                 // onActivate registers this frame as the agent target, so a Claude
                 // session in the same tab can drive it (agent-browser MCP).
-                <WebFrame
+                <BrowserView
+                  viewId={`pane-${pane.paneId}`}
                   src={pane.browserUrl}
                   editableAddress
                   onActivate={(id) => void window.api.agent.setTarget(id)}

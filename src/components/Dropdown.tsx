@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
+import { useSuspendBrowserViews } from '../lib/browserViewBus'
 
 export interface DropdownOption {
   value: string
@@ -34,6 +35,7 @@ export function Dropdown({
   className
 }: DropdownProps) {
   const [open, setOpen] = useState(false)
+  useSuspendBrowserViews(open) // the menu portals over the page — hide native views while open
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)

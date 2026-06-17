@@ -3331,6 +3331,48 @@ button {
   border-bottom: 1px solid var(--border);
 }
 
+/* Extension action icons (Chrome-style toolbar) rendered by the engine's
+   <browser-action-list> custom element, sitting just before the menu actions. */
+.ext-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 26px;
+  --browser-action-badge-color: var(--accent);
+}
+
+/* Find-in-page bar — a DOM row between the toolbar and the native page host, so
+   it isn't hidden behind the native view. The page host below shrinks to fit. */
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+.find-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 280px;
+  padding: 4px 9px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+}
+.find-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.find-count {
+  font-size: 11px;
+  color: var(--text-faint);
+  min-width: 38px;
+  text-align: center;
+}
+
 .nav-btn {
   width: 26px;
   height: 26px;
@@ -3522,6 +3564,32 @@ button {
   text-overflow: ellipsis;
 }
 
+/* Favicon / loading spinner at the head of each browser tab. */
+.ws-tab-favicon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  object-fit: contain;
+}
+.ws-tab-favicon-blank {
+  background: var(--surface-hover);
+}
+.ws-tab-spinner {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ws-spin 0.6s linear infinite;
+}
+@keyframes ws-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .ws-tab-x {
   background: transparent;
   border: none;
@@ -3563,6 +3631,38 @@ button {
 .ws-dt-toggle.on {
   color: var(--accent);
   background: rgba(137, 180, 250, 0.12);
+}
+
+/* Grouped icon toggles (activity / devtools / side panel) at the far right. */
+.ws-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  padding: 2px;
+  background: var(--surface);
+  border-radius: 8px;
+}
+.ws-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.ws-tool:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.ws-tool.on {
+  color: var(--accent);
+  background: rgba(137, 180, 250, 0.14);
 }
 
 .ws-vert {

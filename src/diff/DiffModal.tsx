@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom'
 import { diffBus } from '../lib/diffBus'
 import { Icon } from '../components/Icon'
 import { DiffPanel } from './DiffPanel'
+import { useSuspendBrowserViews } from '../lib/browserViewBus'
 
 export function DiffModal({
   path,
@@ -12,6 +13,7 @@ export function DiffModal({
   title: string
   onClose: () => void
 }) {
+  useSuspendBrowserViews() // native browser views paint over DOM — hide while open
   return createPortal(
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal diff-modal" onMouseDown={(e) => e.stopPropagation()}>

@@ -31,6 +31,9 @@
     "@xterm/xterm": "^5.5.0",
     "chokidar": "^4.0.3",
     "codemirror": "^6.0.2",
+    "electron-chrome-context-menu": "^1.1.0",
+    "electron-chrome-extensions": "^4.9.0",
+    "electron-chrome-web-store": "^0.13.0",
     "marked": "^14.1.4",
     "mermaid": "^11.15.0",
     "mongodb": "^6.21.0",
@@ -41,12 +44,12 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.7.2",
+    "@electron/rebuild": "^4.0.4",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
-    "electron": "^33.2.1",
+    "electron": "^42.4.1",
     "electron-vite": "^2.3.0",
     "typescript": "^5.7.2",
     "vite": "^5.4.11"
