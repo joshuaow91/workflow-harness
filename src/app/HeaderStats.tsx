@@ -29,13 +29,6 @@ export function HeaderStats({ onNav }: { onNav: (tab: string) => void }) {
       <button className="hstat" title="Your open PRs" onClick={() => onNav('myprs')}>
         <b>{s.open}</b> open
       </button>
-      <button
-        className={`hstat${s.toReview > 0 ? ' alert' : ''}`}
-        title="PRs awaiting your review"
-        onClick={() => onNav('review')}
-      >
-        <b>{s.toReview}</b> to review
-      </button>
     </div>
   )
 }

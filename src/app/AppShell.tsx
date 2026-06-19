@@ -4,14 +4,12 @@ import { TerminalsTab } from '../panes/TerminalsTab'
 import { WebWorkspace } from '../panes/WebWorkspace'
 import { IssuesTab } from '../github/IssuesTab'
 import { MyPRsTab } from '../github/MyPRsTab'
-import { ReviewTab } from '../github/ReviewTab'
 import { DiffTab } from '../diff/DiffTab'
 import { DiffModal } from '../diff/DiffModal'
 import { diffBus } from '../lib/diffBus'
 import { DatadogTab } from '../datadog/DatadogTab'
 import { DeployWatchTab } from '../datadog/DeployWatchTab'
 import { ObsidianTab } from '../obsidian/ObsidianTab'
-import { MermaidTab } from '../mermaid/MermaidTab'
 import { MongoTab } from '../mongo/MongoTab'
 import { KnowledgeTab } from '../knowledge/KnowledgeTab'
 import { SettingsTab } from '../settings/SettingsTab'
@@ -30,11 +28,9 @@ type TabId =
   | 'browser'
   | 'issues'
   | 'myprs'
-  | 'review'
   | 'changes'
   | 'datadog'
   | 'deploys'
-  | 'mermaid'
   | 'mongo'
   | 'knowledge'
   | 'settings'
@@ -50,11 +46,9 @@ const TABS: TabDef[] = [
   { id: 'browser', label: 'Browser', icon: 'globe' },
   { id: 'issues', label: 'Issues', icon: 'issue' },
   { id: 'myprs', label: 'My PRs', icon: 'pr' },
-  { id: 'review', label: 'Review', icon: 'check' },
   { id: 'changes', label: 'Changes', icon: 'diff' },
   { id: 'datadog', label: 'Datadog', icon: 'chart' },
   { id: 'deploys', label: 'Deploys', icon: 'rocket' },
-  { id: 'mermaid', label: 'Diagram', icon: 'diagram' },
   { id: 'mongo', label: 'Mongo', icon: 'database' },
   { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
 ]
@@ -65,16 +59,12 @@ function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
       return <IssuesTab />
     case 'myprs':
       return <MyPRsTab />
-    case 'review':
-      return <ReviewTab />
     case 'changes':
       return <DiffTab />
     case 'datadog':
       return <DatadogTab />
     case 'deploys':
       return <DeployWatchTab />
-    case 'mermaid':
-      return <MermaidTab />
     case 'mongo':
       return <MongoTab />
     case 'knowledge':
