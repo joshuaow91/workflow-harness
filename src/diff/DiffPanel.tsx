@@ -9,16 +9,29 @@ import { DiffView } from './DiffView'
 export function DiffPanel({
   path,
   headerLeft,
-  initialBranchMode = false
+  initialBranchMode = false,
+  diffRef
 }: {
   path: string
   headerLeft?: ReactNode
   initialBranchMode?: boolean
+  /** Diff a branch that isn't checked out (base...<diffRef>). When set, the
+   *  Uncommitted view is unavailable — there's no working tree for that ref. */
+  diffRef?: string
 }) {
-  const [branchMode, setBranchMode] = useState(initialBranchMode)
+  // A non-checked-out branch has no working copy, so only the committed (vs base)
+  // view makes sense — force it and lock the toggle.
+  const refLocked = diffRef != null
+  const [branchMode, setBranchMode] = useState(initialBranchMode || refLocked)
   const [file, setFile] = useState<string | null>(null)
+  useEffect(() => {
+    if (refLocked) setBranchMode(true)
+  }, [refLocked])
 
-  const changes = useAsync(() => window.api.diff.changes(path, branchMode), [path, branchMode])
+  const changes = useAsync(
+    () => window.api.diff.changes(path, branchMode, diffRef),
+    [path, branchMode, diffRef]
+  )
   const files = changes.data?.files ?? []
 
   useEffect(() => {
@@ -26,8 +39,8 @@ export function DiffPanel({
   }, [changes.data])
 
   const diff = useAsync(
-    () => (file ? window.api.diff.fileDiff(path, file, branchMode) : Promise.resolve('')),
-    [path, file, branchMode]
+    () => (file ? window.api.diff.fileDiff(path, file, branchMode, diffRef) : Promise.resolve('')),
+    [path, file, branchMode, diffRef]
   )
 
   return (
@@ -35,7 +48,12 @@ export function DiffPanel({
       <div className="gh-header">
         {headerLeft}
         <div className="seg">
-          <button className={!branchMode ? 'on' : ''} onClick={() => setBranchMode(false)}>
+          <button
+            className={!branchMode ? 'on' : ''}
+            disabled={refLocked}
+            title={refLocked ? 'Branch is not checked out — no working tree' : undefined}
+            onClick={() => setBranchMode(false)}
+          >
             Uncommitted
           </button>
           <button className={branchMode ? 'on' : ''} onClick={() => setBranchMode(true)}>

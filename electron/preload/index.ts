@@ -275,10 +275,10 @@ const api = {
     runNow: (): Promise<unknown> => ipcRenderer.invoke(IPC.autoUpdate.runNow)
   },
   diff: {
-    changes: (path: string, branchMode: boolean): Promise<GitChanges> =>
-      ipcRenderer.invoke(IPC.diff.changes, path, branchMode),
-    fileDiff: (path: string, file: string, branchMode: boolean): Promise<string> =>
-      ipcRenderer.invoke(IPC.diff.fileDiff, path, file, branchMode)
+    changes: (path: string, branchMode: boolean, ref?: string): Promise<GitChanges> =>
+      ipcRenderer.invoke(IPC.diff.changes, path, branchMode, ref),
+    fileDiff: (path: string, file: string, branchMode: boolean, ref?: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.diff.fileDiff, path, file, branchMode, ref)
   },
   knowledge: {
     get: (): Promise<RepoKnowledge[]> => ipcRenderer.invoke(IPC.knowledge.get),

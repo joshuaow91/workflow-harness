@@ -1,52 +1,111 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { BranchInfo } from '@shared/types'
 import { useRepos } from '../sidebar/useRepos'
+import { useAsync } from '../lib/useAsync'
 import { Dropdown } from '../components/Dropdown'
 import { diffBus } from '../lib/diffBus'
 import { DiffPanel } from './DiffPanel'
 
 export function DiffTab() {
   const { repos } = useRepos()
-  const targets = useMemo(() => {
-    const list: { path: string; label: string }[] = []
-    for (const r of repos) {
-      list.push({ path: r.path, label: `${r.name} · primary` })
-      for (const wt of r.worktrees ?? []) {
-        if (wt.path !== r.path) list.push({ path: wt.path, label: `${r.name} · ${wt.branch ?? 'worktree'}` })
-      }
-    }
-    return list
-  }, [repos])
 
-  const [path, setPath] = useState<string | null>(null)
+  // ---- Repo selection ----
+  const [repoPath, setRepoPath] = useState<string | null>(null)
   useEffect(() => {
-    if (!path && targets.length) setPath(targets[0].path)
-  }, [path, targets])
+    if (!repoPath && repos.length) setRepoPath(repos[0].path)
+  }, [repoPath, repos])
 
-  // External requests (e.g. sidebar "Open in Changes tab") focus a path here.
-  useEffect(() => diffBus.onTab((p) => setPath(p)), [])
-
-  const options = useMemo(() => {
-    const opts = targets.map((t) => ({ value: t.path, label: t.label }))
-    if (path && !targets.some((t) => t.path === path))
-      opts.unshift({ value: path, label: path.split('/').slice(-2).join('/') })
+  const repoOptions = useMemo(() => {
+    const opts = repos.map((r) => ({ value: r.path, label: r.name }))
+    // An externally-requested path that isn't a known repo: show it anyway.
+    if (repoPath && !repos.some((r) => r.path === repoPath))
+      opts.unshift({ value: repoPath, label: repoPath.split('/').slice(-1)[0] })
     return opts
-  }, [targets, path])
+  }, [repos, repoPath])
+
+  // ---- Branches for the selected repo (local refs, no network fetch) ----
+  const status = useAsync(
+    () => (repoPath ? window.api.branch.status(repoPath, false) : Promise.resolve(null)),
+    [repoPath]
+  )
+  const branches: BranchInfo[] = status.data?.branches ?? []
+
+  const [branch, setBranch] = useState<string | null>(null)
+  // Default to the repo's current branch when the branch list (re)loads.
+  useEffect(() => {
+    const data = status.data
+    if (!data) return
+    setBranch((prev) =>
+      prev && data.branches.some((b) => b.name === prev) ? prev : data.currentBranch
+    )
+  }, [status.data])
+
+  // External "Open in Changes tab" requests pass a repo/worktree path. Select the
+  // owning repo, then (once branches load) the branch whose checkout is that path.
+  const [pendingPath, setPendingPath] = useState<string | null>(null)
+  useEffect(
+    () =>
+      diffBus.onTab((p) => {
+        const owner = repos.find((r) => r.path === p || r.worktrees?.some((w) => w.path === p))
+        setRepoPath(owner ? owner.path : p)
+        setPendingPath(p)
+      }),
+    [repos]
+  )
+  useEffect(() => {
+    if (!pendingPath || !status.data) return
+    const match = status.data.branches.find((b) => b.worktreePath === pendingPath)
+    setBranch(match ? match.name : status.data.currentBranch)
+    setPendingPath(null)
+  }, [pendingPath, status.data])
+
+  const branchOptions = useMemo(
+    () =>
+      branches.map((b) => ({
+        value: b.name,
+        label: b.current ? `${b.name} · current` : b.worktree ? `${b.name} · worktree` : b.name
+      })),
+    [branches]
+  )
+
+  // ---- Resolve (diff path, ref) from the selected branch ----
+  //  current branch  -> repo working copy (HEAD; Uncommitted + vs-base both work)
+  //  worktree branch -> that worktree's working copy (HEAD; same toggles)
+  //  other branch    -> repo path + base...<branch> (committed diff only)
+  const selected = branches.find((b) => b.name === branch)
+  const diffPath = selected?.worktreePath && !selected.current ? selected.worktreePath : repoPath
+  const diffRef =
+    selected && !selected.current && !selected.worktreePath ? selected.name : undefined
 
   return (
     <div className="gh-tab">
-      {path ? (
+      {diffPath ? (
         <DiffPanel
-          key={path}
-          path={path}
+          key={`${diffPath}::${diffRef ?? 'HEAD'}`}
+          path={diffPath}
+          diffRef={diffRef}
           headerLeft={
-            <Dropdown
-              value={path}
-              options={options}
-              onChange={setPath}
-              searchable
-              minWidth={260}
-              placeholder="repo / worktree…"
-            />
+            <>
+              <Dropdown
+                value={repoPath ?? ''}
+                options={repoOptions}
+                onChange={(v) => {
+                  setRepoPath(v)
+                  setBranch(null) // reset to the new repo's current branch
+                }}
+                searchable
+                minWidth={180}
+                placeholder="repo…"
+              />
+              <Dropdown
+                value={branch ?? ''}
+                options={branchOptions}
+                onChange={setBranch}
+                searchable
+                minWidth={200}
+                placeholder={status.loading ? 'loading…' : 'branch…'}
+              />
+            </>
           }
         />
       ) : (

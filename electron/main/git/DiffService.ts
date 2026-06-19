@@ -23,9 +23,16 @@ async function defaultBase(path: string): Promise<string> {
   return 'HEAD'
 }
 
-export async function gitChanges(path: string, branchMode: boolean): Promise<GitChanges> {
+// `ref` lets the Changes tab diff a branch that isn't checked out (base...<ref>),
+// not just the working copy's HEAD. Falls back to HEAD when omitted.
+export async function gitChanges(
+  path: string,
+  branchMode: boolean,
+  ref?: string
+): Promise<GitChanges> {
+  const tip = ref || 'HEAD'
   const base = branchMode ? await defaultBase(path) : null
-  const range = base ? [`${base}...HEAD`] : ['HEAD']
+  const range = base ? [`${base}...${tip}`] : ['HEAD']
   const files = new Map<string, FileChange>()
 
   for (const line of (await gitOut(path, ['diff', '--numstat', ...range])).split('\n')) {
@@ -63,10 +70,15 @@ export async function gitChanges(path: string, branchMode: boolean): Promise<Git
   return { base, files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)) }
 }
 
-export async function gitFileDiff(path: string, file: string, branchMode: boolean): Promise<string> {
+export async function gitFileDiff(
+  path: string,
+  file: string,
+  branchMode: boolean,
+  ref?: string
+): Promise<string> {
   if (branchMode) {
     const base = await defaultBase(path)
-    return gitOut(path, ['diff', `${base}...HEAD`, '--', file])
+    return gitOut(path, ['diff', `${base}...${ref || 'HEAD'}`, '--', file])
   }
   const tracked = (await gitOut(path, ['ls-files', '--error-unmatch', '--', file])).trim()
   if (!tracked) return gitOut(path, ['diff', '--no-index', '--', '/dev/null', file])
