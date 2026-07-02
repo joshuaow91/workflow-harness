@@ -80,15 +80,20 @@ export function BrowserView({
     const onScreen = el.offsetParent !== null && r.width > 1 && r.height > 1
     const visible = onScreen && !suspended.current && !showSugRef.current
     if (visible) {
-      const key = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`
+      // The native view composites ABOVE the DOM, so clamp it to the tab-content
+      // region — otherwise a mis-measured/stale rect lets it paint over the
+      // titlebar and sidebar (which are DOM chrome) and swallow the whole app.
+      const content = document.querySelector('.tab-content')?.getBoundingClientRect()
+      const left = content ? Math.max(r.left, content.left) : r.left
+      const top = content ? Math.max(r.top, content.top) : r.top
+      const right = content ? Math.min(r.right, content.right) : r.right
+      const bottom = content ? Math.min(r.bottom, content.bottom) : r.bottom
+      const width = Math.max(0, right - left)
+      const height = Math.max(0, bottom - top)
+      const key = `${Math.round(left)},${Math.round(top)},${Math.round(width)},${Math.round(height)}`
       if (key !== lastBounds.current) {
         lastBounds.current = key
-        void window.api.browserView.setBounds(viewId, {
-          x: r.left,
-          y: r.top,
-          width: r.width,
-          height: r.height
-        })
+        void window.api.browserView.setBounds(viewId, { x: left, y: top, width, height })
       }
     }
     if (visible !== lastVisible.current) {
