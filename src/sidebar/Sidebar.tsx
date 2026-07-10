@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClaudeSession } from '@shared/types'
 import { relativeTime } from '../lib/time'
 import { launchClaude } from '../lib/launchClaude'
@@ -34,7 +34,10 @@ function SessionRow({
   onCancelRename,
   onSelect,
   onContextMenu,
-  onKill
+  onKill,
+  selectMode,
+  checked,
+  onToggleCheck
 }: {
   session: ClaudeSession
   displayTitle: string
@@ -49,6 +52,9 @@ function SessionRow({
   onSelect: () => void
   onContextMenu: (e: React.MouseEvent) => void
   onKill: () => void
+  selectMode: boolean
+  checked: boolean
+  onToggleCheck: () => void
 }) {
   const live = session.live
   // Status precedence: claude's own sessions file (when present), else pane
@@ -66,12 +72,28 @@ function SessionRow({
 
   return (
     <div
-      className={`session-row${selected ? ' selected' : ''}${needsResponse ? ' needs-response' : ''}`}
-      onClick={editing ? undefined : resume}
+      className={`session-row${selected ? ' selected' : ''}${needsResponse ? ' needs-response' : ''}${
+        selectMode && checked ? ' checked' : ''
+      }`}
+      onClick={editing ? undefined : selectMode ? onToggleCheck : resume}
       onContextMenu={onContextMenu}
-      title={`${displayTitle}\n${session.cwd}\nClick to resume · right-click to rename/delete`}
+      title={
+        selectMode
+          ? displayTitle
+          : `${displayTitle}\n${session.cwd}\nClick to resume · right-click to rename/delete`
+      }
     >
-      <span className={`session-dot ${dotClass}`} />
+      {selectMode ? (
+        <input
+          type="checkbox"
+          className="session-check"
+          checked={checked}
+          onClick={(e) => e.stopPropagation()}
+          onChange={onToggleCheck}
+        />
+      ) : (
+        <span className={`session-dot ${dotClass}`} />
+      )}
       <span className="session-body">
         {editing ? (
           <input
@@ -95,7 +117,7 @@ function SessionRow({
           {status && <span className="session-live">{status}</span>}
         </span>
       </span>
-      {live && (
+      {live && !selectMode && (
         <button
           className="session-kill"
           title={`Kill this ${live.status} session (frees the process; conversation stays resumable)`}
@@ -121,6 +143,8 @@ export function Sidebar() {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [checked, setChecked] = useState<Set<string>>(new Set())
 
   // Detect when a session finishes a turn (busy -> idle) = needs a response.
   const needsResp = useSessionAlerts()
@@ -203,8 +227,95 @@ export function Sidebar() {
     void window.api.claude.killSession(sessionId)
   }
 
+  // ---- Multi-select bulk actions ----
+  // Flat lookup so a checked sessionId resolves to its slug (for delete) + liveness.
+  const sessionIndex = useMemo(() => {
+    const m = new Map<string, { slug: string; live: boolean }>()
+    for (const p of projects) for (const s of p.sessions) m.set(s.sessionId, { slug: p.slug, live: !!s.live })
+    return m
+  }, [projects])
+
+  const toggleCheck = (id: string): void =>
+    setChecked((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  const exitSelect = (): void => {
+    setSelectMode(false)
+    setChecked(new Set())
+  }
+
+  const liveChecked = useMemo(
+    () => [...checked].filter((id) => sessionIndex.get(id)?.live),
+    [checked, sessionIndex]
+  )
+
+  const bulkKill = (): void => {
+    for (const id of liveChecked) killSession(id)
+    setChecked(new Set())
+  }
+
+  const bulkDelete = (): void => {
+    const ids = [...checked]
+    if (ids.length === 0) return
+    if (
+      !window.confirm(
+        `Delete ${ids.length} session transcript${ids.length > 1 ? 's' : ''}?\n\nThis removes ${
+          ids.length > 1 ? 'them' : 'it'
+        } from ~/.claude.`
+      )
+    )
+      return
+    const nextTitles = { ...titles }
+    for (const id of ids) {
+      const info = sessionIndex.get(id)
+      if (info) void window.api.claude.deleteSession(info.slug, id)
+      if (nextTitles[id]) delete nextTitles[id]
+    }
+    void settingsStore.update({ sessionTitles: nextTitles })
+    exitSelect()
+  }
+
   return (
     <div className="sidebar">
+      {projects.length > 0 && (
+        <div className="side-selectbar">
+          {selectMode ? (
+            <>
+              <span className="side-sel-count">{checked.size} selected</span>
+              <button
+                className="side-sel-btn"
+                disabled={liveChecked.length === 0}
+                onClick={bulkKill}
+                title="Kill the selected live sessions (frees processes; conversations stay resumable)"
+              >
+                Kill{liveChecked.length ? ` (${liveChecked.length})` : ''}
+              </button>
+              <button
+                className="side-sel-btn danger"
+                disabled={checked.size === 0}
+                onClick={bulkDelete}
+                title="Delete the selected transcripts from ~/.claude"
+              >
+                Delete
+              </button>
+              <button className="side-sel-btn" onClick={exitSelect}>
+                Done
+              </button>
+            </>
+          ) : (
+            <button
+              className="side-sel-toggle"
+              onClick={() => setSelectMode(true)}
+              title="Select multiple sessions to bulk kill or delete"
+            >
+              ☑ Select
+            </button>
+          )}
+        </div>
+      )}
       {loading && projects.length === 0 ? (
         <div className="side-empty" style={{ padding: '14px' }}>
           Loading projects…
@@ -262,6 +373,9 @@ export function Sidebar() {
                 onKill={() => {
                   if (s.live) killSession(s.sessionId)
                 }}
+                selectMode={selectMode}
+                checked={checked.has(s.sessionId)}
+                onToggleCheck={() => toggleCheck(s.sessionId)}
               />
             ))}
             {project.sessions.length > 10 && (

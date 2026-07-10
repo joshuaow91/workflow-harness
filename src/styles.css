@@ -1016,6 +1016,51 @@ button {
   background: rgba(137, 180, 250, 0.08);
 }
 
+/* Multi-select bulk-action bar for the sessions sidebar */
+.side-selectbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--surface-hover);
+}
+.side-sel-toggle,
+.side-sel-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--surface-hover);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.side-sel-toggle:hover,
+.side-sel-btn:not(:disabled):hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.side-sel-btn.danger:not(:disabled):hover {
+  color: #e85d5d;
+  border-color: #e85d5d;
+}
+.side-sel-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.side-sel-count {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-right: auto;
+}
+.session-check {
+  flex: 0 0 auto;
+  margin: 0 1px;
+  cursor: pointer;
+}
+.session-row.checked {
+  background: rgba(137, 180, 250, 0.12);
+}
+
 /* ---- GitHub tabs ---- */
 
 .gh-tab {

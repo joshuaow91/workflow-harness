@@ -13,9 +13,14 @@ export function useDevStack(): {
   const [state, setState] = useState<DevStackEntry[]>([])
 
   useEffect(() => {
-    void window.api.devstack.services().then(setServices)
-    void window.api.devstack.state().then(setState)
-    return window.api.devstack.onStatus(setState)
+    // The devstack bridge lives in the preload, which only loads on a harness
+    // restart. Until then window.api.devstack is undefined — guard so the sidebar
+    // doesn't crash to a blank screen; the controls simply stay hidden.
+    const ds = window.api.devstack
+    if (!ds) return
+    void ds.services().then(setServices)
+    void ds.state().then(setState)
+    return ds.onStatus(setState)
   }, [])
 
   return {
