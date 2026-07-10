@@ -3,6 +3,7 @@ import type { BranchInfo, DevService, DevStackEntry, Repo, Worktree } from '@sha
 import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { Icon } from '../components/Icon'
+import { Tooltip } from '../components/Tooltip'
 import { BranchModal } from './BranchModal'
 import { DevStackLogsModal } from './DevStackLogsModal'
 import { SideSection } from './SideSection'
@@ -89,50 +90,59 @@ function WorktreeRow({
       </span>
       <span className="wt-branch">{label}</span>
       {wt.isMain && (
-        <span className="wt-tag" title="The repo's primary checkout (not the main/master branch)">
-          primary
-        </span>
+        <Tooltip tip="The repo's primary checkout (not the main/master branch)">
+          <span className="wt-tag">primary</span>
+        </Tooltip>
       )}
-      {live && <span className="wt-live" title="claude running here" />}
+      {live && (
+        <Tooltip tip="A Claude session is running here">
+          <span className="wt-live" />
+        </Tooltip>
+      )}
       {service &&
         (activeHere ? (
           <div className="wt-stack" onClick={(e) => e.stopPropagation()}>
-            <span className="wt-stack-badge" title={`Dev stack running here on :${service.port}`}>
-              ● :{service.port}
-            </span>
-            <button className="term-act" title={`Open ${service.browserUrl}`} onClick={openBrowser}>
-              ↗
-            </button>
-            <button
-              className="term-act"
-              title="View dev-stack logs"
-              onClick={(e) => {
-                e.stopPropagation()
-                onLogs()
-              }}
-            >
-              ☰
-            </button>
-            <button className="term-act" title="Stop dev stack" onClick={stopStack}>
-              ■
-            </button>
+            <span className="wt-stack-badge">● :{service.port}</span>
+            <Tooltip tip={`Open ${service.browserUrl} in your browser`}>
+              <button className="term-act" onClick={openBrowser}>
+                ↗
+              </button>
+            </Tooltip>
+            <Tooltip tip="View dev-stack logs">
+              <button
+                className="term-act"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onLogs()
+                }}
+              >
+                ☰
+              </button>
+            </Tooltip>
+            <Tooltip tip={`Stop the dev stack (frees :${service.port}; leaves the checkout)`}>
+              <button className="term-act" onClick={stopStack}>
+                ■
+              </button>
+            </Tooltip>
           </div>
         ) : (
-          <button
-            className="wt-stack-run"
-            title={`Run ${repo.name}'s dev stack from here on :${service.port}${
-              active ? ` — stops the stack on "${active.cwd.split('/').pop()}"` : ''
+          <Tooltip
+            tip={`Run ${repo.name}'s dev stack from here on :${service.port}${
+              active ? `\nStops the stack on "${active.cwd.split('/').pop()}"` : ''
             }`}
-            onClick={activateStack}
           >
-            ▶ run
-          </button>
+            <button className="wt-stack-run" onClick={activateStack}>
+              ▶ run
+            </button>
+          </Tooltip>
         ))}
       <div className="wt-actions">
         {!wt.isMain && (
-          <button className="term-act" title="Remove worktree" onClick={remove}>
-            <Icon name="close" size={13} />
-          </button>
+          <Tooltip tip="Remove this worktree">
+            <button className="term-act" onClick={remove}>
+              <Icon name="close" size={13} />
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>
@@ -182,13 +192,21 @@ function BranchRow({
       </span>
       <span className="wt-branch">{branch.name}</span>
       {branch.upstream && (
-        <span className="wt-tag" title={`pushed — tracks ${branch.upstream}`}>
-          ↑
-        </span>
+        <Tooltip tip={`Pushed — tracks ${branch.upstream}`}>
+          <span className="wt-tag">↑</span>
+        </Tooltip>
       )}
-      <button className="wt-stack-run" disabled={busy} onClick={run}>
-        {busy ? '…' : service ? '▶ run' : 'checkout'}
-      </button>
+      <Tooltip
+        tip={
+          service
+            ? `Check out ${branch.name} into the repo and run its dev stack on :${service.port}`
+            : `Check out ${branch.name} in the repo`
+        }
+      >
+        <button className="wt-stack-run" disabled={busy} onClick={run}>
+          {busy ? '…' : service ? '▶ run' : 'checkout'}
+        </button>
+      </Tooltip>
     </div>
   )
 }
@@ -275,25 +293,23 @@ function RepoRow({
         {repo.currentBranch && <span className="repo-branch">{repo.currentBranch}</span>}
         {liveCount > 0 && <span className="repo-live-count">{liveCount} live</span>}
         {active && (
-          <span
-            className="repo-stack-live"
-            title={`Dev stack running on :${active.port} from ${active.cwd.split('/').pop()}`}
-          >
-            :{active.port}
-          </span>
+          <Tooltip tip={`Dev stack running on :${active.port} from ${active.cwd.split('/').pop()}`}>
+            <span className="repo-stack-live">:{active.port}</span>
+          </Tooltip>
         )}
         {extraWorktrees > 0 && <span className="repo-wt-count">{extraWorktrees}⎇</span>}
         <div className="repo-actions">
-          <button
-            className="term-act"
-            title="Manage branches — pull latest, check out, clean up old branches"
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowBranches(true)
-            }}
-          >
-            <Icon name="branch" size={13} />
-          </button>
+          <Tooltip tip="Manage branches — pull latest, check out, clean up old branches">
+            <button
+              className="term-act"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowBranches(true)
+              }}
+            >
+              <Icon name="branch" size={13} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -380,9 +396,11 @@ export function RepoTree() {
     <SideSection
       title="Repos"
       action={
-        <button className="side-section-icon" onClick={refresh} title="Rescan repos">
-          <Icon name="refresh" size={13} />
-        </button>
+        <Tooltip tip="Rescan repos">
+          <button className="side-section-icon" onClick={refresh}>
+            <Icon name="refresh" size={13} />
+          </button>
+        </Tooltip>
       }
     >
       {loading ? (

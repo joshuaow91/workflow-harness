@@ -4074,6 +4074,33 @@ button {
   animation: pulse 1.6s infinite;
 }
 
+/* Custom tooltip */
+.tip-wrap {
+  display: inline-flex;
+}
+.tip {
+  position: fixed;
+  z-index: 10000;
+  padding: 4px 8px;
+  max-width: 260px;
+  background: var(--surface-2, #2a2a3a);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-line;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  animation: tipIn 90ms ease-out;
+}
+@keyframes tipIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
 /* Local-branch rows (no worktree): lighter than real checkouts, run = checkout+serve */
 .wt-row.branch-only {
   cursor: default;
