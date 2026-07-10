@@ -132,13 +132,13 @@ function WorktreeRow({
       <div className="wt-actions">
         <button
           className="term-act"
-          title="Open claude here"
+          title="Open a Claude session here"
           onClick={(e) => {
             e.stopPropagation()
             openClaude(wt.path, `${repo.name}:${label}`)
           }}
         >
-          ▷
+          <Icon name="bot" size={13} />
         </button>
         {!wt.isMain && (
           <button className="term-act" title="Remove worktree" onClick={remove}>
@@ -259,13 +259,13 @@ function RepoRow({
           </button>
           <button
             className="term-act"
-            title="Open claude in the main checkout"
+            title="Open a Claude session in the main checkout"
             onClick={(e) => {
               e.stopPropagation()
               openClaude(repo.path, repo.name)
             }}
           >
-            ▷
+            <Icon name="bot" size={13} />
           </button>
           <button
             className="term-act"
@@ -299,7 +299,7 @@ function RepoRow({
               onLogs={() => setShowLogs(true)}
             />
           ))}
-          {adding ? (
+          {adding && (
             <div className="wt-addbox">
               <div className="wt-add">
                 <input
@@ -336,15 +336,6 @@ function RepoRow({
                 </span>
                 <Dropdown value={base} options={baseOptions} onChange={setBase} minWidth={130} />
               </div>
-            </div>
-          ) : (
-            <div className="wt-newrow">
-              <button className="wt-new" onClick={() => startAdding('session')}>
-                ＋ session from {fallbackBase}
-              </button>
-              <button className="wt-new" onClick={() => startAdding('worktree')}>
-                ＋ worktree from {fallbackBase}
-              </button>
             </div>
           )}
         </div>
