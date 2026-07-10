@@ -90,8 +90,8 @@ function WorktreeRow({
       </span>
       <span className="wt-branch">{label}</span>
       {wt.isMain && (
-        <Tooltip tip="The repo's primary checkout (not the main/master branch)">
-          <span className="wt-tag">primary</span>
+        <Tooltip tip="The branch currently checked out in this repo">
+          <span className="wt-tag">current</span>
         </Tooltip>
       )}
       {live && (
