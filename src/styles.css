@@ -4074,6 +4074,39 @@ button {
   animation: pulse 1.6s infinite;
 }
 
+/* Local-branch rows (no worktree): lighter than real checkouts, run = checkout+serve */
+.wt-row.branch-only {
+  cursor: default;
+}
+.wt-icon.branch-only {
+  opacity: 0.45;
+}
+.wt-row.branch-only .wt-branch {
+  color: var(--text-faint);
+}
+.wt-branch-sep {
+  padding: 6px 10px 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+.wt-branch-more {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.wt-branch-more:hover {
+  color: var(--text);
+}
+
 /* Dev-stack (approach A) controls in a worktree row */
 .wt-stack {
   display: flex;

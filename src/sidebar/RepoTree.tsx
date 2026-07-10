@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import type { DevService, DevStackEntry, Repo, Worktree } from '@shared/types'
+import { useEffect, useMemo, useState } from 'react'
+import type { BranchInfo, DevService, DevStackEntry, Repo, Worktree } from '@shared/types'
 import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { Icon } from '../components/Icon'
@@ -139,6 +139,60 @@ function WorktreeRow({
   )
 }
 
+// A local branch that isn't checked out in any worktree. It has no working
+// directory, so its one action is to place it in one: `run` = check it out into
+// the repo's checkout, then serve its dev stack (or just `checkout` if the repo
+// has no dev-stack service). Once run, it becomes the primary worktree row.
+function BranchRow({
+  repo,
+  branch,
+  service,
+  onChanged
+}: {
+  repo: Repo
+  branch: BranchInfo
+  service?: DevService
+  onChanged: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+
+  const run = async (e: React.MouseEvent): Promise<void> => {
+    e.stopPropagation()
+    setBusy(true)
+    try {
+      await window.api.branch.checkout(repo.path, branch.name) // place it in the working tree
+      if (service) await window.api.devstack.activate(repo.name, repo.path) // …and serve it
+      onChanged()
+    } catch (err) {
+      window.alert(
+        `Couldn't ${service ? 'run' : 'check out'} ${branch.name}:\n${(err as Error).message}\n\nCommit or stash changes in the checkout first?`
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      className="wt-row branch-only"
+      title={`${branch.name}\n${service ? 'Hover → run: check out & serve this branch' : 'Hover → checkout'}`}
+    >
+      <span className="wt-icon branch-only">
+        <Icon name="branch" size={12} />
+      </span>
+      <span className="wt-branch">{branch.name}</span>
+      {branch.upstream && (
+        <span className="wt-tag" title={`pushed — tracks ${branch.upstream}`}>
+          ↑
+        </span>
+      )}
+      <button className="wt-stack-run" disabled={busy} onClick={run}>
+        {busy ? '…' : service ? '▶ run' : 'checkout'}
+      </button>
+    </div>
+  )
+}
+
 function RepoRow({
   repo,
   liveCwds,
@@ -164,9 +218,39 @@ function RepoRow({
   const [open, setOpen] = useState(false)
   const [showBranches, setShowBranches] = useState(false)
   const [showLogs, setShowLogs] = useState(false)
+  const [branches, setBranches] = useState<BranchInfo[]>([])
 
   const extraWorktrees = repo.worktrees.filter((w) => !w.isMain).length
   const liveCount = repo.worktrees.filter((w) => liveCwds.has(w.path)).length
+
+  // Local branches (loaded lazily on expand, no network fetch). Anything already
+  // checked out in a worktree is shown as a worktree row, so exclude those; also
+  // hide merged/gone branches (they live in the Branches modal for cleanup).
+  const loadBranches = (): void => {
+    void window.api.branch
+      .status(repo.path, false)
+      .then((s) => setBranches(s?.branches ?? []))
+      .catch(() => setBranches([]))
+  }
+  useEffect(() => {
+    if (open) loadBranches()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, repo.path])
+
+  const refreshAll = (): void => {
+    onChanged()
+    loadBranches()
+  }
+
+  const worktreeBranches = new Set(
+    repo.worktrees.map((w) => w.branch).filter((b): b is string => !!b)
+  )
+  const branchRows = branches.filter(
+    (b) => !worktreeBranches.has(b.name) && !b.merged && !b.gone
+  )
+  const MAX_BRANCH_ROWS = 10
+  const shownBranches = branchRows.slice(0, MAX_BRANCH_ROWS)
+  const moreBranches = branchRows.length - shownBranches.length
 
   return (
     <div
@@ -226,12 +310,27 @@ function RepoRow({
               repo={repo}
               wt={wt}
               live={liveCwds.has(wt.path)}
-              onChanged={onChanged}
+              onChanged={refreshAll}
               service={service}
               active={active}
               onLogs={() => setShowLogs(true)}
             />
           ))}
+          {shownBranches.length > 0 && <div className="wt-branch-sep">branches</div>}
+          {shownBranches.map((b) => (
+            <BranchRow
+              key={b.name}
+              repo={repo}
+              branch={b}
+              service={service}
+              onChanged={refreshAll}
+            />
+          ))}
+          {moreBranches > 0 && (
+            <button className="wt-branch-more" onClick={() => setShowBranches(true)}>
+              +{moreBranches} more in branch manager
+            </button>
+          )}
         </div>
       )}
     </div>
