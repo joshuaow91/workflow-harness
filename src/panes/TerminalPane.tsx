@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { themeStore, xtermTheme } from '../themes/themeStore'
 import { registerTerminalFocus } from '../lib/terminalFocus'
+import { KittyKeyboard } from './kittyKeyboard'
 
 // Attaches to an already-running PTY (created by TerminalsTab) by id. Replays the
 // session's recent output so re-mounting (layout change / restart) is seamless.
@@ -31,16 +32,29 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     term.open(container)
     fit.fit()
 
-    // Shift+Enter -> newline in claude's prompt. Claude enables the kitty keyboard
-    // protocol at startup but only truly activates CSI-u parsing once the terminal
-    // confirms support via the handshake — which xterm 5.x doesn't implement — so
-    // synthesized kitty/modifyOtherKeys/ESC+CR sequences don't insert a newline
-    // (verified against claude 2.1.x in a pty). The reliable path is claude's own
-    // backslash line-continuation: typing `\` then Enter. So send exactly that —
-    // backslash + CR — which claude turns into a newline (consuming the backslash).
+    // xterm 5.x doesn't implement the kitty keyboard protocol, which claude turns on
+    // at startup (and which is why modified keys like Shift+Enter work in Ghostty but
+    // not here). This shim speaks it: kitty.scanOutput (below, in onData) tracks the
+    // flags claude pushes and answers its query, and kitty.encode emits CSI-u for
+    // modified keys while it's active — so Shift+Enter becomes CSI 13;2u (a real
+    // newline) instead of a bare \r (submit). Plain Enter has no modifiers, so it
+    // stays legacy \r and still submits.
+    const kitty = new KittyKeyboard()
     term.attachCustomKeyEventHandler((e) => {
-      if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
-        window.api.terminal.write(id, '\\\r')
+      if (e.type !== 'keydown') return true
+      // preventDefault is essential: returning false stops xterm's keydown path, but
+      // NOT its hidden textarea, which would otherwise insert a newline and emit its
+      // own \r — that stray \r is what was submitting the message after our CSI-u.
+      const seq = kitty.encode(e)
+      if (seq) {
+        e.preventDefault()
+        window.api.terminal.write(id, seq)
+        return false
+      }
+      // Non-kitty context (e.g. a raw shell): approximate Shift+Enter as Meta+Enter.
+      if (e.key === 'Enter' && e.shiftKey && !kitty.active) {
+        e.preventDefault()
+        window.api.terminal.write(id, '\x1b\r')
         return false
       }
       return true
@@ -55,6 +69,10 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     const queue: string[] = []
     const offData = window.api.terminal.onData((e) => {
       if (e.id !== id) return
+      // Watch claude's output for kitty keyboard push/pop/query and answer the
+      // query, so it activates CSI-u input (see the key handler above).
+      const reply = kitty.scanOutput(e.data)
+      if (reply) window.api.terminal.write(id, reply)
       if (ready) term.write(e.data)
       else queue.push(e.data)
     })
@@ -69,7 +87,13 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     let cancelled = false
     void window.api.terminal.getBuffer(id).then((buf) => {
       if (cancelled) return
-      if (buf) term.write(buf)
+      // Recover kitty state from a resumed session's replayed output (if the push
+      // is still within the capped buffer). A fresh session gets it live via onData.
+      if (buf) {
+        const reply = kitty.scanOutput(buf)
+        if (reply) window.api.terminal.write(id, reply)
+        term.write(buf)
+      }
       for (const d of queue) term.write(d)
       queue.length = 0
       ready = true
