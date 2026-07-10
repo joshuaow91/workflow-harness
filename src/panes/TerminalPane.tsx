@@ -31,14 +31,14 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     term.open(container)
     fit.fit()
 
-    // Shift+Enter -> insert a newline in claude's prompt. This is the exact
-    // sequence claude's own `/terminal-setup` installs (ESC+CR, i.e. Meta+Enter):
-    //   { key: "shift+enter", command: "sendSequence", args: { text: "\x1B\r" } }
-    // xterm 5.x can't negotiate the kitty keyboard protocol, so this custom handler
-    // is the only way to disambiguate Shift+Enter from Enter (both are \r otherwise).
+    // Shift+Enter -> insert a newline in claude's prompt. Claude enables the kitty
+    // keyboard protocol on startup (it emits CSI >1u), so in that mode it ignores
+    // legacy ESC+CR / \n and expects the kitty CSI-u encoding for a modified Enter:
+    // CSI 13 ; 2 u  (keycode 13 = Enter, modifier 2 = Shift) — the same bytes a
+    // kitty-capable terminal like Ghostty sends. Plain Enter stays legacy \r (submit).
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
-        window.api.terminal.write(id, '\x1b\r')
+        window.api.terminal.write(id, '\x1b[13;2u')
         return false
       }
       return true
