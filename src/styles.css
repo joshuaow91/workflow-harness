@@ -4112,7 +4112,7 @@ button {
   color: var(--text-faint);
 }
 .wt-branch-sep {
-  padding: 6px 10px 2px;
+  padding: 6px 12px 2px 34px;
   font-size: 9.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4123,7 +4123,7 @@ button {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 4px 10px 6px;
+  padding: 4px 12px 6px 34px;
   font-size: 11px;
   color: var(--text-faint);
   background: none;
