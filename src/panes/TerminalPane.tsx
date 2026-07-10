@@ -31,15 +31,14 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     term.open(container)
     fit.fit()
 
-    // Shift+Enter -> insert a newline in claude's prompt. Claude (and its
-    // `/terminal-setup`) treats a bare line feed as "insert newline" while Enter
-    // (\r) submits, so send a raw \n. xterm 5.x can't negotiate the kitty keyboard
-    // protocol, so this custom handler is the only way to disambiguate Shift+Enter
-    // from Enter. Falls back to Meta+Enter (ESC+CR) at a raw shell (bracketed paste
-    // off), where a bare \n would just submit the line.
+    // Shift+Enter -> insert a newline in claude's prompt. This is the exact
+    // sequence claude's own `/terminal-setup` installs (ESC+CR, i.e. Meta+Enter):
+    //   { key: "shift+enter", command: "sendSequence", args: { text: "\x1B\r" } }
+    // xterm 5.x can't negotiate the kitty keyboard protocol, so this custom handler
+    // is the only way to disambiguate Shift+Enter from Enter (both are \r otherwise).
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
-        window.api.terminal.write(id, term.modes.bracketedPasteMode ? '\n' : '\x1b\r')
+        window.api.terminal.write(id, '\x1b\r')
         return false
       }
       return true
