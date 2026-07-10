@@ -31,16 +31,15 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     term.open(container)
     fit.fit()
 
-    // Shift+Enter -> insert a newline so claude's prompt accepts multi-line input.
-    // Route it through xterm's OWN paste pipeline (term.paste) rather than a direct
-    // write: that orders it after any in-flight paste and reuses the exact path a
-    // real multi-line paste uses, so it stays reliable right after a paste (a
-    // direct ESC+CR could be mis-parsed as a submit there). Falls back to Meta+
-    // Enter (ESC+CR) at a raw shell, where bracketed paste is off.
+    // Shift+Enter -> insert a newline in claude's prompt. Claude (and its
+    // `/terminal-setup`) treats a bare line feed as "insert newline" while Enter
+    // (\r) submits, so send a raw \n. xterm 5.x can't negotiate the kitty keyboard
+    // protocol, so this custom handler is the only way to disambiguate Shift+Enter
+    // from Enter. Falls back to Meta+Enter (ESC+CR) at a raw shell (bracketed paste
+    // off), where a bare \n would just submit the line.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
-        if (term.modes.bracketedPasteMode) term.paste('\n')
-        else window.api.terminal.write(id, '\x1b\r')
+        window.api.terminal.write(id, term.modes.bracketedPasteMode ? '\n' : '\x1b\r')
         return false
       }
       return true
