@@ -137,6 +137,14 @@ export const IPC = {
     changes: 'diff:changes',
     fileDiff: 'diff:fileDiff'
   },
+  devstack: {
+    services: 'devstack:services',
+    state: 'devstack:state',
+    activate: 'devstack:activate',
+    stop: 'devstack:stop',
+    logs: 'devstack:logs',
+    status: 'devstack:status' // main -> renderer push
+  },
   system: {
     openExternal: 'system:openExternal',
     openInBrave: 'system:openInBrave',

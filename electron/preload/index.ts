@@ -25,6 +25,8 @@ import type {
   RepoBranchStatus,
   ClaudeProject,
   GitChanges,
+  DevService,
+  DevStackEntry,
   DatadogDashboard,
   DeployDrill,
   DeployHealth,
@@ -279,6 +281,19 @@ const api = {
       ipcRenderer.invoke(IPC.diff.changes, path, branchMode, ref),
     fileDiff: (path: string, file: string, branchMode: boolean, ref?: string): Promise<string> =>
       ipcRenderer.invoke(IPC.diff.fileDiff, path, file, branchMode, ref)
+  },
+  devstack: {
+    services: (): Promise<DevService[]> => ipcRenderer.invoke(IPC.devstack.services),
+    state: (): Promise<DevStackEntry[]> => ipcRenderer.invoke(IPC.devstack.state),
+    activate: (repo: string, cwd: string): Promise<DevStackEntry[]> =>
+      ipcRenderer.invoke(IPC.devstack.activate, repo, cwd),
+    stop: (repo: string): Promise<DevStackEntry[]> => ipcRenderer.invoke(IPC.devstack.stop, repo),
+    logs: (repo: string): Promise<string> => ipcRenderer.invoke(IPC.devstack.logs, repo),
+    onStatus: (cb: (state: DevStackEntry[]) => void): (() => void) => {
+      const h = (_e: unknown, state: DevStackEntry[]): void => cb(state)
+      ipcRenderer.on(IPC.devstack.status, h)
+      return () => ipcRenderer.removeListener(IPC.devstack.status, h)
+    }
   },
   knowledge: {
     get: (): Promise<RepoKnowledge[]> => ipcRenderer.invoke(IPC.knowledge.get),

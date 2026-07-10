@@ -31,6 +31,7 @@ import { registerBrowserViewIpc, destroyAllBrowserViews } from './browser/regist
 import { setupExtensions } from './browser/extensions'
 import { registerWorktreeIpc } from './git/registerWorktreeIpc'
 import { registerGithubIpc } from './github/registerGithubIpc'
+import { registerDevStackIpc, stopAllDevStacks } from './devstack/registerDevStackIpc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -227,12 +228,14 @@ function registerIpc(): void {
   registerBrowserViewIpc(() => mainWindow)
   registerWorktreeIpc()
   registerGithubIpc()
+  registerDevStackIpc(() => mainWindow)
 }
 
 app.on('before-quit', () => {
   void disposeClaudeWatcher()
   killAllTerminals()
   destroyAllBrowserViews()
+  stopAllDevStacks()
 })
 
 // Hardware acceleration stays ON. It was briefly disabled to stop skia "Invalid

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
-import type { Repo, Worktree } from '@shared/types'
+import type { DevService, DevStackEntry, Repo, Worktree } from '@shared/types'
 import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
 import { BranchModal } from './BranchModal'
+import { DevStackLogsModal } from './DevStackLogsModal'
 import { SideSection } from './SideSection'
 import { useRepos } from './useRepos'
+import { useDevStack } from './useDevStack'
 import { useFlatSessions } from './useFlatSessions'
 
 function openClaude(cwd: string, label: string): void {
@@ -17,14 +19,36 @@ function WorktreeRow({
   repo,
   wt,
   live,
-  onChanged
+  onChanged,
+  service,
+  active,
+  onLogs
 }: {
   repo: Repo
   wt: Worktree
   live: boolean
   onChanged: () => void
+  /** This repo's dev-stack config, if one is defined. */
+  service?: DevService
+  /** This repo's currently-running stack, if any (may be a different worktree). */
+  active?: DevStackEntry
+  onLogs: () => void
 }) {
   const label = wt.branch ?? `(detached ${wt.head?.slice(0, 7) ?? ''})`
+  const activeHere = !!active && active.cwd === wt.path
+
+  const activateStack = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    void window.api.devstack.activate(repo.name, wt.path)
+  }
+  const stopStack = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    void window.api.devstack.stop(repo.name)
+  }
+  const openBrowser = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    if (service?.browserUrl) void window.api.system.openExternal(service.browserUrl)
+  }
 
   const remove = async (e: React.MouseEvent): Promise<void> => {
     e.stopPropagation()
@@ -71,6 +95,40 @@ function WorktreeRow({
         </span>
       )}
       {live && <span className="wt-live" title="claude running here" />}
+      {service &&
+        (activeHere ? (
+          <div className="wt-stack" onClick={(e) => e.stopPropagation()}>
+            <span className="wt-stack-badge" title={`Dev stack running here on :${service.port}`}>
+              ● :{service.port}
+            </span>
+            <button className="term-act" title={`Open ${service.browserUrl}`} onClick={openBrowser}>
+              ↗
+            </button>
+            <button
+              className="term-act"
+              title="View dev-stack logs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onLogs()
+              }}
+            >
+              ☰
+            </button>
+            <button className="term-act" title="Stop dev stack" onClick={stopStack}>
+              ■
+            </button>
+          </div>
+        ) : (
+          <button
+            className="wt-stack-run"
+            title={`Run ${repo.name}'s dev stack from here on :${service.port}${
+              active ? ` — stops the stack on "${active.cwd.split('/').pop()}"` : ''
+            }`}
+            onClick={activateStack}
+          >
+            ▶ run
+          </button>
+        ))}
       <div className="wt-actions">
         <button
           className="term-act"
@@ -96,11 +154,15 @@ function RepoRow({
   repo,
   liveCwds,
   onChanged,
+  service,
+  active,
   dnd
 }: {
   repo: Repo
   liveCwds: Set<string>
   onChanged: () => void
+  service?: DevService
+  active?: DevStackEntry
   dnd: {
     dragging: boolean
     over: boolean
@@ -116,6 +178,7 @@ function RepoRow({
   const [base, setBase] = useState('')
   const [busy, setBusy] = useState(false)
   const [showBranches, setShowBranches] = useState(false)
+  const [showLogs, setShowLogs] = useState(false)
 
   const extraWorktrees = repo.worktrees.filter((w) => !w.isMain).length
   const liveCount = repo.worktrees.filter((w) => liveCwds.has(w.path)).length
@@ -174,6 +237,14 @@ function RepoRow({
         </span>
         {repo.currentBranch && <span className="repo-branch">{repo.currentBranch}</span>}
         {liveCount > 0 && <span className="repo-live-count">{liveCount} live</span>}
+        {active && (
+          <span
+            className="repo-stack-live"
+            title={`Dev stack running on :${active.port} from ${active.cwd.split('/').pop()}`}
+          >
+            :{active.port}
+          </span>
+        )}
         {extraWorktrees > 0 && <span className="repo-wt-count">{extraWorktrees}⎇</span>}
         <div className="repo-actions">
           <button
@@ -212,6 +283,7 @@ function RepoRow({
       {showBranches && (
         <BranchModal repoPath={repo.path} repoName={repo.name} onClose={() => setShowBranches(false)} />
       )}
+      {showLogs && <DevStackLogsModal repo={repo.name} onClose={() => setShowLogs(false)} />}
 
       {open && (
         <div className="repo-children">
@@ -222,6 +294,9 @@ function RepoRow({
               wt={wt}
               live={liveCwds.has(wt.path)}
               onChanged={onChanged}
+              service={service}
+              active={active}
+              onLogs={() => setShowLogs(true)}
             />
           ))}
           {adding ? (
@@ -282,6 +357,7 @@ export function RepoTree() {
   const { repos, loading, refresh } = useRepos()
   const sessions = useFlatSessions()
   const settings = useSettings()
+  const { serviceFor, activeFor } = useDevStack()
   const order = settings?.repoOrder ?? []
 
   const liveCwds = useMemo(
@@ -336,6 +412,8 @@ export function RepoTree() {
             repo={repo}
             liveCwds={liveCwds}
             onChanged={refresh}
+            service={serviceFor(repo.name)}
+            active={activeFor(repo.name)}
             dnd={{
               dragging: drag === repo.path,
               over: over === repo.path && drag !== repo.path,

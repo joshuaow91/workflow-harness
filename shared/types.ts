@@ -360,6 +360,32 @@ export interface BranchInfo {
   worktreePath?: string
 }
 
+// ---- Dev stack (approach A: run a repo's dev server from any worktree on its
+// canonical port, one at a time, so cross-service URLs + auth keep working) ----
+export interface DevService {
+  /** Repo folder name this service belongs to (matches Repo.name). */
+  repo: string
+  /** Shell command that starts the dev server (run in the chosen worktree's cwd). */
+  command: string
+  /** Canonical port it binds — freed before (re)starting so ports never drift. */
+  port: number
+  /** URL to open in the Browser tab once it's up. */
+  browserUrl?: string
+  /** Extra env for the command (e.g. JAVA_HOME for a Gradle server). */
+  env?: Record<string, string>
+}
+
+export interface DevStackEntry {
+  repo: string
+  /** The worktree/checkout path currently serving this repo's canonical port. */
+  cwd: string
+  port: number
+  browserUrl?: string
+  running: boolean
+  pid?: number
+  startedAt?: number
+}
+
 export interface RepoBranchStatus {
   repo: string
   path: string

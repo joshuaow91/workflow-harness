@@ -4029,6 +4029,65 @@ button {
   animation: pulse 1.6s infinite;
 }
 
+/* Dev-stack (approach A) controls in a worktree row */
+.wt-stack {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.wt-stack-badge {
+  font-size: 10px;
+  color: var(--green);
+  font-family: var(--mono, monospace);
+  white-space: nowrap;
+}
+.wt-stack-run {
+  flex: 0 0 auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+}
+.wt-row:hover .wt-stack-run {
+  opacity: 1;
+}
+.wt-stack-run:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
+.repo-stack-live {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--green);
+  font-family: var(--mono, monospace);
+}
+/* Dev-stack logs modal */
+.devstack-logs {
+  width: min(880px, 92vw);
+  height: min(620px, 82vh);
+  display: flex;
+  flex-direction: column;
+}
+.devstack-log-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono, monospace);
+  font-size: 11.5px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .wt-newrow {
   display: flex;
   flex-direction: column;
