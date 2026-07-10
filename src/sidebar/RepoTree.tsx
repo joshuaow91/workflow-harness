@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import type { DevService, DevStackEntry, Repo, Worktree } from '@shared/types'
 import { launchClaude } from '../lib/launchClaude'
 import { settingsStore, useSettings } from '../lib/settingsStore'
-import { Dropdown } from '../components/Dropdown'
 import { Icon } from '../components/Icon'
 import { BranchModal } from './BranchModal'
 import { DevStackLogsModal } from './DevStackLogsModal'
@@ -130,16 +129,6 @@ function WorktreeRow({
           </button>
         ))}
       <div className="wt-actions">
-        <button
-          className="term-act"
-          title="Open a Claude session here"
-          onClick={(e) => {
-            e.stopPropagation()
-            openClaude(wt.path, `${repo.name}:${label}`)
-          }}
-        >
-          <Icon name="bot" size={13} />
-        </button>
         {!wt.isMain && (
           <button className="term-act" title="Remove worktree" onClick={remove}>
             <Icon name="close" size={13} />
@@ -173,47 +162,11 @@ function RepoRow({
   }
 }) {
   const [open, setOpen] = useState(false)
-  const [adding, setAdding] = useState<false | 'session' | 'worktree'>(false)
-  const [branch, setBranch] = useState('')
-  const [base, setBase] = useState('')
-  const [busy, setBusy] = useState(false)
   const [showBranches, setShowBranches] = useState(false)
   const [showLogs, setShowLogs] = useState(false)
 
   const extraWorktrees = repo.worktrees.filter((w) => !w.isMain).length
   const liveCount = repo.worktrees.filter((w) => liveCwds.has(w.path)).length
-  const fallbackBase = repo.defaultBranch ?? 'HEAD'
-
-  const baseOptions = [
-    ...(repo.defaultBranch ? [{ value: repo.defaultBranch, label: repo.defaultBranch }] : []),
-    { value: 'HEAD', label: `current (${repo.currentBranch ?? 'HEAD'})` }
-  ]
-
-  const startAdding = (mode: 'session' | 'worktree'): void => {
-    setBranch(`session-${extraWorktrees + 1}`)
-    setBase(fallbackBase)
-    setAdding(mode)
-    setOpen(true)
-  }
-
-  const create = async (): Promise<void> => {
-    const name = branch.trim()
-    if (!name) return
-    const mode = adding
-    setBusy(true)
-    try {
-      const wt = await window.api.worktree.add(repo.path, name, base || undefined)
-      setAdding(false)
-      setBranch('')
-      onChanged()
-      setOpen(true)
-      if (mode === 'session') openClaude(wt.path, `${repo.name}:${name}`)
-    } catch (err) {
-      window.alert(`Could not create worktree:\n${(err as Error).message}`)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   return (
     <div
@@ -249,33 +202,13 @@ function RepoRow({
         <div className="repo-actions">
           <button
             className="term-act"
-            title="Manage branches — pull latest & clean up old branches"
+            title="Manage branches — pull latest, check out, clean up old branches"
             onClick={(e) => {
               e.stopPropagation()
               setShowBranches(true)
             }}
           >
             <Icon name="branch" size={13} />
-          </button>
-          <button
-            className="term-act"
-            title="Open a Claude session in the main checkout"
-            onClick={(e) => {
-              e.stopPropagation()
-              openClaude(repo.path, repo.name)
-            }}
-          >
-            <Icon name="bot" size={13} />
-          </button>
-          <button
-            className="term-act"
-            title={`New session from ${fallbackBase}`}
-            onClick={(e) => {
-              e.stopPropagation()
-              startAdding('session')
-            }}
-          >
-            ＋
           </button>
         </div>
       </div>
@@ -299,45 +232,6 @@ function RepoRow({
               onLogs={() => setShowLogs(true)}
             />
           ))}
-          {adding && (
-            <div className="wt-addbox">
-              <div className="wt-add">
-                <input
-                  autoFocus
-                  className="wt-input"
-                  placeholder="branch name"
-                  value={branch}
-                  disabled={busy}
-                  onChange={(e) => setBranch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void create()
-                    if (e.key === 'Escape') {
-                      setAdding(false)
-                      setBranch('')
-                    }
-                  }}
-                />
-                <button className="term-act" disabled={busy} title="Create" onClick={() => void create()}>
-                  ✓
-                </button>
-                <button
-                  className="term-act"
-                  onClick={() => {
-                    setAdding(false)
-                    setBranch('')
-                  }}
-                >
-                  <Icon name="close" size={13} />
-                </button>
-              </div>
-              <div className="wt-from">
-                <span className="wt-from-label">
-                  {adding === 'session' ? 'new session from' : 'new worktree from'}
-                </span>
-                <Dropdown value={base} options={baseOptions} onChange={setBase} minWidth={130} />
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
