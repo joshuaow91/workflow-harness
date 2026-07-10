@@ -19,6 +19,7 @@ export function BranchModal({
   const status = q.data
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<'pull' | 'delete' | 'checkout' | null>(null)
+  const [checkingOut, setCheckingOut] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
   // Deletable = anything except the current branch and the default. Worktree
@@ -55,17 +56,18 @@ export function BranchModal({
     }
   }
 
-  const checkout = async (): Promise<void> => {
-    if (!status) return
+  const checkout = async (branch: string): Promise<void> => {
     setBusy('checkout')
+    setCheckingOut(branch)
     setNote(null)
     try {
-      await window.api.branch.checkout(repoPath, status.defaultBranch)
+      await window.api.branch.checkout(repoPath, branch)
       q.reload()
     } catch (e) {
-      setNote(`Switch failed (commit/stash changes first?): ${(e as Error).message}`)
+      setNote(`Switch to ${branch} failed (commit/stash changes first?): ${(e as Error).message}`)
     } finally {
       setBusy(null)
+      setCheckingOut(null)
     }
   }
 
@@ -129,8 +131,12 @@ export function BranchModal({
                 </div>
                 <div className="branch-def-actions">
                   {status.currentBranch !== status.defaultBranch && (
-                    <button className="tbtn" disabled={busy != null} onClick={() => void checkout()}>
-                      {busy === 'checkout' ? 'Switching…' : `Switch to ${status.defaultBranch}`}
+                    <button
+                      className="tbtn"
+                      disabled={busy != null}
+                      onClick={() => void checkout(status.defaultBranch)}
+                    >
+                      {checkingOut === status.defaultBranch ? 'Switching…' : `Switch to ${status.defaultBranch}`}
                     </button>
                   )}
                   <button
@@ -178,6 +184,22 @@ export function BranchModal({
                     {b.gone && <span className="branch-tag gone">gone</span>}
                     {b.merged && !b.gone && <span className="branch-tag merged">merged</span>}
                     {b.worktree && <span className="branch-tag wt">worktree</span>}
+                    {/* A worktree branch is already checked out elsewhere — git won't
+                        switch the main checkout to it, so only offer it otherwise. */}
+                    {!b.worktree && (
+                      <button
+                        className="branch-checkout"
+                        title={`Check out ${b.name} in the main checkout`}
+                        disabled={busy != null}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void checkout(b.name)
+                        }}
+                      >
+                        {checkingOut === b.name ? '…' : 'checkout'}
+                      </button>
+                    )}
                   </label>
                 ))}
                 {/* protected — can't delete the branch you're on or the default */}
