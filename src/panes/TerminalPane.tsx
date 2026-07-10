@@ -31,14 +31,16 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
     term.open(container)
     fit.fit()
 
-    // Shift+Enter -> insert a newline in claude's prompt. Claude enables the kitty
-    // keyboard protocol on startup (it emits CSI >1u), so in that mode it ignores
-    // legacy ESC+CR / \n and expects the kitty CSI-u encoding for a modified Enter:
-    // CSI 13 ; 2 u  (keycode 13 = Enter, modifier 2 = Shift) — the same bytes a
-    // kitty-capable terminal like Ghostty sends. Plain Enter stays legacy \r (submit).
+    // Shift+Enter -> newline in claude's prompt. Claude enables the kitty keyboard
+    // protocol at startup but only truly activates CSI-u parsing once the terminal
+    // confirms support via the handshake — which xterm 5.x doesn't implement — so
+    // synthesized kitty/modifyOtherKeys/ESC+CR sequences don't insert a newline
+    // (verified against claude 2.1.x in a pty). The reliable path is claude's own
+    // backslash line-continuation: typing `\` then Enter. So send exactly that —
+    // backslash + CR — which claude turns into a newline (consuming the backslash).
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
-        window.api.terminal.write(id, '\x1b[13;2u')
+        window.api.terminal.write(id, '\\\r')
         return false
       }
       return true
