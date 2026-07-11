@@ -1,116 +1,129 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { BranchInfo } from '@shared/types'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRepos } from '../sidebar/useRepos'
-import { useAsync } from '../lib/useAsync'
 import { Dropdown } from '../components/Dropdown'
 import { diffBus } from '../lib/diffBus'
-import { DiffPanel } from './DiffPanel'
+import { TerminalPane } from '../panes/TerminalPane'
 
-export function DiffTab() {
+// The Diff tab reviews changes with `hunk` (a terminal diff viewer) running in an
+// embedded pty, rather than our own DOM renderer. A repo/session picks the cwd;
+// sessions route their diff here via diffBus. The pty persists across tab switches
+// because AppShell keeps this tab mounted (display:none when hidden).
+type Mode = 'working' | 'commit'
+const MODE_CMD: Record<Mode, string> = { working: 'hunk diff', commit: 'hunk show' }
+
+export function DiffTab({ active }: { active: boolean }) {
   const { repos } = useRepos()
+  const [cwd, setCwd] = useState<string | null>(null)
+  const [mode, setMode] = useState<Mode>('working')
+  const [termId, setTermId] = useState<string | null>(null)
+  const termRef = useRef<string | null>(null)
 
-  // ---- Repo selection ----
-  const [repoPath, setRepoPath] = useState<string | null>(null)
+  // Only start hunk once the tab has actually been opened (don't spawn a TUI at
+  // app start for a tab you may never look at).
+  const [visited, setVisited] = useState(false)
   useEffect(() => {
-    if (!repoPath && repos.length) setRepoPath(repos[0].path)
-  }, [repoPath, repos])
+    if (active) setVisited(true)
+  }, [active])
 
-  const repoOptions = useMemo(() => {
-    const opts = repos.map((r) => ({ value: r.path, label: r.name }))
-    // An externally-requested path that isn't a known repo: show it anyway.
-    if (repoPath && !repos.some((r) => r.path === repoPath))
-      opts.unshift({ value: repoPath, label: repoPath.split('/').slice(-1)[0] })
-    return opts
-  }, [repos, repoPath])
-
-  // ---- Branches for the selected repo (local refs, no network fetch) ----
-  const status = useAsync(
-    () => (repoPath ? window.api.branch.status(repoPath, false) : Promise.resolve(null)),
-    [repoPath]
-  )
-  const branches: BranchInfo[] = status.data?.branches ?? []
-
-  const [branch, setBranch] = useState<string | null>(null)
-  // Default to the repo's current branch when the branch list (re)loads.
+  // Default to the first repo's working tree.
   useEffect(() => {
-    const data = status.data
-    if (!data) return
-    setBranch((prev) =>
-      prev && data.branches.some((b) => b.name === prev) ? prev : data.currentBranch
-    )
-  }, [status.data])
+    if (!cwd && repos.length) setCwd(repos[0].path)
+  }, [cwd, repos])
 
-  // External "Open in Changes tab" requests pass a repo/worktree path. Select the
-  // owning repo, then (once branches load) the branch whose checkout is that path.
-  const [pendingPath, setPendingPath] = useState<string | null>(null)
+  // A session's "View diff" routes its cwd here (working-tree review).
   useEffect(
     () =>
       diffBus.onTab((p) => {
-        const owner = repos.find((r) => r.path === p || r.worktrees?.some((w) => w.path === p))
-        setRepoPath(owner ? owner.path : p)
-        setPendingPath(p)
+        setMode('working')
+        setCwd(p)
       }),
-    [repos]
+    []
   )
+
+  const cmd = MODE_CMD[mode]
+
+  // (Re)spawn hunk whenever the target cwd or mode changes.
   useEffect(() => {
-    if (!pendingPath || !status.data) return
-    const match = status.data.branches.find((b) => b.worktreePath === pendingPath)
-    setBranch(match ? match.name : status.data.currentBranch)
-    setPendingPath(null)
-  }, [pendingPath, status.data])
+    if (!visited || !cwd) return
+    let cancelled = false
+    if (termRef.current) {
+      window.api.terminal.kill(termRef.current)
+      termRef.current = null
+    }
+    setTermId(null)
+    void window.api.terminal.create({ cwd, initialCommand: cmd, label: 'hunk' }).then((id) => {
+      if (cancelled) {
+        window.api.terminal.kill(id)
+        return
+      }
+      termRef.current = id
+      setTermId(id)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [visited, cwd, cmd])
 
-  const branchOptions = useMemo(
-    () =>
-      branches.map((b) => ({
-        value: b.name,
-        label: b.current ? `${b.name} · current` : b.worktree ? `${b.name} · worktree` : b.name
-      })),
-    [branches]
+  // Tear down the pty if the tab ever unmounts.
+  useEffect(
+    () => () => {
+      if (termRef.current) window.api.terminal.kill(termRef.current)
+    },
+    []
   )
 
-  // ---- Resolve (diff path, ref) from the selected branch ----
-  //  current branch  -> repo working copy (HEAD; Uncommitted + vs-base both work)
-  //  worktree branch -> that worktree's working copy (HEAD; same toggles)
-  //  other branch    -> repo path + base...<branch> (committed diff only)
-  const selected = branches.find((b) => b.name === branch)
-  const diffPath = selected?.worktreePath && !selected.current ? selected.worktreePath : repoPath
-  const diffRef =
-    selected && !selected.current && !selected.worktreePath ? selected.name : undefined
+  const reload = (): void => {
+    if (termRef.current) window.api.terminal.kill(termRef.current)
+    termRef.current = null
+    setTermId(null)
+    if (!cwd) return
+    void window.api.terminal.create({ cwd, initialCommand: cmd, label: 'hunk' }).then((id) => {
+      termRef.current = id
+      setTermId(id)
+    })
+  }
+
+  const repoOptions = useMemo(() => {
+    const opts = repos.map((r) => ({ value: r.path, label: r.name }))
+    if (cwd && !repos.some((r) => r.path === cwd))
+      opts.unshift({ value: cwd, label: cwd.split('/').slice(-2).join('/') })
+    return opts
+  }, [repos, cwd])
 
   return (
-    <div className="gh-tab">
-      {diffPath ? (
-        <DiffPanel
-          key={`${diffPath}::${diffRef ?? 'HEAD'}`}
-          path={diffPath}
-          diffRef={diffRef}
-          headerLeft={
-            <>
-              <Dropdown
-                value={repoPath ?? ''}
-                options={repoOptions}
-                onChange={(v) => {
-                  setRepoPath(v)
-                  setBranch(null) // reset to the new repo's current branch
-                }}
-                searchable
-                minWidth={180}
-                placeholder="repo…"
-              />
-              <Dropdown
-                value={branch ?? ''}
-                options={branchOptions}
-                onChange={setBranch}
-                searchable
-                minWidth={200}
-                placeholder={status.loading ? 'loading…' : 'branch…'}
-              />
-            </>
-          }
+    <div className="gh-tab diff-hunk-tab">
+      <div className="gh-header">
+        <Dropdown
+          value={cwd ?? ''}
+          options={repoOptions}
+          onChange={(v) => setCwd(v)}
+          searchable
+          minWidth={200}
+          placeholder="repo / session…"
         />
-      ) : (
-        <div className="gh-state">No repos found.</div>
-      )}
+        <div className="seg">
+          <button className={mode === 'working' ? 'on' : ''} onClick={() => setMode('working')}>
+            Working tree
+          </button>
+          <button className={mode === 'commit' ? 'on' : ''} onClick={() => setMode('commit')}>
+            Last commit
+          </button>
+        </div>
+        <button className="tbtn" style={{ marginLeft: 'auto' }} onClick={reload}>
+          ↻ Reload
+        </button>
+      </div>
+      <div className="diff-hunk-body">
+        {termId ? (
+          <div className="term-pane-term">
+            <TerminalPane id={termId} />
+          </div>
+        ) : (
+          <div className="gh-state">
+            {cwd ? 'Starting hunk…' : 'No repos found.'}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

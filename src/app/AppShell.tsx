@@ -46,21 +46,19 @@ const TABS: TabDef[] = [
   { id: 'browser', label: 'Browser', icon: 'globe' },
   { id: 'issues', label: 'Issues', icon: 'issue' },
   { id: 'myprs', label: 'My PRs', icon: 'pr' },
-  { id: 'changes', label: 'Changes', icon: 'diff' },
+  { id: 'changes', label: 'Diff', icon: 'diff' },
   { id: 'datadog', label: 'Datadog', icon: 'chart' },
   { id: 'deploys', label: 'Deploys', icon: 'rocket' },
   { id: 'mongo', label: 'Mongo', icon: 'database' },
   { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
 ]
 
-function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser'> }) {
+function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'changes'> }) {
   switch (tab) {
     case 'issues':
       return <IssuesTab />
     case 'myprs':
       return <MyPRsTab />
-    case 'changes':
-      return <DiffTab />
     case 'datadog':
       return <DatadogTab />
     case 'deploys':
@@ -232,7 +230,13 @@ export function AppShell() {
           <div className="tab-layer" style={{ display: activeTab === 'browser' ? 'block' : 'none' }}>
             <WebWorkspace />
           </div>
-          {activeTab !== 'terminals' && activeTab !== 'browser' && <TabPanel tab={activeTab} />}
+          {/* Diff stays mounted so the embedded hunk pty survives tab switches. */}
+          <div className="tab-layer" style={{ display: activeTab === 'changes' ? 'block' : 'none' }}>
+            <DiffTab active={activeTab === 'changes'} />
+          </div>
+          {activeTab !== 'terminals' && activeTab !== 'browser' && activeTab !== 'changes' && (
+            <TabPanel tab={activeTab} />
+          )}
         </div>
       </div>
 

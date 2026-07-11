@@ -3,10 +3,10 @@ import { Icon } from '../components/Icon'
 import type { SessionRef, SessionTask } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { useRepos } from '../sidebar/useRepos'
+import { diffBus } from '../lib/diffBus'
 import { PlanModal } from './PlanModal'
 import { PostIssueModal } from './PostIssueModal'
 import { PrRow } from './PrRow'
-import { SessionDiffModal } from './SessionDiffModal'
 
 
 // Per-session-pane progress sidebar: Claude's live task plan + the PRs/issues the
@@ -17,7 +17,6 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   const [hasPlan, setHasPlan] = useState(false)
   const [modal, setModal] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
-  const [showSessionDiff, setShowSessionDiff] = useState(false)
   const [showMoreIssues, setShowMoreIssues] = useState(false)
 
   const sessions = useFlatSessions()
@@ -126,8 +125,13 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
   return (
     <div className="term-sidebar">
       {diffRepos.length > 0 && (
-        <button className="term-sb-diff" onClick={() => setShowSessionDiff(true)}>
-          <Icon name="diff" size={13} /> View diff{diffRepos.length > 1 ? ` (${diffRepos.length} repos)` : ''}
+        <button
+          className="term-sb-diff"
+          title="Review this session's changes with hunk in the Diff tab"
+          onClick={() => diffBus.openTab(diffRepos[0]?.path || session?.cwd || '')}
+        >
+          <Icon name="diff" size={13} /> Review diff
+          {diffRepos.length > 1 ? ` (${diffRepos[0]?.name})` : ''}
         </button>
       )}
       <div className="term-sb-section">
@@ -193,13 +197,6 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
       </div>
 
       {modal && <PlanModal sessionId={sid} onClose={() => setModal(false)} />}
-      {showSessionDiff && (
-        <SessionDiffModal
-          repos={diffRepos}
-          title={session?.title || 'Session'}
-          onClose={() => setShowSessionDiff(false)}
-        />
-      )}
       {postOpen && issue && sid && (
         <PostIssueModal
           repo={issue.repo}
