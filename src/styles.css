@@ -4074,6 +4074,94 @@ button {
   animation: pulse 1.6s infinite;
 }
 
+/* Prompt-templates modal */
+.tpl-modal {
+  width: min(860px, 92vw);
+  height: min(620px, 84vh);
+  display: flex;
+  flex-direction: column;
+}
+.tpl-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.tpl-list {
+  width: 210px;
+  flex: 0 0 auto;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tpl-item {
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tpl-item:hover {
+  background: var(--surface-2);
+}
+.tpl-item.active {
+  background: var(--surface-2);
+}
+.tpl-item.new {
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+.tpl-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 8px;
+}
+.tpl-name {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+.tpl-text {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+.tpl-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tbtn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* Diff tab hosting the hunk terminal */
 .diff-hunk-tab {
   display: flex;

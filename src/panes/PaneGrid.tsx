@@ -6,6 +6,7 @@ import { focusTerminal } from '../lib/terminalFocus'
 import { TerminalPane } from './TerminalPane'
 import { TermSidebar } from './TermSidebar'
 import { BrowserView } from './BrowserView'
+import { PromptTemplatesModal } from './PromptTemplatesModal'
 
 export type Layout = 'cols' | 'rows' | 'grid' | 'mainGrid'
 
@@ -49,6 +50,7 @@ export function PaneGrid({
   const [over, setOver] = useState<number | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
+  const [tplFor, setTplFor] = useState<string | null>(null)
   const alerts = useSessionAlerts()
 
   const gridStyle = (): React.CSSProperties => {
@@ -159,6 +161,15 @@ export function PaneGrid({
                 </span>
               )}
               <div className="term-panel-actions">
+                {pane.browserUrl == null && (
+                  <button
+                    className="term-act"
+                    title="Prompt templates — inject one into this session"
+                    onClick={() => setTplFor(pane.terminalId)}
+                  >
+                    <Icon name="notebook" size={13} />
+                  </button>
+                )}
                 {panes.length > 1 && (
                   <button
                     className="term-act"
@@ -202,6 +213,7 @@ export function PaneGrid({
           </div>
         )
       })}
+      {tplFor && <PromptTemplatesModal terminalId={tplFor} onClose={() => setTplFor(null)} />}
     </div>
   )
 }
