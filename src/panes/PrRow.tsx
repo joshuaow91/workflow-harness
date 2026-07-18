@@ -5,6 +5,19 @@ import { Dropdown } from '../components/Dropdown'
 import { GreptileModal } from './GreptileModal'
 import { PrDiffModal } from './PrDiffModal'
 
+// Greptile comment bodies embed a "Fix in Claude Code" badge (<picture>/<img>) and
+// long greptile.com custom-context URLs. Strip that markup so injecting a review
+// into the session doesn't burn tokens on image/link junk — keep only the prose.
+function cleanComment(raw: string): string {
+  return raw
+    .replace(/<[^>]+>/g, ' ') // HTML tags: fix-in-claude badges, imgs, anchors
+    .replace(/https?:\/\/[^\s)]*greptile[^\s)]*/gi, '') // greptile fix/context URLs
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 // A linked issue/PR in the session sidebar: open-link, a project Status dropdown
 // (whichever is on the board — usually the issue), and for PRs the Greptile
 // review comments with a "Review in session" action.
@@ -67,10 +80,13 @@ export function PrRow({ link, terminalId }: { link: SessionRef; terminalId?: str
     // Only the still-unresolved comments — resolved ones are already handled.
     const comments = greptile.filter((t) => !t.isResolved).flatMap((t) => t.comments)
     if (!terminalId || !comments.length) return
-    const lines = comments.map(
-      (c, i) =>
-        `${i + 1}. ${c.path ? `${c.path}:${c.line ?? '?'} — ` : ''}${c.body.replace(/\s+/g, ' ').trim()}`
-    )
+    const lines = comments
+      .map((c) => ({ c, text: cleanComment(c.body) }))
+      .filter(({ text }) => text) // drop comments that were only a badge/link
+      .map(
+        ({ c, text }, i) => `${i + 1}. ${c.path ? `${c.path}:${c.line ?? '?'} — ` : ''}${text}`
+      )
+    if (!lines.length) return
     const prompt =
       `Address these Greptile review comments and determine validity on ${link.repo} PR #${link.number} (${link.url}): ` +
       `${lines.join('   ')}   For each, fix it if it's valid, then reply on the PR comment thread ` +
