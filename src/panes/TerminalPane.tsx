@@ -24,7 +24,7 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
       cursorBlink: true,
       allowProposedApi: true,
       theme: xtermTheme(themeStore.get()),
-      scrollback: 10000
+      scrollback: 50000
     })
     const fit = new FitAddon()
     term.loadAddon(fit)

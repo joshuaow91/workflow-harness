@@ -67,7 +67,11 @@ const sessions = new Map<string, BackendSession>()
 // Recent output per session, so a re-mounted pane (layout change / reorder) can
 // replay history instead of showing a blank terminal. The PTY keeps running.
 const buffers = new Map<string, string>()
-const MAX_BUFFER = 256 * 1024
+// Trailing output replayed into a re-mounted pane (restart / layout change). Larger
+// = more scrollable history survives a re-mount, at a few MB of memory per session
+// and a slightly slower one-time replay. Claude's TUI churns a lot of redraw bytes,
+// so keep this generous. Pairs with xterm's `scrollback` line cap in TerminalPane.
+const MAX_BUFFER = 4 * 1024 * 1024
 
 // Maps a live pty -> the claude session id it's resuming, so we can adopt an
 // existing process instead of spawning a duplicate. A renderer reload (sleep/wake
