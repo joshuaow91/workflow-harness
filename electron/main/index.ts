@@ -126,7 +126,13 @@ function createWindow(): void {
     minHeight: 640,
     show: false,
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#1e1e2e',
+    // Real macOS material behind the app (NSVisualEffectView). The chrome —
+    // titlebar, sidebar, tab bar — is translucent so this shows through, giving
+    // Apple's actual glass rather than a CSS impression. Requires a transparent
+    // window background; content areas paint themselves opaque for legibility.
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
