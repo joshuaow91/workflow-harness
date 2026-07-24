@@ -604,3 +604,15 @@ export interface TerminalStateEvent {
   id: string
   state: AgentState
 }
+
+/** A subagent spawned inside a session (claude's `Agent` tool). */
+export interface SessionAgent {
+  /** tool_use id — also the correlation key to its result. */
+  id: string
+  /** subagent_type, e.g. "Explore" | "general-purpose". */
+  type: string
+  description: string
+  status: 'running' | 'done'
+  /** The agent's returned output, once it finished. */
+  result?: string
+}

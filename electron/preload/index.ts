@@ -43,6 +43,7 @@ import type {
   ObsidianNote,
   ObsidianTheme,
   RepoKnowledge,
+  SessionAgent,
   SessionRef,
   SessionTask,
   SetupCheck,
@@ -77,6 +78,8 @@ const api = {
       ipcRenderer.invoke(IPC.claude.sessionLinks, sessionId),
     sessionPlan: (sessionId: string): Promise<string> =>
       ipcRenderer.invoke(IPC.claude.sessionPlan, sessionId),
+    sessionAgents: (sessionId: string): Promise<SessionAgent[]> =>
+      ipcRenderer.invoke(IPC.claude.sessionAgents, sessionId),
     onSidebarUpdate: (cb: (projects: ClaudeProject[]) => void) =>
       on<ClaudeProject[]>(IPC.claude.sidebarUpdate, cb)
   },

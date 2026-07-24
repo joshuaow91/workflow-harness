@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
-import type { SessionRef, SessionTask } from '@shared/types'
+import type { SessionAgent, SessionRef, SessionTask } from '@shared/types'
 import { useFlatSessions } from '../sidebar/useFlatSessions'
 import { useRepos } from '../sidebar/useRepos'
 import { diffBus } from '../lib/diffBus'
@@ -14,6 +14,8 @@ import { PrRow } from './PrRow'
 export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; terminalId?: string }) {
   const [tasks, setTasks] = useState<SessionTask[]>([])
   const [refs, setRefs] = useState<SessionRef[]>([])
+  const [agents, setAgents] = useState<SessionAgent[]>([])
+  const [openAgent, setOpenAgent] = useState<string | null>(null)
   const [hasPlan, setHasPlan] = useState(false)
   const [modal, setModal] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
@@ -67,6 +69,9 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
     const loadPlan = (): void => {
       void window.api.claude.sessionPlan(sid).then((p) => active && setHasPlan(!!p.trim()))
     }
+    const loadAgents = (): void => {
+      void window.api.claude.sessionAgents?.(sid).then((a) => active && setAgents(a))
+    }
     const loadLinks = (): void => {
       void window.api.claude.sessionLinks(sid).then((parsed) => {
         if (!active) return
@@ -77,14 +82,17 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
     loadTasks()
     loadPlan()
     loadLinks()
+    loadAgents()
     // Tasks/plan are local-transcript reads (cheap). Links re-parse the
     // transcript (local) + enrichLinks (API, but cached ~10 min in main), so a
     // 60s poll surfaces a newly-created PR quickly without real extra API cost.
+    const t0 = setInterval(loadAgents, 5000)
     const t1 = setInterval(loadTasks, 5000)
     const t2 = setInterval(loadLinks, 60000)
     const t3 = setInterval(loadPlan, 30000)
     return () => {
       active = false
+      clearInterval(t0)
       clearInterval(t1)
       clearInterval(t2)
       clearInterval(t3)
@@ -169,6 +177,33 @@ export function TermSidebar({ sessionId, terminalId }: { sessionId?: string; ter
           </div>
         )}
       </div>
+
+      {agents.length > 0 && (
+        <div className="term-sb-section">
+          <div className="term-sb-title">
+            Agents
+            <span className="term-sb-count">
+              {agents.filter((a) => a.status === 'running').length || agents.length}
+            </span>
+          </div>
+          <div className="sb-agents">
+            {agents.map((a) => (
+              <div key={a.id} className="sb-agent">
+                <button
+                  className="sb-agent-head"
+                  onClick={() => setOpenAgent(openAgent === a.id ? null : a.id)}
+                  title={a.result ? 'Show what this agent returned' : 'Still running'}
+                >
+                  <span className="agent-dot" data-state={a.status === 'running' ? 'working' : 'done'} />
+                  <span className="sb-agent-desc">{a.description || a.type}</span>
+                  <span className="sb-agent-type">{a.type}</span>
+                </button>
+                {openAgent === a.id && a.result && <pre className="sb-agent-out">{a.result}</pre>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="term-sb-section">
         <div className="term-sb-title">GitHub</div>

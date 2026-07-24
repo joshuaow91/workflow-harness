@@ -4,6 +4,7 @@ import { join } from 'path'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
+import { getSessionAgents } from './sessionTasks'
 import type { ClaudeProject, ClaudeSession } from '@shared/types'
 import { parseSessionFile } from './jsonlSession'
 import { displayNameFromPath, slugToPathFallback } from './slug'
@@ -205,6 +206,7 @@ export function registerClaudeIpc(getWindow: () => BrowserWindow | null): void {
     setTimeout(settle, 1500)
     pushUpdate() // optimistic immediate refresh
   })
+  ipcMain.handle(IPC.claude.sessionAgents, (_e, sessionId: string) => getSessionAgents(sessionId))
   ipcMain.handle(IPC.claude.sessionTasks, (_e, sessionId: string) => activeProvider().sessionTasks(sessionId))
   ipcMain.handle(IPC.claude.sessionLinks, (_e, sessionId: string) => activeProvider().sessionLinks(sessionId))
   ipcMain.handle(IPC.claude.sessionPlan, (_e, sessionId: string) => activeProvider().sessionPlan(sessionId))

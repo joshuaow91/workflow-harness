@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readdirSync, readFileSync, statSync } fro
 import { homedir } from 'os'
 import { join } from 'path'
 import { createInterface } from 'readline'
-import type { SessionRef, SessionTask } from '@shared/types'
+import type { SessionAgent, SessionRef, SessionTask } from '@shared/types'
 import { discoverRepos } from '../git/WorktreeService'
 
 const PROJECTS = join(homedir(), '.claude', 'projects')
@@ -366,4 +366,60 @@ function firstUserText(raw: string): string {
     }
   }
   return ''
+}
+
+/** Flatten a tool_result's content (string, or blocks) to plain text. */
+function resultText(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content))
+    return content
+      .map((b) => (typeof b === 'string' ? b : ((b as { text?: string })?.text ?? '')))
+      .join('\n')
+  return ''
+}
+
+// Subagents a session spawned, reconstructed from its `Agent` tool calls. An
+// invocation without a matching tool_result is still running — that pairing is
+// what makes "running vs done" knowable without any extra instrumentation.
+export async function getSessionAgents(sessionId: string): Promise<SessionAgent[]> {
+  const file = findSessionFile(sessionId)
+  if (!file) return []
+  const agents = new Map<string, SessionAgent>()
+  const rl = createInterface({
+    input: createReadStream(file, { encoding: 'utf8' }),
+    crlfDelay: Infinity
+  })
+  try {
+    for await (const raw of rl) {
+      if (!raw.includes('subagent_type') && !raw.includes('tool_result')) continue
+      let o: unknown
+      try {
+        o = JSON.parse(raw)
+      } catch {
+        continue
+      }
+      const content = (o as { message?: { content?: unknown } })?.message?.content
+      if (!Array.isArray(content)) continue
+      for (const b of content as Record<string, unknown>[]) {
+        const input = b?.input as Record<string, unknown> | undefined
+        if (b?.type === 'tool_use' && b?.name === 'Agent' && input?.subagent_type) {
+          agents.set(String(b.id), {
+            id: String(b.id),
+            type: String(input.subagent_type),
+            description: String(input.description ?? '').slice(0, 140),
+            status: 'running'
+          })
+        } else if (b?.type === 'tool_result') {
+          const a = agents.get(String(b.tool_use_id))
+          if (a) {
+            a.status = 'done'
+            a.result = resultText(b.content).slice(0, 6000)
+          }
+        }
+      }
+    }
+  } finally {
+    rl.close()
+  }
+  return [...agents.values()].reverse() // newest first
 }

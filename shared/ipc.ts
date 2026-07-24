@@ -10,6 +10,7 @@ export const IPC = {
     sessionTasks: 'claude:sessionTasks',
     sessionLinks: 'claude:sessionLinks',
     sessionPlan: 'claude:sessionPlan',
+    sessionAgents: 'claude:sessionAgents',
     sidebarUpdate: 'claude:sidebarUpdate' // main -> renderer push
   },
   worktree: {
