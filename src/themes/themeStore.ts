@@ -63,8 +63,10 @@ function applyCssVars(t: Theme): void {
   set('--overlay', mix(t.bg, t.fg, 0.42))
   set('--border', mix(t.bg, t.fg, 0.14))
   set('--text', t.fg)
-  set('--text-dim', mix(t.fg, t.bg, 0.22))
-  set('--text-faint', mix(t.fg, t.bg, 0.45))
+  // Over a translucent surface the old 0.22/0.45 mixes washed out to unreadable —
+  // the material sits behind the text, so secondary text needs more contrast.
+  set('--text-dim', mix(t.fg, t.bg, 0.14))
+  set('--text-faint', mix(t.fg, t.bg, 0.3))
   set('--accent', t.palette[4])
   set('--accent-dim', t.palette[6])
   set('--green', t.palette[2])
