@@ -145,6 +145,7 @@ export function Sidebar() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [query, setQuery] = useState('')
 
   // Detect when a session finishes a turn (busy -> idle) = needs a response.
   const needsResp = useSessionAlerts()
@@ -193,8 +194,28 @@ export function Sidebar() {
     const t = s.lastActivityAt ? Date.parse(s.lastActivityAt) : 0
     return Math.max(p?.lastActive ?? 0, Number.isNaN(t) ? 0 : t)
   }
+  // Rank by what wants your attention, then by recency. Sorting purely by time
+  // buried the session that was actually waiting on you under idle history.
+  const priority = (s: ClaudeSession): number => {
+    if (needsResp.has(s.sessionId)) return 3 // waiting on you
+    const st = s.live?.status ?? (paneStatus.get(s.sessionId)?.busy ? 'busy' : null)
+    if (working(st ?? undefined)) return 2 // running
+    return st ? 1 : 0 // open but idle, then dormant history
+  }
   const sortByActivity = (arr: ClaudeSession[]): ClaudeSession[] =>
-    [...arr].sort((a, b) => liveKey(b) - liveKey(a))
+    [...arr].sort((a, b) => priority(b) - priority(a) || liveKey(b) - liveKey(a))
+
+  // Type to filter across every session — title, branch, or path.
+  const matches = (s: ClaudeSession): boolean => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return `${titleOf(s)} ${s.gitBranch ?? ''} ${s.cwd}`.toLowerCase().includes(q)
+  }
+
+  const needsCount = projects.reduce(
+    (n, p) => n + p.sessions.filter((s) => needsResp.has(s.sessionId)).length,
+    0
+  )
 
   const startRename = (m: MenuState): void => {
     setDraft(m.title)
@@ -280,6 +301,31 @@ export function Sidebar() {
 
   return (
     <div className="sidebar">
+      {/* The one thing worth seeing first: who's waiting on you. */}
+      {needsCount > 0 && (
+        <div className="side-needs" title="These are sorted to the top of the list">
+          <span className="agent-dot" data-state="blocked" />
+          {needsCount} session{needsCount > 1 ? 's' : ''} need you
+        </div>
+      )}
+
+      {projects.length > 0 && (
+        <div className="side-search">
+          <input
+            className="side-search-input"
+            placeholder="Search sessions…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            spellCheck={false}
+          />
+          {query && (
+            <button className="side-search-clear" onClick={() => setQuery('')} title="Clear">
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {projects.length > 0 && (
         <div className="side-selectbar">
           {selectMode ? (
@@ -339,10 +385,12 @@ export function Sidebar() {
             >
               ＋ new claude session
             </button>
-            {(expanded.has(project.slug)
-              ? sortByActivity(project.sessions)
-              : sortByActivity(project.sessions).slice(0, 10)
-            ).map((s) => (
+            {(() => {
+              const hits = sortByActivity(project.sessions.filter(matches))
+              // While searching, show every match — a capped list hides the thing
+              // you searched for.
+              return query.trim() || expanded.has(project.slug) ? hits : hits.slice(0, 10)
+            })().map((s) => (
               <SessionRow
                 key={s.sessionId}
                 session={s}
@@ -378,7 +426,7 @@ export function Sidebar() {
                 onToggleCheck={() => toggleCheck(s.sessionId)}
               />
             ))}
-            {project.sessions.length > 10 && (
+            {!query.trim() && project.sessions.length > 10 && (
               <button className="side-more" onClick={() => toggleExpanded(project.slug)}>
                 {expanded.has(project.slug)
                   ? 'Show less'

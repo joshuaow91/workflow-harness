@@ -17,9 +17,9 @@ import { SetupModal } from './SetupModal'
 import { CommandPalette } from './CommandPalette'
 import { HeaderStats } from './HeaderStats'
 import { ThemePicker } from '../themes/ThemePicker'
-import { counterpartTheme, isDarkTheme, themeStore, useTheme } from '../themes/themeStore'
+import { themeStore } from '../themes/themeStore'
 import { Icon } from '../components/Icon'
-import { settingsStore, useSettings } from '../lib/settingsStore'
+import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
 import { useAgentStates, worstState } from '../lib/agentStates'
 import { browserRouter } from '../lib/browserRouter'
@@ -141,15 +141,6 @@ export function AppShell() {
   const agentStates = useAgentStates()
   const agentsRollup = worstState(Object.values(agentStates))
 
-  // Appearance toggle: jump to the opposite-appearance theme, preferring the
-  // matching pair of whatever's active so the palette stays familiar.
-  const theme = useTheme()
-  const dark = isDarkTheme(theme)
-  const toggleAppearance = (): void => {
-    const next = counterpartTheme(theme, dark ? 'Catppuccin Latte' : 'Catppuccin Mocha')
-    void settingsStore.update({ themeName: next.name })
-  }
-
   // Notes live in a collapsible right sidebar, toggled from the titlebar.
   const [notesOpen, setNotesOpen] = useState(() => localStorage.getItem('harness:notesOpen') === '1')
   const notesVisited = useRef(notesOpen) // mount the editor once, keep it alive
@@ -267,13 +258,6 @@ export function AppShell() {
 
         <div className="titlebar-right">
           <HeaderStats onNav={(t) => setActiveTab(t as TabId)} />
-          <button
-            className="titlebar-gear"
-            onClick={toggleAppearance}
-            title={dark ? 'Switch to a light theme' : 'Switch to a dark theme'}
-          >
-            {dark ? '☀' : '☾'}
-          </button>
           <ThemePicker />
           <button
             className={`titlebar-gear${notesOpen ? ' on' : ''}`}
