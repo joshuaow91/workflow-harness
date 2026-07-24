@@ -235,6 +235,9 @@ button {
   font-size: 12px;
   color: var(--text-faint);
   user-select: none;
+  /* Now holds brand + nav + sub-nav + stats/controls — clip rather than let a
+     narrow window push content out and spawn a scrollbar. */
+  overflow: hidden;
 }
 
 .titlebar .brand {
@@ -716,9 +719,12 @@ button {
 .main {
   grid-area: main;
   display: grid;
-  grid-template-rows: auto 1fr;
+  /* One row: the tab bar moved into the titlebar, so .tab-content is the only
+     child and must fill. With `auto 1fr` it sized to content and overflowed. */
+  grid-template-rows: 1fr;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* ---- Tab bar ---- */
