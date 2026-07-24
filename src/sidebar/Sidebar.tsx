@@ -57,6 +57,10 @@ function SessionRow({
   onToggleCheck: () => void
 }) {
   const live = session.live
+  // Two very different things were both firing as "needs response": a permission
+  // prompt (answer me now) and a finished turn (ready for review, not blocking).
+  const blocked = needsResponse && live?.status === 'waiting'
+  const finished = needsResponse && !blocked
   // Status precedence: claude's own sessions file (when present), else pane
   // output activity (resumed-in-pty sessions don't write a file), else dormant.
   const status = live ? live.status : pane ? (pane.busy ? 'busy' : 'idle') : null
@@ -72,9 +76,9 @@ function SessionRow({
 
   return (
     <div
-      className={`session-row${selected ? ' selected' : ''}${needsResponse ? ' needs-response' : ''}${
-        selectMode && checked ? ' checked' : ''
-      }`}
+      className={`session-row${selected ? ' selected' : ''}${blocked ? ' needs-response' : ''}${
+        finished ? ' finished' : ''
+      }${selectMode && checked ? ' checked' : ''}`}
       onClick={editing ? undefined : selectMode ? onToggleCheck : resume}
       onContextMenu={onContextMenu}
       title={
@@ -213,8 +217,15 @@ export function Sidebar() {
     return `${titleOf(s)} ${s.gitBranch ?? ''} ${s.cwd}`.toLowerCase().includes(q)
   }
 
+  // Only a session actually waiting on input "needs you". A finished turn is
+  // surfaced separately — it's for review, not an alarm.
   const needsCount = projects.reduce(
-    (n, p) => n + p.sessions.filter((s) => needsResp.has(s.sessionId)).length,
+    (n, p) => n + p.sessions.filter((s) => s.live?.status === 'waiting').length,
+    0
+  )
+  const finishedCount = projects.reduce(
+    (n, p) =>
+      n + p.sessions.filter((s) => needsResp.has(s.sessionId) && s.live?.status !== 'waiting').length,
     0
   )
 
@@ -352,10 +363,20 @@ export function Sidebar() {
   return (
     <div className="sidebar">
       {/* The one thing worth seeing first: who's waiting on you. */}
-      {needsCount > 0 && (
-        <div className="side-needs" title="These are sorted to the top of the list">
-          <span className="agent-dot" data-state="blocked" />
-          {needsCount} session{needsCount > 1 ? 's' : ''} need you
+      {(needsCount > 0 || finishedCount > 0) && (
+        <div className="side-attention">
+          {needsCount > 0 && (
+            <span className="side-att blocked" title="Waiting on your answer right now">
+              <span className="agent-dot" data-state="blocked" />
+              {needsCount} waiting on you
+            </span>
+          )}
+          {finishedCount > 0 && (
+            <span className="side-att done" title="Finished a turn — ready for review">
+              <span className="agent-dot" data-state="done" />
+              {finishedCount} finished
+            </span>
+          )}
         </div>
       )}
 
