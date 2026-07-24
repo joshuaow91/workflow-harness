@@ -21,6 +21,7 @@ import { themeStore } from '../themes/themeStore'
 import { Icon } from '../components/Icon'
 import { useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
+import { paletteBus } from '../lib/paletteBus'
 import { useAgentStates, worstState } from '../lib/agentStates'
 import { browserRouter } from '../lib/browserRouter'
 
@@ -190,6 +191,9 @@ export function AppShell() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // The sidebar's launcher row opens the same palette as ⌘K.
+  useEffect(() => paletteBus.subscribe(() => setPaletteOpen(true)), [])
 
   // Sidebar diff shortcuts: focus the Changes tab, or pop a quick diff modal.
   useEffect(() => diffBus.onTab(() => setActiveTab('changes')), [])

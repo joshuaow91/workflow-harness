@@ -6825,3 +6825,223 @@ body {
   font-size: 12px;
   line-height: 1.45;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sidebar — rebuilt from the redesign. Hierarchy carries the meaning: the row
+   that wants you is the only one that looks urgent; idle recedes to grey.
+   No highlight rails — state lives in the dot, the tint and the weight.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sb {
+  padding-bottom: 10px;
+}
+
+/* Status: only states that exist are named. */
+.sb-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid var(--edge-lo);
+}
+.sb-stat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+.sb-stat b {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.sb-stat.blocked { color: var(--yellow); }
+.sb-stat.working { color: var(--accent); }
+.sb-stat.done { color: var(--green); }
+
+.sb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.sb-dot.pulse { animation: sb-pulse 1.7s ease-in-out infinite; }
+@keyframes sb-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Section */
+.sb-sec { padding: 10px 8px 4px; }
+.sb-sec-h {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 6px 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.sb-sec-h > span {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.sb-sel-toggle {
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.sb-sel-toggle:hover { color: var(--text); }
+
+.sb-bulk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.sb-bulk button {
+  border: 1px solid var(--edge-lo);
+  background: var(--glass);
+  color: var(--text-dim);
+  border-radius: var(--r-xs);
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.sb-bulk button:disabled { opacity: 0.4; cursor: default; }
+
+.sb-empty {
+  padding: 6px 8px 10px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+/* Rows: a 3-column grid so the sub-line can span under the title. */
+.sb-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.sb-row:hover { background: color-mix(in srgb, var(--overlay) 14%, transparent); }
+.sb-row .sb-dot { color: var(--overlay); }
+.sb-name {
+  font-size: 12.5px;
+  font-weight: 480;
+  letter-spacing: -0.008em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-when {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The only urgent-looking thing in the sidebar. */
+.sb-row.blocked {
+  background: color-mix(in srgb, var(--yellow) 11%, transparent);
+  border-color: color-mix(in srgb, var(--yellow) 32%, transparent);
+  padding: 9px 8px;
+}
+.sb-row.blocked .sb-dot { color: var(--yellow); }
+.sb-row.blocked .sb-name { font-weight: 570; }
+.sb-sub {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--yellow);
+  letter-spacing: -0.005em;
+}
+
+.sb-row.working .sb-dot { color: var(--accent); }
+.sb-row.done .sb-dot { color: var(--green); }
+.sb-row.done .sb-name { color: var(--text-dim); }
+.sb-row.idle .sb-dot { opacity: 0.55; }
+.sb-row.idle .sb-name,
+.sb-row.idle .sb-when { color: var(--text-faint); }
+.sb-row.checked { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.sb-kill { opacity: 0; border: none; background: none; color: var(--text-faint); cursor: pointer; }
+.sb-row:hover .sb-kill { opacity: 1; }
+.sb-kill:hover { color: var(--red); }
+
+.sb-rename {
+  min-width: 0;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--edge-lo);
+  border-radius: var(--r-xs);
+}
+
+/* A launcher, not a permanent search field. */
+.sb-launch {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: calc(100% - 16px);
+  margin: 4px 8px 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--glass);
+  border: 1px solid var(--edge-lo);
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.sb-launch:hover { color: var(--text); }
+.sb-launch kbd {
+  margin-left: auto;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--overlay) 18%, transparent);
+  border: 1px solid var(--edge-lo);
+  color: var(--text-dim);
+}
+.sb-more-repos {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 2px 8px 4px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.sb-more-repos:hover {
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--overlay) 12%, transparent);
+}

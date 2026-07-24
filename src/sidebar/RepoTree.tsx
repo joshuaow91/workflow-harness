@@ -358,12 +358,20 @@ export function RepoTree() {
   const sessions = useFlatSessions()
   const settings = useSettings()
   const { serviceFor, activeFor } = useDevStack()
+  const [showAllRepos, setShowAllRepos] = useState(false)
   const order = settings?.repoOrder ?? []
 
   const liveCwds = useMemo(
     () => new Set(sessions.filter((s) => s.live).map((s) => s.cwd)),
     [sessions]
   )
+
+  // You work in one or two repos at a time. Show those — a running dev stack or a
+  // live session in the tree — and keep the rest one line away.
+  const isActive = (r: Repo): boolean =>
+    !!activeFor(r.name) ||
+    [...liveCwds].some((c) => c === r.path || c.startsWith(r.path + '/')) ||
+    r.worktrees.some((w) => liveCwds.has(w.path))
 
   const ordered = useMemo(() => {
     const idx = (p: string): number => {
@@ -408,7 +416,7 @@ export function RepoTree() {
       ) : ordered.length === 0 ? (
         <div className="side-empty">No git repos found under ~/Documents/Code.</div>
       ) : (
-        ordered.map((repo) => (
+        (showAllRepos ? ordered : ordered.filter(isActive)).map((repo) => (
           <RepoRow
             key={repo.path}
             repo={repo}
@@ -432,6 +440,16 @@ export function RepoTree() {
             }}
           />
         ))
+      )}
+      {!showAllRepos && ordered.length > ordered.filter(isActive).length && (
+        <button className="sb-more-repos" onClick={() => setShowAllRepos(true)}>
+          {ordered.length - ordered.filter(isActive).length} more repos…
+        </button>
+      )}
+      {showAllRepos && ordered.length > 0 && (
+        <button className="sb-more-repos" onClick={() => setShowAllRepos(false)}>
+          Show only active
+        </button>
       )}
     </SideSection>
   )
