@@ -135,8 +135,27 @@ export function TerminalsTab() {
     return { paneId: paneCounter.current++, terminalId, opts, sessionId: m?.[1] }
   }
 
-  // Each opened session becomes its own tab.
+  // `tabs` read inside the bus subscription would be the mount-time closure, so
+  // keep a ref for the already-open lookup below.
+  const tabsRef = useRef<Tab[]>([])
+  tabsRef.current = tabs
+
+  // Each opened session becomes its own tab — unless it's already open, in which
+  // case go to it. Resuming a session you already have open should switch to it,
+  // not stack a duplicate tab on the same conversation.
   const openTab = async (opts: TerminalSpawnOptions): Promise<void> => {
+    const rid = opts.initialCommand?.match(/--(?:resume|session-id)\s+(\S+)/)?.[1]
+    if (rid) {
+      for (const t of tabsRef.current) {
+        const pane = t.panes.find((p) => p.sessionId === rid)
+        if (pane) {
+          setActiveId(t.id)
+          setFocusedPaneId(pane.paneId)
+          focusTerminal(pane.terminalId)
+          return
+        }
+      }
+    }
     const pane = await makePane(opts)
     const id = tabCounter.current++
     setTabs((t) => [...t, { id, name: opts.label ?? basename(opts.cwd), panes: [pane], layout: 'cols' }])

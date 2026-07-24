@@ -6933,15 +6933,33 @@ body {
 }
 
 /* Rows: a 3-column grid so the sub-line can span under the title. */
+/* Flex, not grid: as a 3-column grid the kill button became a 4th item and
+   wrapped to a second row, adding the row-gap and making every row ~14px taller
+   than the design. */
 .sb-row {
-  display: grid;
-  grid-template-columns: 10px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
   border-radius: var(--r-sm);
   border: 1px solid transparent;
   cursor: pointer;
+}
+.sb-main {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.sb-main .sb-name { flex: 1; }
+.sb-tag {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.75;
 }
 .sb-row:hover { background: color-mix(in srgb, var(--overlay) 14%, transparent); }
 .sb-row .sb-dot { color: var(--overlay); }
@@ -6969,8 +6987,7 @@ body {
 .sb-row.blocked .sb-dot { color: var(--yellow); }
 .sb-row.blocked .sb-name { font-weight: 570; }
 .sb-sub {
-  grid-column: 2 / -1;
-  margin-top: 2px;
+  padding-left: 19px;
   font-size: 10.5px;
   color: var(--yellow);
   letter-spacing: -0.005em;
@@ -7045,3 +7062,28 @@ body {
   color: var(--text-dim);
   background: color-mix(in srgb, var(--overlay) 12%, transparent);
 }
+
+/* Sidebar is resizable; width persists. */
+.sb-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+}
+.sb-resize:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.sidebar { position: relative; }
+
+/* Pinned repos show by default. */
+.repo-pin {
+  opacity: 0;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 11px;
+}
+.repo-row:hover .repo-pin { opacity: 1; }
+.repo-pin.on { opacity: 1; color: var(--yellow); }

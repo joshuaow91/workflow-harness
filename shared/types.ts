@@ -35,6 +35,8 @@ export interface AppSettings {
   mongoConnections: MongoConnection[]
   /** Custom sidebar repo order (by repo path); unlisted repos sort after, alphabetically. */
   repoOrder: string[]
+  /** Repo paths pinned to always show in the sidebar, even when not active. */
+  pinnedRepos: string[]
   /** Inject the repo knowledge map into new claude sessions (when a map exists). */
   injectRepoMap: boolean
   /** Auto fast-forward repos/worktrees from their upstream on a schedule. */

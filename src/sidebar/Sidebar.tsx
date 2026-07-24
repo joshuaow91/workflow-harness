@@ -41,6 +41,30 @@ export function Sidebar() {
   const [selectMode, setSelectMode] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
+  // Resizable, width persisted. The shell reads --sidebar-w for its grid column.
+  const [width, setWidth] = useState(
+    () => Number(localStorage.getItem('harness:sidebarW')) || 264
+  )
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-w', `${width}px`)
+    localStorage.setItem('harness:sidebarW', String(width))
+  }, [width])
+  const startResize = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    const onMove = (ev: MouseEvent): void =>
+      setWidth(Math.min(Math.max(ev.clientX, 200), Math.round(window.innerWidth * 0.5)))
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
   const titleOf = (s: ClaudeSession): string => titles[s.sessionId] ?? s.title
   const working = (st?: string): boolean => st === 'busy' || st === 'running' || st === 'working'
 
@@ -127,6 +151,7 @@ export function Sidebar() {
 
   return (
     <div className="sidebar sb">
+      <div className="sb-resize" onMouseDown={startResize} title="Drag to resize" />
       {/* Only states that exist get named — never "0 waiting". */}
       {(waiting > 0 || busy > 0 || finished > 0) && (
         <div className="sb-status">
@@ -209,6 +234,7 @@ export function Sidebar() {
               }}
               title={`${titleOf(s)}\n${s.cwd}`}
             >
+              <div className="sb-main">
               {selectMode ? (
                 <input
                   type="checkbox"
@@ -238,6 +264,8 @@ export function Sidebar() {
                 <span className="sb-name">{titleOf(s)}</span>
               )}
 
+              {state === 'idle' && <span className="sb-tag">idle</span>}
+
               <span className="sb-when">
                 {relativeTime(
                   paneStatus.has(s.sessionId)
@@ -245,10 +273,6 @@ export function Sidebar() {
                     : s.lastActivityAt
                 )}
               </span>
-
-              {/* A blocked row states what it's waiting on, so the sidebar can
-                  often answer the question instead of just pointing at it. */}
-              {state === 'blocked' && <span className="sb-sub">Waiting for your answer</span>}
 
               {s.live && !selectMode && (
                 <button
@@ -262,6 +286,11 @@ export function Sidebar() {
                   <Icon name="power" size={12} />
                 </button>
               )}
+              </div>
+
+              {/* A blocked row states what it's waiting on, so the sidebar can
+                  often answer the question instead of just pointing at it. */}
+              {state === 'blocked' && <span className="sb-sub">Waiting for your answer</span>}
             </div>
           ))
         )}

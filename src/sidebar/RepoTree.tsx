@@ -217,6 +217,8 @@ function RepoRow({
   onChanged,
   service,
   active,
+  pinnedHere,
+  onTogglePin,
   dnd
 }: {
   repo: Repo
@@ -224,6 +226,8 @@ function RepoRow({
   onChanged: () => void
   service?: DevService
   active?: DevStackEntry
+  pinnedHere: boolean
+  onTogglePin: () => void
   dnd: {
     dragging: boolean
     over: boolean
@@ -299,6 +303,17 @@ function RepoRow({
         )}
         {extraWorktrees > 0 && <span className="repo-wt-count">{extraWorktrees}⎇</span>}
         <div className="repo-actions">
+          <Tooltip tip={pinnedHere ? 'Unpin from the sidebar' : 'Pin to always show in the sidebar'}>
+            <button
+              className={`repo-pin${pinnedHere ? ' on' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onTogglePin()
+              }}
+            >
+              {pinnedHere ? '★' : '☆'}
+            </button>
+          </Tooltip>
           <Tooltip tip="Manage branches — pull latest, check out, clean up old branches">
             <button
               className="term-act"
@@ -368,7 +383,16 @@ export function RepoTree() {
 
   // You work in one or two repos at a time. Show those — a running dev stack or a
   // live session in the tree — and keep the rest one line away.
+  const pinned = new Set(settings?.pinnedRepos ?? [])
+  const togglePin = (path: string): void => {
+    const next = new Set(pinned)
+    if (next.has(path)) next.delete(path)
+    else next.add(path)
+    void settingsStore.update({ pinnedRepos: [...next] })
+  }
+  // Shown by default: pinned repos, plus anything you're actually working in.
   const isActive = (r: Repo): boolean =>
+    pinned.has(r.path) ||
     !!activeFor(r.name) ||
     [...liveCwds].some((c) => c === r.path || c.startsWith(r.path + '/')) ||
     r.worktrees.some((w) => liveCwds.has(w.path))
@@ -424,6 +448,8 @@ export function RepoTree() {
             onChanged={refresh}
             service={serviceFor(repo.name)}
             active={activeFor(repo.name)}
+            pinnedHere={pinned.has(repo.path)}
+            onTogglePin={() => togglePin(repo.path)}
             dnd={{
               dragging: drag === repo.path,
               over: over === repo.path && drag !== repo.path,
