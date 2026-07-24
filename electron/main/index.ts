@@ -132,6 +132,9 @@ function createWindow(): void {
     // window background; content areas paint themselves opaque for legibility.
     vibrancy: 'under-window',
     visualEffectState: 'active',
+    // Electron only honors alpha in backgroundColor when `transparent` is set —
+    // without it #00000000 collapses to opaque black and hides the vibrancy view.
+    transparent: true,
     backgroundColor: '#00000000',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

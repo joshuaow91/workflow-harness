@@ -38,20 +38,59 @@ type TabId =
 interface TabDef {
   id: TabId
   label: string
-  icon: string
 }
 
-const TABS: TabDef[] = [
-  { id: 'terminals', label: 'Terminals', icon: 'terminal' },
-  { id: 'browser', label: 'Browser', icon: 'globe' },
-  { id: 'issues', label: 'Issues', icon: 'issue' },
-  { id: 'myprs', label: 'My PRs', icon: 'pr' },
-  { id: 'changes', label: 'Diff', icon: 'diff' },
-  { id: 'datadog', label: 'Datadog', icon: 'chart' },
-  { id: 'deploys', label: 'Deploys', icon: 'rocket' },
-  { id: 'mongo', label: 'Mongo', icon: 'database' },
-  { id: 'knowledge', label: 'Knowledge', icon: 'graph' }
+interface GroupDef {
+  id: string
+  label: string
+  icon: string
+  views: TabDef[]
+}
+
+// Nine flat destinations were too many to scan, so they're grouped by what you're
+// doing. `activeTab` stays the concrete view id, so routing (diffBus, terminalBus,
+// persistence) is unchanged — only the navigation is restructured.
+const GROUPS: GroupDef[] = [
+  {
+    id: 'agents',
+    label: 'Agents',
+    icon: 'terminal',
+    views: [
+      { id: 'terminals', label: 'Sessions' },
+      { id: 'browser', label: 'Browser' }
+    ]
+  },
+  {
+    id: 'review',
+    label: 'Review',
+    icon: 'diff',
+    views: [
+      { id: 'changes', label: 'Diff' },
+      { id: 'issues', label: 'Issues' },
+      { id: 'myprs', label: 'My PRs' }
+    ]
+  },
+  {
+    id: 'ops',
+    label: 'Ops',
+    icon: 'rocket',
+    views: [
+      { id: 'deploys', label: 'Deploys' },
+      { id: 'datadog', label: 'Datadog' }
+    ]
+  },
+  {
+    id: 'data',
+    label: 'Data',
+    icon: 'database',
+    views: [
+      { id: 'mongo', label: 'Mongo' },
+      { id: 'knowledge', label: 'Knowledge' }
+    ]
+  }
 ]
+
+const ALL_VIEWS: TabDef[] = GROUPS.flatMap((g) => g.views)
 
 function TabPanel({ tab }: { tab: Exclude<TabId, 'terminals' | 'browser' | 'changes'> }) {
   switch (tab) {
@@ -87,6 +126,15 @@ export function AppShell() {
       return () => clearTimeout(t)
     }
   }, [activeTab])
+
+  // Which group the current view belongs to (undefined while Settings is open).
+  const activeGroup = GROUPS.find((g) => g.views.some((v) => v.id === activeTab))
+  // Returning to a group reopens the view you left it on, not always the first.
+  const lastView = useRef<Record<string, TabId>>({})
+  useEffect(() => {
+    if (activeGroup) lastView.current[activeGroup.id] = activeTab
+  }, [activeTab, activeGroup])
+  const openGroup = (g: GroupDef): void => setActiveTab(lastView.current[g.id] ?? g.views[0].id)
 
   // Notes live in a collapsible right sidebar, toggled from the titlebar.
   const [notesOpen, setNotesOpen] = useState(() => localStorage.getItem('harness:notesOpen') === '1')
@@ -199,7 +247,7 @@ export function AppShell() {
       )}
       {paletteOpen && (
         <CommandPalette
-          tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+          tabs={ALL_VIEWS.map((t) => ({ id: t.id, label: t.label }))}
           navigate={(t) => setActiveTab(t as TabId)}
           onClose={() => setPaletteOpen(false)}
         />
@@ -209,18 +257,31 @@ export function AppShell() {
 
       <div className="main">
         <div className="tabbar">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={`tab${t.id === activeTab ? ' active' : ''}`}
-              onClick={() => setActiveTab(t.id)}
-            >
-              <span className="tab-icon">
-                <Icon name={t.icon} />
-              </span>
-              {t.label}
-            </button>
-          ))}
+          <div className="navgroups">
+            {GROUPS.map((g) => (
+              <button
+                key={g.id}
+                className={`navgroup${g === activeGroup ? ' active' : ''}`}
+                onClick={() => openGroup(g)}
+              >
+                <Icon name={g.icon} size={13} />
+                {g.label}
+              </button>
+            ))}
+          </div>
+          {activeGroup && activeGroup.views.length > 1 && (
+            <div className="subnav">
+              {activeGroup.views.map((v) => (
+                <button
+                  key={v.id}
+                  className={`subtab${v.id === activeTab ? ' active' : ''}`}
+                  onClick={() => setActiveTab(v.id)}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="tab-content">
           {/* Terminals + browser stay mounted so PTYs and page state survive tab switches. */}
