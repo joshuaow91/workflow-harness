@@ -34,11 +34,6 @@ function luminance(h: string): number {
   const [r, g, b] = hexToRgb(h).map((x) => x / 255)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
-function rgba(hex: string, a: number): string {
-  const [r, g, b] = hexToRgb(hex)
-  return `rgba(${r}, ${g}, ${b}, ${a})`
-}
-
 /** A theme is "dark" when its background is darker than mid-grey. */
 export function isDarkTheme(t: Theme): boolean {
   return luminance(t.bg) < 0.5
@@ -81,9 +76,7 @@ function applyCssVars(t: Theme): void {
 export function xtermTheme(t: Theme): ITheme {
   const p = t.palette
   return {
-    // Semi-transparent so the terminal inherits the window's glass/material.
-    // Kept fairly opaque so code stays legible over a blurred backdrop.
-    background: rgba(t.bg, 0.62),
+    background: t.bg,
     foreground: t.fg,
     cursor: t.cursor,
     cursorAccent: t.bg,

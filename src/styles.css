@@ -863,9 +863,9 @@ button {
   position: relative;
   min-width: 0;
   min-height: 0;
-  /* Translucent so terminals (xterm allowTransparency + alpha bg) inherit the
-     window's glass. Views that need solid ground paint their own. */
-  background: var(--glass-thin);
+  /* Opaque: terminals need solid ground. Making this translucent (to let the
+     terminal inherit the glass) rendered the xterm canvas invisible. */
+  background: var(--bg);
 }
 
 /* ---- Generic placeholder ---- */

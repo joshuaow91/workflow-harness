@@ -65,9 +65,9 @@ const GROUPS: GroupDef[] = [
     label: 'Review',
     icon: 'diff',
     views: [
-      { id: 'changes', label: 'Diff' },
       { id: 'issues', label: 'Issues' },
-      { id: 'myprs', label: 'My PRs' }
+      { id: 'myprs', label: 'My PRs' },
+      { id: 'changes', label: 'Diff' }
     ]
   },
   {
@@ -75,8 +75,8 @@ const GROUPS: GroupDef[] = [
     label: 'Ops',
     icon: 'rocket',
     views: [
-      { id: 'deploys', label: 'Deploys' },
-      { id: 'datadog', label: 'Datadog' }
+      { id: 'datadog', label: 'Datadog' },
+      { id: 'deploys', label: 'Deploys' }
     ]
   },
   {
