@@ -16,7 +16,7 @@
   --red: #f38ba8;
   --mauve: #cba6f7;
   --border: #313244;
-  --titlebar-h: 38px;
+  --titlebar-h: 46px;
   --sidebar-w: 264px;
 
   /* Liquid Glass — chrome floats as translucent layers over the window's native
@@ -248,7 +248,8 @@ button {
 }
 
 .titlebar-right {
-  margin-left: auto;
+  /* .navwrap's auto margins already push this to the edge; a second auto margin
+     here would fight them and pull the centred nav off-centre. */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -735,10 +736,21 @@ button {
 }
 
 /* Four grouped destinations replace nine flat tabs. */
+/* Nav + its sub-nav centre in the titlebar as one unit. */
+.navwrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-inline: auto;
+  min-width: 0;
+  /* The titlebar is a drag region; nav must stay clickable. */
+  -webkit-app-region: no-drag;
+}
 .navgroups {
   display: flex;
   align-items: center;
   gap: 2px;
+  -webkit-app-region: no-drag;
 }
 .navgroup {
   display: flex;
@@ -775,6 +787,7 @@ button {
   gap: 2px;
   padding-left: 14px;
   border-left: 1px solid var(--edge-lo);
+  -webkit-app-region: no-drag;
 }
 .subtab {
   padding: 4px 10px;
@@ -850,7 +863,9 @@ button {
   position: relative;
   min-width: 0;
   min-height: 0;
-  background: var(--bg);
+  /* Translucent so terminals (xterm allowTransparency + alpha bg) inherit the
+     window's glass. Views that need solid ground paint their own. */
+  background: var(--glass-thin);
 }
 
 /* ---- Generic placeholder ---- */

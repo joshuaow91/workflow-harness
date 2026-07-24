@@ -17,9 +17,9 @@ import { SetupModal } from './SetupModal'
 import { CommandPalette } from './CommandPalette'
 import { HeaderStats } from './HeaderStats'
 import { ThemePicker } from '../themes/ThemePicker'
-import { themeStore } from '../themes/themeStore'
+import { counterpartTheme, isDarkTheme, themeStore, useTheme } from '../themes/themeStore'
 import { Icon } from '../components/Icon'
-import { useSettings } from '../lib/settingsStore'
+import { settingsStore, useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
 import { browserRouter } from '../lib/browserRouter'
 
@@ -136,6 +136,15 @@ export function AppShell() {
   }, [activeTab, activeGroup])
   const openGroup = (g: GroupDef): void => setActiveTab(lastView.current[g.id] ?? g.views[0].id)
 
+  // Appearance toggle: jump to the opposite-appearance theme, preferring the
+  // matching pair of whatever's active so the palette stays familiar.
+  const theme = useTheme()
+  const dark = isDarkTheme(theme)
+  const toggleAppearance = (): void => {
+    const next = counterpartTheme(theme, dark ? 'Catppuccin Latte' : 'Catppuccin Mocha')
+    void settingsStore.update({ themeName: next.name })
+  }
+
   // Notes live in a collapsible right sidebar, toggled from the titlebar.
   const [notesOpen, setNotesOpen] = useState(() => localStorage.getItem('harness:notesOpen') === '1')
   const notesVisited = useRef(notesOpen) // mount the editor once, keep it alive
@@ -215,8 +224,44 @@ export function AppShell() {
         <span className="brand">
           blink<span className="brand-dot">·</span>workflow
         </span>
+
+        <div className="navwrap">
+          <div className="navgroups">
+            {GROUPS.map((g) => (
+              <button
+                key={g.id}
+                className={`navgroup${g === activeGroup ? ' active' : ''}`}
+                onClick={() => openGroup(g)}
+              >
+                <Icon name={g.icon} size={13} />
+                {g.label}
+              </button>
+            ))}
+          </div>
+          {activeGroup && activeGroup.views.length > 1 && (
+            <div className="subnav">
+              {activeGroup.views.map((v) => (
+                <button
+                  key={v.id}
+                  className={`subtab${v.id === activeTab ? ' active' : ''}`}
+                  onClick={() => setActiveTab(v.id)}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="titlebar-right">
           <HeaderStats onNav={(t) => setActiveTab(t as TabId)} />
+          <button
+            className="titlebar-gear"
+            onClick={toggleAppearance}
+            title={dark ? 'Switch to a light theme' : 'Switch to a dark theme'}
+          >
+            {dark ? '☀' : '☾'}
+          </button>
           <ThemePicker />
           <button
             className={`titlebar-gear${notesOpen ? ' on' : ''}`}
@@ -256,33 +301,6 @@ export function AppShell() {
       <Sidebar />
 
       <div className="main">
-        <div className="tabbar">
-          <div className="navgroups">
-            {GROUPS.map((g) => (
-              <button
-                key={g.id}
-                className={`navgroup${g === activeGroup ? ' active' : ''}`}
-                onClick={() => openGroup(g)}
-              >
-                <Icon name={g.icon} size={13} />
-                {g.label}
-              </button>
-            ))}
-          </div>
-          {activeGroup && activeGroup.views.length > 1 && (
-            <div className="subnav">
-              {activeGroup.views.map((v) => (
-                <button
-                  key={v.id}
-                  className={`subtab${v.id === activeTab ? ' active' : ''}`}
-                  onClick={() => setActiveTab(v.id)}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         <div className="tab-content">
           {/* Terminals + browser stay mounted so PTYs and page state survive tab switches. */}
           <div className="tab-layer" style={{ display: activeTab === 'terminals' ? 'block' : 'none' }}>

@@ -23,6 +23,9 @@ export function TerminalPane({ id, onExit }: { id: string; onExit?: () => void }
       lineHeight: 1.15,
       cursorBlink: true,
       allowProposedApi: true,
+      // Lets the theme's alpha background through so the pane inherits the
+      // window's glass instead of painting an opaque block over it.
+      allowTransparency: true,
       theme: xtermTheme(themeStore.get()),
       scrollback: 50000
     })
