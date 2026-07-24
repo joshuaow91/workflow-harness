@@ -6482,3 +6482,127 @@ button {
 .mongo-coll-filter:focus { outline: none; border-color: var(--accent); }
 .mongo-coll-ico { color: var(--text-faint); margin-right: 7px; font-size: 11px; }
 .mongo-coll.sel .mongo-coll-ico { color: var(--green); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Design system pass — appended last so it lands on top of the older
+   per-component rules without having to rewrite each of them.
+
+   Scope note: deliberately never transforms or animates .term-panel / terminal
+   containers — xterm measures its own geometry and transforms there break it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --ease: cubic-bezier(0.22, 0.9, 0.3, 1);
+  --dur: 170ms;
+}
+
+/* ---- Motion: every control acknowledges you ---- */
+button,
+.tbtn,
+.term-act,
+.wt-row,
+.repo-row,
+.card,
+.tpl-item,
+.branch-row,
+input,
+select,
+textarea {
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    opacity var(--dur) var(--ease);
+}
+
+/* ---- The two buttons used across the whole app ---- */
+.tbtn {
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  border: 1px solid var(--edge-lo);
+  background: var(--glass);
+  color: var(--text-dim);
+}
+.tbtn:hover:not(:disabled) {
+  color: var(--text);
+  box-shadow: 0 4px 14px -8px rgba(0, 0, 0, 0.5);
+}
+.tbtn:active:not(:disabled) {
+  opacity: 0.8;
+}
+
+.term-act {
+  width: 24px;
+  height: 22px;
+  border-radius: var(--r-xs);
+}
+.term-act:hover {
+  background: var(--glass);
+  color: var(--text);
+}
+
+/* ---- Surfaces get consistent corners ---- */
+.card,
+.gh-tab,
+.tpl-modal,
+.devstack-logs {
+  border-radius: var(--r-md);
+}
+input,
+select,
+textarea {
+  border-radius: var(--r-sm);
+}
+
+/* ---- Views ease in when you switch tabs (never the terminals layer) ---- */
+.gh-tab {
+  animation: view-in 240ms var(--ease);
+}
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---- Modals arrive instead of appearing ---- */
+.modal {
+  animation: modal-in 200ms var(--ease);
+}
+.modal-backdrop {
+  animation: fade-in 160ms var(--ease);
+  backdrop-filter: blur(2px);
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---- Focus is always visible ---- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
