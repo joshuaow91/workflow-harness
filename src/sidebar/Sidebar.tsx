@@ -146,6 +146,7 @@ export function Sidebar() {
   const [selectMode, setSelectMode] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
+  const [showAll, setShowAll] = useState(false)
 
   // Detect when a session finishes a turn (busy -> idle) = needs a response.
   const needsResp = useSessionAlerts()
@@ -216,6 +217,18 @@ export function Sidebar() {
     (n, p) => n + p.sessions.filter((s) => needsResp.has(s.sessionId)).length,
     0
   )
+
+  // Most of ~/.claude is history: dozens of transcripts, a handful actually live.
+  // Show the live ones flat and keep the rest behind an explicit ask, so the
+  // sidebar is a worklist rather than an archive.
+  const totalSessions = projects.reduce((n, p) => n + p.sessions.length, 0)
+  const activeList = sortByActivity(
+    projects
+      .flatMap((p) => p.sessions)
+      .filter((s) => s.live || paneStatus.has(s.sessionId) || needsResp.has(s.sessionId))
+  )
+  const slugOf = (s: ClaudeSession): string =>
+    projects.find((p) => p.sessions.some((x) => x.sessionId === s.sessionId))?.slug ?? ''
 
   const startRename = (m: MenuState): void => {
     setDraft(m.title)
@@ -299,6 +312,43 @@ export function Sidebar() {
     exitSelect()
   }
 
+  const renderRow = (s: ClaudeSession, slug: string): React.ReactElement => (
+    <SessionRow
+      key={s.sessionId}
+      session={s}
+      displayTitle={titleOf(s)}
+      selected={selected === s.sessionId}
+      needsResponse={needsResp.has(s.sessionId)}
+      pane={paneStatus.get(s.sessionId)}
+      editing={editing === s.sessionId}
+      draft={draft}
+      onDraft={setDraft}
+      onSubmitRename={() => submitRename(s.sessionId)}
+      onCancelRename={() => setEditing(null)}
+      onSelect={() => {
+        setSelected(s.sessionId)
+        clearAlert(s.sessionId)
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        setMenu({
+          sessionId: s.sessionId,
+          slug,
+          title: titleOf(s),
+          pid: s.live?.pid ?? null,
+          x: e.clientX,
+          y: e.clientY
+        })
+      }}
+      onKill={() => {
+        if (s.live) killSession(s.sessionId)
+      }}
+      selectMode={selectMode}
+      checked={checked.has(s.sessionId)}
+      onToggleCheck={() => toggleCheck(s.sessionId)}
+    />
+  )
+
   return (
     <div className="sidebar">
       {/* The one thing worth seeing first: who's waiting on you. */}
@@ -362,6 +412,13 @@ export function Sidebar() {
           )}
         </div>
       )}
+      {/* Active work first: the few sessions that are live or waiting on you. */}
+      {!query.trim() && activeList.length > 0 && (
+        <SideSection title="Active" count={activeList.length} defaultOpen>
+          {activeList.map((s) => renderRow(s, slugOf(s)))}
+        </SideSection>
+      )}
+
       {loading && projects.length === 0 ? (
         <div className="side-empty" style={{ padding: '14px' }}>
           Loading projects…
@@ -370,7 +427,7 @@ export function Sidebar() {
         <SideSection title="Projects">
           <div className="side-empty">No Claude sessions found in ~/.claude/projects.</div>
         </SideSection>
-      ) : (
+      ) : !showAll && !query.trim() ? null : (
         projects.map((project) => (
           <SideSection
             key={project.slug}
@@ -390,42 +447,7 @@ export function Sidebar() {
               // While searching, show every match — a capped list hides the thing
               // you searched for.
               return query.trim() || expanded.has(project.slug) ? hits : hits.slice(0, 10)
-            })().map((s) => (
-              <SessionRow
-                key={s.sessionId}
-                session={s}
-                displayTitle={titleOf(s)}
-                selected={selected === s.sessionId}
-                needsResponse={needsResp.has(s.sessionId)}
-                pane={paneStatus.get(s.sessionId)}
-                editing={editing === s.sessionId}
-                draft={draft}
-                onDraft={setDraft}
-                onSubmitRename={() => submitRename(s.sessionId)}
-                onCancelRename={() => setEditing(null)}
-                onSelect={() => {
-                  setSelected(s.sessionId)
-                  clearAlert(s.sessionId)
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setMenu({
-                    sessionId: s.sessionId,
-                    slug: project.slug,
-                    title: titleOf(s),
-                    pid: s.live?.pid ?? null,
-                    x: e.clientX,
-                    y: e.clientY
-                  })
-                }}
-                onKill={() => {
-                  if (s.live) killSession(s.sessionId)
-                }}
-                selectMode={selectMode}
-                checked={checked.has(s.sessionId)}
-                onToggleCheck={() => toggleCheck(s.sessionId)}
-              />
-            ))}
+            })().map((s) => renderRow(s, project.slug))}
             {!query.trim() && project.sessions.length > 10 && (
               <button className="side-more" onClick={() => toggleExpanded(project.slug)}>
                 {expanded.has(project.slug)
@@ -435,6 +457,13 @@ export function Sidebar() {
             )}
           </SideSection>
         ))
+      )}
+
+      {/* ~/.claude is mostly archive — keep it one click away, not on screen. */}
+      {!query.trim() && totalSessions > activeList.length && (
+        <button className="side-more" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? 'Hide history' : `All sessions (${totalSessions})`}
+        </button>
       )}
 
       <RepoTree />
