@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { TerminalSpawnOptions } from '@shared/types'
 import { Icon } from '../components/Icon'
 import { sessionAlerts, useSessionAlerts } from '../lib/sessionAlerts'
+import { useAgentStates } from '../lib/agentStates'
 import { focusTerminal } from '../lib/terminalFocus'
 import { TerminalPane } from './TerminalPane'
 import { TermSidebar } from './TermSidebar'
@@ -52,6 +53,7 @@ export function PaneGrid({
   const [draft, setDraft] = useState('')
   const [tplFor, setTplFor] = useState<string | null>(null)
   const alerts = useSessionAlerts()
+  const agentStates = useAgentStates()
 
   const gridStyle = (): React.CSSProperties => {
     const n = panes.length
@@ -98,6 +100,7 @@ export function PaneGrid({
           <div
             key={pane.paneId}
             data-pane-id={pane.paneId}
+            data-agent-state={agentStates[pane.terminalId] ?? undefined}
             className={`term-panel${over === pane.paneId && drag !== pane.paneId ? ' drag-over' : ''}${drag === pane.paneId ? ' dragging' : ''}${focusedId === pane.paneId ? ' focused' : ''}${alerted ? ' needs-response' : ''}`}
             style={paneStyle(i)}
             // Capture phase: xterm swallows mousedown in the terminal body, so a
@@ -151,14 +154,23 @@ export function PaneGrid({
                   }}
                 />
               ) : (
-                <span
-                  className="term-panel-title"
-                  title={`${pane.opts.cwd}\nDouble-click to rename`}
-                  onDoubleClick={() => startRename(pane)}
-                >
-                  {pane.browserUrl != null ? '🌐 ' : pane.opts.initialCommand ? '◐ ' : '$ '}
-                  {pane.opts.label ?? basename(pane.opts.cwd)}
-                </span>
+                <>
+                  {pane.browserUrl == null && agentStates[pane.terminalId] && (
+                    <span
+                      className="agent-dot"
+                      data-state={agentStates[pane.terminalId]}
+                      title={`Agent is ${agentStates[pane.terminalId]}`}
+                    />
+                  )}
+                  <span
+                    className="term-panel-title"
+                    title={`${pane.opts.cwd}\nDouble-click to rename`}
+                    onDoubleClick={() => startRename(pane)}
+                  >
+                    {pane.browserUrl != null ? '🌐 ' : pane.opts.initialCommand ? '◐ ' : '$ '}
+                    {pane.opts.label ?? basename(pane.opts.cwd)}
+                  </span>
+                </>
               )}
               <div className="term-panel-actions">
                 {pane.browserUrl == null && (

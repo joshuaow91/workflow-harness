@@ -28,6 +28,7 @@ export const IPC = {
     write: 'terminal:write',
     resize: 'terminal:resize',
     kill: 'terminal:kill',
+    state: 'terminal:state', // main -> renderer push: agent state changed
     getBuffer: 'terminal:getBuffer',
     saveLayout: 'terminal:saveLayout',
     getLayout: 'terminal:getLayout',

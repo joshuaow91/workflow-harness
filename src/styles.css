@@ -742,6 +742,68 @@ button {
 }
 
 /* Four grouped destinations replace nine flat tabs. */
+/* ---- Agent state language ------------------------------------------------
+   Four states, each with its own colour AND motion, so "which agent needs me?"
+   reads without any text. Semantic — deliberately not the theme accent. */
+.agent-dot,
+.nav-roll {
+  --st: var(--overlay);
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--st);
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+.agent-dot[data-state='working'],
+.nav-roll[data-state='working'] {
+  --st: var(--accent);
+}
+.agent-dot[data-state='blocked'],
+.nav-roll[data-state='blocked'] {
+  --st: var(--yellow);
+  animation: agent-needsyou 1.6s ease-in-out infinite;
+}
+.agent-dot[data-state='done'],
+.nav-roll[data-state='done'] {
+  --st: var(--green);
+}
+.agent-dot[data-state='idle'],
+.nav-roll[data-state='idle'] {
+  --st: var(--overlay);
+  opacity: 0.5;
+}
+.nav-roll {
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+}
+
+/* Only "blocked" moves — it's the one state that wants you. */
+@keyframes agent-needsyou {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--yellow) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--yellow) 0%, transparent);
+  }
+}
+
+/* A blocked pane tints its own frame so it's findable in a grid of panes. */
+.term-panel[data-agent-state='blocked'] {
+  border-color: color-mix(in srgb, var(--yellow) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-dot,
+  .nav-roll {
+    animation: none !important;
+  }
+}
+
 /* Nav + its sub-nav centre in the titlebar as one unit. */
 .navwrap {
   display: flex;

@@ -6,8 +6,10 @@ import { promisify } from 'util'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { TerminalSpawnOptions } from '@shared/types'
+import type { AgentState } from '@shared/types'
 import type { BackendSession } from './TerminalBackend'
 import { XtermPtyBackend } from './XtermPtyBackend'
+import { classify, onUserInput, visibleTail } from './agentState'
 
 const pexec = promisify(execFile)
 
@@ -86,10 +88,33 @@ function resumeIdOf(cmd?: string): string | null {
   return m ? m[1] : null
 }
 
+// What each pane's agent is doing, derived from its output (see agentState.ts).
+const states = new Map<string, AgentState>()
+const classifyTimers = new Map<string, NodeJS.Timeout>()
+
 export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void {
   const send = (channel: string, payload: unknown): void => {
     const win = getWindow()
     if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
+  }
+
+  const setState = (id: string, next: AgentState): void => {
+    if (states.get(id) === next) return
+    states.set(id, next)
+    send(IPC.terminal.state, { id, state: next })
+  }
+
+  // Coalesce: a busy agent emits constantly, and we only care about transitions.
+  const scheduleClassify = (id: string): void => {
+    if (classifyTimers.has(id)) return
+    classifyTimers.set(
+      id,
+      setTimeout(() => {
+        classifyTimers.delete(id)
+        const prev = states.get(id) ?? 'idle'
+        setState(id, classify(visibleTail(buffers.get(id) ?? ''), prev))
+      }, 350)
+    )
   }
 
   ipcMain.handle(IPC.terminal.create, (_e, opts: TerminalSpawnOptions): string => {
@@ -112,12 +137,16 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
       const buf = (buffers.get(session.id) ?? '') + data
       buffers.set(session.id, buf.length > MAX_BUFFER ? buf.slice(-MAX_BUFFER) : buf)
       send(IPC.terminal.data, { id: session.id, data })
+      scheduleClassify(session.id)
     })
     session.onExit(({ exitCode, signal }) => {
       send(IPC.terminal.exit, { id: session.id, exitCode, signal })
       sessions.delete(session.id)
       buffers.delete(session.id)
       resumeKeys.delete(session.id)
+      clearTimeout(classifyTimers.get(session.id))
+      classifyTimers.delete(session.id)
+      states.delete(session.id)
     })
 
     return session.id
@@ -149,6 +178,9 @@ export function registerTerminalIpc(getWindow: () => BrowserWindow | null): void
   })
 
   ipcMain.on(IPC.terminal.write, (_e, id: string, data: string) => {
+    // Engaging with a finished run clears it back to idle.
+    const prev = states.get(id)
+    if (prev) setState(id, onUserInput(prev))
     sessions.get(id)?.write(data)
   })
 

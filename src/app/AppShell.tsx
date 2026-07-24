@@ -21,6 +21,7 @@ import { counterpartTheme, isDarkTheme, themeStore, useTheme } from '../themes/t
 import { Icon } from '../components/Icon'
 import { settingsStore, useSettings } from '../lib/settingsStore'
 import { terminalBus } from '../lib/terminalBus'
+import { useAgentStates, worstState } from '../lib/agentStates'
 import { browserRouter } from '../lib/browserRouter'
 
 type TabId =
@@ -136,6 +137,10 @@ export function AppShell() {
   }, [activeTab, activeGroup])
   const openGroup = (g: GroupDef): void => setActiveTab(lastView.current[g.id] ?? g.views[0].id)
 
+  // Roll pane states up to the Agents pill: a blocked agent colours the group.
+  const agentStates = useAgentStates()
+  const agentsRollup = worstState(Object.values(agentStates))
+
   // Appearance toggle: jump to the opposite-appearance theme, preferring the
   // matching pair of whatever's active so the palette stays familiar.
   const theme = useTheme()
@@ -235,6 +240,13 @@ export function AppShell() {
               >
                 <Icon name={g.icon} size={13} />
                 {g.label}
+                {g.id === 'agents' && agentsRollup && agentsRollup !== 'idle' && (
+                  <span
+                    className="nav-roll"
+                    data-state={agentsRollup}
+                    title={`An agent is ${agentsRollup}`}
+                  />
+                )}
               </button>
             ))}
           </div>

@@ -52,6 +52,7 @@ import type {
   Repo,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalStateEvent,
   TerminalSpawnOptions,
   Worktree
 } from '@shared/types'
@@ -109,6 +110,11 @@ const api = {
     },
     resize: (id: string, cols: number, rows: number): void => {
       ipcRenderer.send(IPC.terminal.resize, id, cols, rows)
+    },
+    onState: (cb: (e: TerminalStateEvent) => void): (() => void) => {
+      const h = (_e: unknown, ev: TerminalStateEvent): void => cb(ev)
+      ipcRenderer.on(IPC.terminal.state, h)
+      return () => ipcRenderer.removeListener(IPC.terminal.state, h)
     },
     kill: (id: string): void => {
       ipcRenderer.send(IPC.terminal.kill, id)
